@@ -1,5 +1,12 @@
-import { X, Sun, Moon, Edit3, Wallet, Shirt, ChevronDown, Delete, Calendar, Check } from "lucide-react";
+import { X, Sun, Moon, Edit3, Wallet, Shirt, Delete, Calendar, Check } from "lucide-react";
 import { useState, useRef, type MouseEvent } from "react";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "../ui/select";
 
 interface AddExpenseViewProps {
 	amount: string;
@@ -139,18 +146,44 @@ export const AddExpenseView = ({
 
 		<div className="flex-1 flex flex-col items-center px-8 pt-4">
 			<div className="flex gap-4 w-full justify-between mb-8">
-				<RippleButton className="flex-1 flex items-center justify-between bg-(--muted) border border-transparent px-4 py-3 rounded-2xl text-(--foreground) font-medium transition-colors duration-300">
-					<div className="flex items-center gap-2">
-						<Wallet size={18} /> Cash
-					</div>
-					<ChevronDown size={16} />
-				</RippleButton>
-				<RippleButton className="flex-1 flex items-center justify-between bg-(--muted) border border-transparent px-4 py-3 rounded-2xl text-(--foreground) font-medium transition-colors duration-300">
-					<div className="flex items-center gap-2">
-						<Shirt size={18} /> Shopping
-					</div>
-					<ChevronDown size={16} />
-				</RippleButton>
+				<Select defaultValue="cash">
+					<SelectTrigger className="flex-1">
+						<div className="flex items-center gap-2">
+							<Wallet size={18} />
+							<SelectValue />
+						</div>
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="cash">
+							<div className="flex items-center gap-2">
+								<Wallet size={18} /> Cash
+							</div>
+						</SelectItem>
+						<SelectItem value="card">Card</SelectItem>
+						<SelectItem value="bank">Bank</SelectItem>
+						<SelectItem value="upi">UPI</SelectItem>
+					</SelectContent>
+				</Select>
+				<Select defaultValue="shopping">
+					<SelectTrigger className="flex-1">
+						<div className="flex items-center gap-2">
+							<Shirt size={18} />
+							<SelectValue />
+						</div>
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="shopping">
+							<div className="flex items-center gap-2">
+								<Shirt size={18} /> Shopping
+							</div>
+						</SelectItem>
+						<SelectItem value="food">Food</SelectItem>
+						<SelectItem value="transport">Transport</SelectItem>
+						<SelectItem value="entertainment">Entertainment</SelectItem>
+						<SelectItem value="bills">Bills</SelectItem>
+						<SelectItem value="other">Other</SelectItem>
+					</SelectContent>
+				</Select>
 			</div>
 
 			<div className="flex flex-col items-center justify-center flex-1 w-full mb-8">

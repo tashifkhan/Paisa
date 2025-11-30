@@ -1,10 +1,21 @@
-import { ChevronDown, Home, Smartphone, ArrowUpRight } from "lucide-react";
+import { Home, Smartphone, ArrowUpRight } from "lucide-react";
 import { ExpenseChart } from "../shared/ExpenseChart";
 import { StatsCard } from "../shared/StatsCard";
 import { CircularProgress } from "../shared/CircularProgress";
 import { TransactionItem } from "../shared/TransactionItem";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "../ui/select";
+import { useState } from "react";
 
-export const StatsView = () => (
+export const StatsView = () => {
+	const [activeTab, setActiveTab] = useState("Overview");
+
+	return (
 	<div className="flex flex-col h-full bg-(--background) pb-24 overflow-y-auto hide-scrollbar transition-colors duration-300">
 		<header className="flex justify-between items-start p-6 bg-(--background) pb-4 transition-colors duration-300">
 			<div className="flex flex-col">
@@ -16,9 +27,25 @@ export const StatsView = () => (
 				</p>
 			</div>
 			<div className="flex items-center gap-2">
-				<button className="flex items-center gap-1 px-4 py-2 bg-(--card) rounded-full text-sm font-medium text-(--foreground) border border-(--border) transition-colors duration-300 shadow-sm">
-					June <ChevronDown size={14} />
-				</button>
+				<Select defaultValue="june">
+					<SelectTrigger className="w-[120px]">
+						<SelectValue placeholder="Select month" />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="january">January</SelectItem>
+						<SelectItem value="february">February</SelectItem>
+						<SelectItem value="march">March</SelectItem>
+						<SelectItem value="april">April</SelectItem>
+						<SelectItem value="may">May</SelectItem>
+						<SelectItem value="june">June</SelectItem>
+						<SelectItem value="july">July</SelectItem>
+						<SelectItem value="august">August</SelectItem>
+						<SelectItem value="september">September</SelectItem>
+						<SelectItem value="october">October</SelectItem>
+						<SelectItem value="november">November</SelectItem>
+						<SelectItem value="december">December</SelectItem>
+					</SelectContent>
+				</Select>
 			</div>
 		</header>
 
@@ -29,11 +56,45 @@ export const StatsView = () => (
 
 		{/* Stats Cards */}
 		<div className="px-6 mb-8">
-			<div className="flex justify-between gap-3">
-				<StatsCard title="Day" amount="52" />
-				<StatsCard title="Week" amount="403" />
-				<StatsCard title="Month" amount="1,612" />
+			<div className="flex justify-between items-center bg-(--muted) rounded-4xl p-1 text-sm font-medium mb-4">
+				{["Overview", "Expenses", "Income"].map((tab) => (
+					<button
+						key={tab}
+						onClick={() => setActiveTab(tab)}
+						className={`flex-1 py-3 rounded-4xl transition-all ${
+							activeTab === tab
+								? "bg-(--primary) text-(--primary-foreground) shadow-md"
+								: "text-(--muted-foreground)"
+						}`}
+					>
+						{tab}
+					</button>
+				))}
 			</div>
+
+			{activeTab === "Overview" && (
+				<div className="flex justify-between gap-3">
+					<StatsCard title="Day" amount="52" />
+					<StatsCard title="Week" amount="403" />
+					<StatsCard title="Month" amount="1,612" />
+				</div>
+			)}
+
+			{activeTab === "Expenses" && (
+				<div className="flex justify-between gap-3">
+					<StatsCard title="Day" amount="52" />
+					<StatsCard title="Week" amount="403" />
+					<StatsCard title="Month" amount="1,612" />
+				</div>
+			)}
+
+			{activeTab === "Income" && (
+				<div className="flex justify-between gap-3">
+					<StatsCard title="Day" amount="0" />
+					<StatsCard title="Week" amount="0" />
+					<StatsCard title="Month" amount="0" />
+				</div>
+			)}
 		</div>
 
 		{/* Bills / Due Section (Integrated here) */}
@@ -107,4 +168,5 @@ export const StatsView = () => (
 			</div>
 		</div>
 	</div>
-);
+	);
+};
