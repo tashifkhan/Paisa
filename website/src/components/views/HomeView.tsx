@@ -1,4 +1,4 @@
-import { Bell, Sun, Moon, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { Bell, Sun, Moon, ArrowDownLeft, ArrowUpRight, EyeOff } from "lucide-react";
 import { TransactionItem } from "../shared/TransactionItem";
 import type { Transaction } from "../../types";
 
@@ -33,35 +33,57 @@ export const HomeView = ({ transactions, isDarkMode, toggleTheme }: HomeViewProp
 
 		{/* Total Balance Card */}
 		<div className="px-6 mb-8">
-			<div className="bg-(--primary) text-(--primary-foreground) p-6 rounded-4xl shadow-lg relative overflow-hidden">
-				{/* Abstract blobs for visual interest */}
-				<div className="absolute -top-10 -right-10 w-32 h-32 bg-white/20 rounded-full blur-2xl"></div>
-				<div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full blur-2xl"></div>
+			<div className="bg-[#FFF6F1] dark:bg-(--card) text-[#3E2E28] dark:text-(--foreground) p-8 rounded-[2.5rem] shadow-sm border border-[#F5E6DE] dark:border-(--border) relative overflow-hidden transition-colors duration-300">
+				{/* Gradient Blobs */}
+				<div className="absolute -top-24 -right-24 w-64 h-64 bg-[#FADAC9] dark:bg-(--primary)/10 rounded-full blur-3xl opacity-60 animate-blob"></div>
+				<div className="absolute -bottom-24 -left-24 w-64 h-64 bg-[#FADAC9] dark:bg-(--primary)/10 rounded-full blur-3xl opacity-60 animate-blob animation-delay-2000"></div>
+				<div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#FADAC9] dark:bg-(--primary)/10 rounded-full blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
 
 				<div className="relative z-10">
-					<div className="text-sm font-medium opacity-90 mb-1">
-						Total Balance
-					</div>
-					<div className="text-4xl font-bold mb-8">₹32,500.00</div>
-
-					<div className="flex gap-4">
-						<div className="flex-1 bg-black/20 rounded-2xl p-3 backdrop-blur-sm">
-							<div className="flex items-center gap-1 text-xs opacity-90 mb-1">
-								<div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
-									<ArrowDownLeft size={12} />
-								</div>
-								Income
-							</div>
-							<div className="font-semibold text-lg">₹4,200</div>
+					<div className="flex justify-between items-start mb-2">
+						<div className="text-lg font-medium opacity-80">
+							Total balance
 						</div>
-						<div className="flex-1 bg-white/20 rounded-2xl p-3 backdrop-blur-sm">
-							<div className="flex items-center gap-1 text-xs opacity-90 mb-1">
-								<div className="w-5 h-5 rounded-full bg-black/10 flex items-center justify-center">
-									<ArrowUpRight size={12} />
-								</div>
-								Expense
+						<button className="opacity-60 hover:opacity-100 transition-opacity">
+							<EyeOff size={24} />
+						</button>
+					</div>
+					
+					<div className="text-5xl font-bold mb-8 tracking-tight text-[#2D1F16] dark:text-(--foreground)">
+						₹6,64,472.00
+					</div>
+
+					<div className="mb-6 text-lg font-semibold text-[#3E2E28] dark:text-(--foreground)">
+						This month
+					</div>
+
+					<div className="grid grid-cols-2 gap-8">
+						{/* Income */}
+						<div>
+							<div className="text-sm opacity-70 mb-1">Income</div>
+							<div className="flex items-center flex-wrap gap-2 mb-1">
+								<span className="text-xl font-bold text-[#2D1F16] dark:text-(--foreground)">₹4,99,100</span>
+								<span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center">
+									↑ 565.47%
+								</span>
 							</div>
-							<div className="font-semibold text-lg">₹1,612</div>
+							<div className="text-xs opacity-60 leading-relaxed">
+								Compared to ₹75,000 last month
+							</div>
+						</div>
+
+						{/* Expense */}
+						<div>
+							<div className="text-sm opacity-70 mb-1">Expense</div>
+							<div className="flex items-center flex-wrap gap-2 mb-1">
+								<span className="text-xl font-bold text-[#2D1F16] dark:text-(--foreground)">₹92,628</span>
+								<span className="text-xs font-medium text-rose-600 dark:text-rose-400 flex items-center">
+									↑ 92.97%
+								</span>
+							</div>
+							<div className="text-xs opacity-60 leading-relaxed">
+								Compared to ₹48,000 last month
+							</div>
 						</div>
 					</div>
 				</div>
