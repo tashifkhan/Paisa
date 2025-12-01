@@ -35,9 +35,8 @@ export const HomeView = ({ transactions, isDarkMode, toggleTheme }: HomeViewProp
 		<div className="px-6 mb-8">
 			<div className="bg-[#FFF6F1] dark:bg-(--card) text-[#3E2E28] dark:text-(--foreground) p-8 rounded-[2.5rem] shadow-sm border border-[#F5E6DE] dark:border-(--border) relative overflow-hidden transition-colors duration-300">
 				{/* Gradient Blobs */}
-				<div className="absolute -top-24 -right-24 w-64 h-64 bg-[#FADAC9] dark:bg-(--primary)/10 rounded-full blur-3xl opacity-60 animate-blob"></div>
-				<div className="absolute -bottom-24 -left-24 w-64 h-64 bg-[#FADAC9] dark:bg-(--primary)/10 rounded-full blur-3xl opacity-60 animate-blob animation-delay-2000"></div>
-				<div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#FADAC9] dark:bg-(--primary)/10 rounded-full blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
+				<div className="absolute -top-24 -right-24 w-64 h-64 bg-[#FADAC9] dark:bg-(--primary)/10 rounded-full blur-3xl opacity-60"></div>
+				<div className="absolute -bottom-24 -left-24 w-64 h-64 bg-[#FADAC9] dark:bg-(--primary)/10 rounded-full blur-3xl opacity-60"></div>
 
 				<div className="relative z-10">
 					<div className="flex justify-between items-start mb-2">
