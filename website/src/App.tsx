@@ -14,6 +14,8 @@ import { GroupDetailView } from "./components/views/GroupDetailView";
 import { CreateGroupView } from "./components/views/CreateGroupView";
 import { SignInView, SignUpView, ForgotPasswordView, OTPView } from "./components/views/AuthViews";
 import { NotFoundView } from "./components/views/NotFoundView";
+import { BottomNav } from "./components/shared/BottomNav";
+import { BottomNav } from "./components/shared/BottomNav";
 
 // --- App Shell (with global state and Router) ---
 export default function App() {
@@ -124,23 +126,9 @@ function AppContent() {
 		}
 	};
 
-	// Check if we're on an auth page or 404 page (to hide bottom nav)
-	const isAuthPage = location.pathname.includes("/signin") || location.pathname.includes("/signup") || location.pathname.includes("/forgot-password") || location.pathname.includes("/otp");
-	// We can't easily know if it's 404 just by path without matching against known routes, 
-	// but for now, let's assume if it's not a known main route, we might hide it? 
-	// Actually, the router handles the * match. 
-	// A simple heuristic: if the path is not one of the main ones AND not auth, it might be 404.
-	// BUT, simpler: just check if the rendered component will be NotFoundView. 
-	// Since we can't peek ahead, we'll just check against known paths for the bottom nav visibility or rely on the fact that 404 fills the screen.
-	// Let's explicitly list valid paths for the navbar? 
-	// Or simpler: The user is usually on a valid path. If they type garbage, they get 404. 
-	// If we want to hide the nav on 404, we need to know we are on 404.
-	// Let's try a different approach: explicit check for known valid routes for the Nav?
-	// Or just let the Nav be there? The user requested "page not found page", usually standalone.
-	// Let's update the condition to hide nav if the path doesn't look like a valid app path.
-	
-	const validNavPaths = ['/', '/stats', '/wallets', '/add-expense', '/debts', '/group-detail', '/create-group', '/profile'];
-	const showBottomNav = validNavPaths.includes(location.pathname) || location.pathname === ''; // 'home' is /
+	// Check if we're on a tab-based page (pages that have internal tab navigation)
+	const tabBasedPages = ['/stats', '/wallets', '/debts', '/group-detail', '/profile'];
+	const showBottomNav = tabBasedPages.includes(location.pathname);
 
 	const handleAuthNavigation = (view: string) => {
 		navigate(view === 'home' ? '/' : `/${view}`);
@@ -223,8 +211,10 @@ function AppContent() {
 					{/* 404 Not Found */}
 					<Route path="*" element={<NotFoundView onGoHome={() => navigate("/")} />} />
 				</Routes>
-				</div>
+
+				{showBottomNav && <BottomNav currentView={location.pathname.slice(1) || "home"} setCurrentView={(view) => navigate(`/${view === "home" ? "" : view}`)} />}
 			</div>
-		</>
+		</div>
+	</>
 	);
 }
