@@ -35,6 +35,7 @@ import {
 } from "./components/views/AuthViews";
 import { NotFoundView } from "./components/views/NotFoundView";
 import { BottomNav } from "./components/shared/BottomNav";
+import { UserDetailView } from "./components/views/UserDetailView";
 
 // --- App Shell (with global state and Router) ---
 export default function App() {
@@ -173,6 +174,7 @@ function AppContent() {
 
 	const [socialTab, setSocialTab] = useState("debts");
 	const [groupDetailTab, setGroupDetailTab] = useState("expenses");
+	const [selectedUser, setSelectedUser] = useState(null);
 
 	const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
@@ -207,6 +209,7 @@ function AppContent() {
 		"/wallets",
 		"/debts",
 		"/group-detail",
+		"/user-detail",
 		"/profile",
 	];
 	const showBottomNav = tabBasedPages.includes(location.pathname);
@@ -286,7 +289,20 @@ function AppContent() {
 									groups={groups}
 									socialTab={socialTab}
 									setSocialTab={setSocialTab}
-									setCurrentView={() => navigate("/group-detail")}
+									setCurrentView={(view) => navigate(view)}
+									setSelectedUser={(user) => {
+										setSelectedUser(user);
+										navigate("/user-detail");
+									}}
+								/>
+							}
+						/>
+						<Route
+							path="/user-detail"
+							element={
+								<UserDetailView
+									user={selectedUser}
+									setCurrentView={() => navigate("/debts")}
 								/>
 							}
 						/>
