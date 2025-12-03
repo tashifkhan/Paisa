@@ -1,19 +1,20 @@
 import { Home, LayoutGrid, Plus, Handshake, User } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
-export const SideNav = () => {
+export const SideNav = ({ isDarkMode }: { isDarkMode: boolean }) => {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const pathname = location.pathname.slice(1) || "home";
 
 	return (
 		<div className="hidden md:flex flex-col w-64 h-screen bg-(--card) border-r border-(--border) py-6 px-4 justify-between shadow-xl z-50 transition-colors duration-300">
-			<div className="flex flex-col gap-2">
-				<div className="mb-8 px-4 flex items-center gap-2">
-					<div className="w-8 h-8 bg-(--primary) rounded-lg flex items-center justify-center">
-						<span className="text-white font-bold text-xl">P</span>
-					</div>
-					<h1 className="text-2xl font-bold text-(--foreground)">Paisa</h1>
+			<div className="flex flex-col gap-6">
+				<div className="mb-4 px-4 flex flex-col items-center gap-3">
+					<img
+						src={isDarkMode ? "/logo-dark.png" : "/logo-light.png"}
+						alt="Paisa Logo"
+						className="h-32 w-auto drop-shadow-lg transition-all hover:scale-105"
+					/>
 				</div>
 
 				<NavButton

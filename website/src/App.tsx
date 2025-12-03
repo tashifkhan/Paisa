@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
 	BrowserRouter as Router,
 	Routes,
@@ -52,7 +52,14 @@ function AppContent() {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const [amount, setAmount] = useState("25.00");
-	const [isDarkMode, setIsDarkMode] = useState(false);
+	const [isDarkMode, setIsDarkMode] = useState(() => {
+		const savedTheme = localStorage.getItem("theme");
+		return savedTheme === "dark";
+	});
+
+	useEffect(() => {
+		localStorage.setItem("theme", isDarkMode ? "dark" : "light");
+	}, [isDarkMode]);
 	const [notifications, setNotifications] = useState(true);
 	const [currency, setCurrency] = useState("INR");
 	const [language, setLanguage] = useState("English");
@@ -227,27 +234,45 @@ function AppContent() {
 					isDarkMode ? "dark" : ""
 				} w-full min-h-screen bg-(--background) transition-colors duration-500 flex`}
 			>
-				{showBottomNav && <SideNav />}
+				{showBottomNav && <SideNav isDarkMode={isDarkMode} />}
 				<div className="relative flex-1 h-screen bg-(--background) overflow-hidden transition-colors duration-300">
 					<Routes>
 						{/* Auth Routes */}
 						<Route
 							path="/signin"
-							element={<SignInView setCurrentView={handleAuthNavigation} />}
+							element={
+								<SignInView
+									setCurrentView={handleAuthNavigation}
+									isDarkMode={isDarkMode}
+								/>
+							}
 						/>
 						<Route
 							path="/signup"
-							element={<SignUpView setCurrentView={handleAuthNavigation} />}
+							element={
+								<SignUpView
+									setCurrentView={handleAuthNavigation}
+									isDarkMode={isDarkMode}
+								/>
+							}
 						/>
 						<Route
 							path="/forgot-password"
 							element={
-								<ForgotPasswordView setCurrentView={handleAuthNavigation} />
+								<ForgotPasswordView
+									setCurrentView={handleAuthNavigation}
+									isDarkMode={isDarkMode}
+								/>
 							}
 						/>
 						<Route
 							path="/otp"
-							element={<OTPView setCurrentView={handleAuthNavigation} />}
+							element={
+								<OTPView
+									setCurrentView={handleAuthNavigation}
+									isDarkMode={isDarkMode}
+								/>
+							}
 						/>
 
 						{/* Main Routes */}
