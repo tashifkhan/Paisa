@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
 	BrowserRouter as Router,
 	Routes,
@@ -52,7 +52,14 @@ function AppContent() {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const [amount, setAmount] = useState("25.00");
-	const [isDarkMode, setIsDarkMode] = useState(false);
+	const [isDarkMode, setIsDarkMode] = useState(() => {
+		const savedTheme = localStorage.getItem("theme");
+		return savedTheme === "dark";
+	});
+
+	useEffect(() => {
+		localStorage.setItem("theme", isDarkMode ? "dark" : "light");
+	}, [isDarkMode]);
 	const [notifications, setNotifications] = useState(true);
 	const [currency, setCurrency] = useState("INR");
 	const [language, setLanguage] = useState("English");
