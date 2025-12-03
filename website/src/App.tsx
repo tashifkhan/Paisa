@@ -36,6 +36,7 @@ import {
 import { NotFoundView } from "./components/views/NotFoundView";
 import { BottomNav } from "./components/shared/BottomNav";
 import { UserDetailView } from "./components/views/UserDetailView";
+import { SideNav } from "./components/shared/SideNav";
 
 // --- App Shell (with global state and Router) ---
 export default function App() {
@@ -224,9 +225,10 @@ function AppContent() {
 			<div
 				className={`${
 					isDarkMode ? "dark" : ""
-				} w-full min-h-screen bg-(--background) transition-colors duration-500`}
+				} w-full min-h-screen bg-(--background) transition-colors duration-500 flex`}
 			>
-				<div className="relative w-full h-screen bg-(--background) overflow-hidden transition-colors duration-300">
+				{showBottomNav && <SideNav />}
+				<div className="relative flex-1 h-screen bg-(--background) overflow-hidden transition-colors duration-300">
 					<Routes>
 						{/* Auth Routes */}
 						<Route

@@ -7,7 +7,7 @@ export const BottomNav = () => {
 	const pathname = location.pathname.slice(1) || "home";
 
 	return (
-		<div className="absolute bottom-0 left-0 right-0 bg-(--card) border-t border-(--border) px-8 py-5 flex justify-between items-center rounded-t-4xl shadow-[0_-5px_20px_rgba(0,0,0,0.03) z-50 transition-colors duration-300">
+		<div className="absolute bottom-0 left-0 right-0 bg-(--card) border-t border-(--border) px-8 py-5 flex justify-between items-center rounded-t-4xl shadow-[0_-5px_20px_rgba(0,0,0,0.03) z-50 transition-colors duration-300 md:hidden">
 			<button
 				onClick={() => navigate("/")}
 				className={`${
