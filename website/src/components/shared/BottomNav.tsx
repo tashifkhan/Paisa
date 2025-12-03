@@ -1,4 +1,4 @@
-import { Home, LayoutGrid, Plus, Wallet, User } from "lucide-react";
+import { Home, LayoutGrid, Plus, Handshake, User } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export const BottomNav = () => {
@@ -38,14 +38,16 @@ export const BottomNav = () => {
 			</button>
 
 			<button
-				onClick={() => navigate("/wallets")}
+				onClick={() => navigate("/debts")}
 				className={`${
-					pathname === "wallets"
+					pathname === "debts" ||
+					pathname === "create-group" ||
+					pathname === "group-detail"
 						? "text-(--primary)"
 						: "text-(--muted-foreground)"
 				} hover:text-(--foreground) transition-colors`}
 			>
-				<Wallet size={24} />
+				<Handshake size={24} />
 			</button>
 			<button
 				onClick={() => navigate("/profile")}
