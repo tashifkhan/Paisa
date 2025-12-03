@@ -1,7 +1,22 @@
 // @ts-nocheck
 import { useState } from "react";
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from "react-router-dom";
-import { Shirt, Gift, Pizza, Wallet, Smartphone, Plane, Home as HomeIcon, Banknote } from "lucide-react";
+import {
+	BrowserRouter as Router,
+	Routes,
+	Route,
+	useNavigate,
+	useLocation,
+} from "react-router-dom";
+import {
+	Shirt,
+	Gift,
+	Pizza,
+	Wallet,
+	Smartphone,
+	Plane,
+	Home as HomeIcon,
+	Banknote,
+} from "lucide-react";
 import { themeStyles } from "./styles/theme";
 import type { Transaction } from "./types";
 import { HomeView } from "./components/views/HomeView";
@@ -12,9 +27,13 @@ import { ProfileView } from "./components/views/ProfileView";
 import { SocialView } from "./components/views/SocialView";
 import { GroupDetailView } from "./components/views/GroupDetailView";
 import { CreateGroupView } from "./components/views/CreateGroupView";
-import { SignInView, SignUpView, ForgotPasswordView, OTPView } from "./components/views/AuthViews";
+import {
+	SignInView,
+	SignUpView,
+	ForgotPasswordView,
+	OTPView,
+} from "./components/views/AuthViews";
 import { NotFoundView } from "./components/views/NotFoundView";
-import { BottomNav } from "./components/shared/BottomNav";
 import { BottomNav } from "./components/shared/BottomNav";
 
 // --- App Shell (with global state and Router) ---
@@ -81,24 +100,79 @@ function AppContent() {
 	]);
 
 	const [debts, setDebts] = useState([
-		{ id: 1, name: "Rahul Sharma", amount: 500, type: "owed_to_me", date: "Due in 3 days" },
-		{ id: 2, name: "Anita Roy", amount: 1200, type: "owed_by_me", date: "Due tomorrow" },
-		{ id: 3, name: "John Doe", amount: 250, type: "owed_to_me", date: "Due in 1 week" },
+		{
+			id: 1,
+			name: "Rahul Sharma",
+			amount: 500,
+			type: "owed_to_me",
+			date: "Due in 3 days",
+		},
+		{
+			id: 2,
+			name: "Anita Roy",
+			amount: 1200,
+			type: "owed_by_me",
+			date: "Due tomorrow",
+		},
+		{
+			id: 3,
+			name: "John Doe",
+			amount: 250,
+			type: "owed_to_me",
+			date: "Due in 1 week",
+		},
 	]);
 
 	const [groups, setGroups] = useState([
-		{ id: 1, name: "Goa Trip", members: 5, balance: -2000, type: 'owe', icon: Plane, color: 'bg-orange-500' },
-		{ id: 2, name: "Flat 302 Rent", members: 3, balance: 5000, type: 'owed', icon: HomeIcon, color: 'bg-indigo-500' }
+		{
+			id: 1,
+			name: "Goa Trip",
+			members: 5,
+			balance: -2000,
+			type: "owe",
+			icon: Plane,
+			color: "bg-orange-500",
+		},
+		{
+			id: 2,
+			name: "Flat 302 Rent",
+			members: 3,
+			balance: 5000,
+			type: "owed",
+			icon: HomeIcon,
+			color: "bg-indigo-500",
+		},
 	]);
 
 	const [groupExpenses, setGroupExpenses] = useState([
-		{ id: 1, title: "Dinner at Thalassa", amount: 4500, paidBy: "Tashif", date: "Yesterday", icon: Pizza },
-		{ id: 2, title: "Scooty Rental", amount: 1200, paidBy: "Rahul", date: "Today", icon: Banknote },
-		{ id: 3, title: "Villa Advance", amount: 15000, paidBy: "Anita", date: "2 days ago", icon: HomeIcon },
+		{
+			id: 1,
+			title: "Dinner at Thalassa",
+			amount: 4500,
+			paidBy: "Tashif",
+			date: "Yesterday",
+			icon: Pizza,
+		},
+		{
+			id: 2,
+			title: "Scooty Rental",
+			amount: 1200,
+			paidBy: "Rahul",
+			date: "Today",
+			icon: Banknote,
+		},
+		{
+			id: 3,
+			title: "Villa Advance",
+			amount: 15000,
+			paidBy: "Anita",
+			date: "2 days ago",
+			icon: HomeIcon,
+		},
 	]);
 
-	const [socialTab, setSocialTab] = useState('debts');
-	const [groupDetailTab, setGroupDetailTab] = useState('expenses');
+	const [socialTab, setSocialTab] = useState("debts");
+	const [groupDetailTab, setGroupDetailTab] = useState("expenses");
 
 	const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
@@ -127,11 +201,18 @@ function AppContent() {
 	};
 
 	// Check if we're on a tab-based page (pages that have internal tab navigation)
-	const tabBasedPages = ['/stats', '/wallets', '/debts', '/group-detail', '/profile'];
+	const tabBasedPages = [
+		"/",
+		"/stats",
+		"/wallets",
+		"/debts",
+		"/group-detail",
+		"/profile",
+	];
 	const showBottomNav = tabBasedPages.includes(location.pathname);
 
 	const handleAuthNavigation = (view: string) => {
-		navigate(view === 'home' ? '/' : `/${view}`);
+		navigate(view === "home" ? "/" : `/${view}`);
 	};
 
 	return (
@@ -145,76 +226,121 @@ function AppContent() {
 				<div className="relative w-full h-screen bg-(--background) overflow-hidden transition-colors duration-300">
 					<Routes>
 						{/* Auth Routes */}
-						<Route path="/signin" element={<SignInView setCurrentView={handleAuthNavigation} />} />
-						<Route path="/signup" element={<SignUpView setCurrentView={handleAuthNavigation} />} />
-						<Route path="/forgot-password" element={<ForgotPasswordView setCurrentView={handleAuthNavigation} />} />
-						<Route path="/otp" element={<OTPView setCurrentView={handleAuthNavigation} />} />
+						<Route
+							path="/signin"
+							element={<SignInView setCurrentView={handleAuthNavigation} />}
+						/>
+						<Route
+							path="/signup"
+							element={<SignUpView setCurrentView={handleAuthNavigation} />}
+						/>
+						<Route
+							path="/forgot-password"
+							element={
+								<ForgotPasswordView setCurrentView={handleAuthNavigation} />
+							}
+						/>
+						<Route
+							path="/otp"
+							element={<OTPView setCurrentView={handleAuthNavigation} />}
+						/>
 
 						{/* Main Routes */}
-						<Route path="/" element={
-							<HomeView
-								transactions={transactions}
-								isDarkMode={isDarkMode}
-								toggleTheme={toggleTheme}
-							/>
-						} />
+						<Route
+							path="/"
+							element={
+								<HomeView
+									transactions={transactions}
+									isDarkMode={isDarkMode}
+									toggleTheme={toggleTheme}
+								/>
+							}
+						/>
 						<Route path="/stats" element={<StatsView />} />
-						<Route path="/wallets" element={
-							<WalletsView
-								activeWalletTab={activeWalletTab}
-								setActiveWalletTab={setActiveWalletTab}
-							/>
-						} />
-						<Route path="/add-expense" element={
-							<AddExpenseView
-								amount={amount}
-								isDarkMode={isDarkMode}
-								toggleTheme={toggleTheme}
-								handleKeyPress={handleKeyPress}
-								setCurrentView={() => navigate("/stats")}
-							/>
-						} />
-						<Route path="/debts" element={
-							<SocialView
-								debts={debts}
-								groups={groups}
-								socialTab={socialTab}
-								setSocialTab={setSocialTab}
-								setCurrentView={() => navigate("/group-detail")}
-							/>
-						} />
-						<Route path="/group-detail" element={
-							<GroupDetailView
-								groupExpenses={groupExpenses}
-								groupDetailTab={groupDetailTab}
-								setGroupDetailTab={setGroupDetailTab}
-								setCurrentView={() => navigate("/debts")}
-							/>
-						} />
-						<Route path="/create-group" element={
-							<CreateGroupView setCurrentView={() => navigate("/debts")} />
-						} />
-						<Route path="/profile" element={
-							<ProfileView
-								isDarkMode={isDarkMode}
-								toggleTheme={toggleTheme}
-								notifications={notifications}
-								setNotifications={setNotifications}
-								currency={currency}
-								setCurrency={setCurrency}
-								language={language}
-								setLanguage={setLanguage}
-								setCurrentView={() => navigate("/")}
-							/>
-						} />
-						
-					{/* 404 Not Found */}
-					<Route path="*" element={<NotFoundView onGoHome={() => navigate("/")} />} />
-				</Routes>
+						<Route
+							path="/wallets"
+							element={
+								<WalletsView
+									activeWalletTab={activeWalletTab}
+									setActiveWalletTab={setActiveWalletTab}
+								/>
+							}
+						/>
+						<Route
+							path="/add-expense"
+							element={
+								<AddExpenseView
+									amount={amount}
+									isDarkMode={isDarkMode}
+									toggleTheme={toggleTheme}
+									handleKeyPress={handleKeyPress}
+									setCurrentView={() => navigate("/stats")}
+								/>
+							}
+						/>
+						<Route
+							path="/debts"
+							element={
+								<SocialView
+									debts={debts}
+									groups={groups}
+									socialTab={socialTab}
+									setSocialTab={setSocialTab}
+									setCurrentView={() => navigate("/group-detail")}
+								/>
+							}
+						/>
+						<Route
+							path="/group-detail"
+							element={
+								<GroupDetailView
+									groupExpenses={groupExpenses}
+									groupDetailTab={groupDetailTab}
+									setGroupDetailTab={setGroupDetailTab}
+									setCurrentView={() => navigate("/debts")}
+								/>
+							}
+						/>
+						<Route
+							path="/create-group"
+							element={
+								<CreateGroupView setCurrentView={() => navigate("/debts")} />
+							}
+						/>
+						<Route
+							path="/profile"
+							element={
+								<ProfileView
+									isDarkMode={isDarkMode}
+									toggleTheme={toggleTheme}
+									notifications={notifications}
+									setNotifications={setNotifications}
+									currency={currency}
+									setCurrency={setCurrency}
+									language={language}
+									setLanguage={setLanguage}
+									setCurrentView={() => navigate("/")}
+								/>
+							}
+						/>
 
-				{showBottomNav && <BottomNav currentView={location.pathname.slice(1) || "home"} setCurrentView={(view) => navigate(`/${view === "home" ? "" : view}`)} />}
+						{/* 404 Not Found */}
+						<Route
+							path="*"
+							element={<NotFoundView onGoHome={() => navigate("/")} />}
+						/>
+					</Routes>
+
+					{showBottomNav && (
+						<BottomNav
+							currentView={location.pathname.slice(1) || "home"}
+							setCurrentView={(view) =>
+								navigate(`/${view === "home" ? "" : view}`)
+							}
+						/>
+					)}
+				</div>
 			</div>
-		</div>
-	</>
+		</>
 	);
 }
