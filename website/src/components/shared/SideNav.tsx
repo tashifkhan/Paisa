@@ -7,7 +7,7 @@ export const SideNav = () => {
 	const pathname = location.pathname.slice(1) || "home";
 
 	return (
-		<div className="hidden md:flex flex-col w-64 h-full bg-(--card) border-r border-(--border) py-6 px-4 justify-between shadow-xl z-50 transition-colors duration-300">
+		<div className="hidden md:flex flex-col w-64 h-screen bg-(--card) border-r border-(--border) py-6 px-4 justify-between shadow-xl z-50 transition-colors duration-300">
 			<div className="flex flex-col gap-2">
 				<div className="mb-8 px-4 flex items-center gap-2">
 					<div className="w-8 h-8 bg-(--primary) rounded-lg flex items-center justify-center">
