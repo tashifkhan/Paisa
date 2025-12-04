@@ -112,7 +112,10 @@ export default function ProfileScreen() {
 						Support
 					</Text>
 					<SettingItem icon={CircleHelp} title="Help & Support" />
-					<TouchableOpacity className="w-full flex-row items-center justify-start p-4 gap-4 bg-[var(--destructive)]/10 rounded-2xl mt-4 active:bg-[var(--destructive)]/20">
+					<TouchableOpacity
+						onPress={() => router.replace("/(auth)/signin")}
+						className="w-full flex-row items-center justify-start p-4 gap-4 bg-[var(--destructive)]/10 rounded-2xl mt-4 active:bg-[var(--destructive)]/20"
+					>
 						<View className="w-10 h-10 rounded-full bg-[var(--destructive)]/20 items-center justify-center">
 							<LogOut size={20} color="var(--destructive)" />
 						</View>

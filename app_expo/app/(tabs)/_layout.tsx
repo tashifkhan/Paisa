@@ -1,5 +1,12 @@
 import { Tabs, router } from "expo-router";
-import { Home, LayoutGrid, Plus, User, Wallet } from "lucide-react-native";
+import {
+	Home,
+	LayoutGrid,
+	Plus,
+	User,
+	Users,
+	Wallet,
+} from "lucide-react-native";
 import React from "react";
 import { TouchableOpacity, View, useColorScheme } from "react-native";
 
@@ -69,12 +76,11 @@ export default function TabLayout() {
 				}}
 			/>
 			<Tabs.Screen
-				name="explore"
+				name="add"
 				options={{
 					title: "Add",
 					tabBarButton: (props: any) => (
 						<TouchableOpacity
-							{...props}
 							onPress={() => router.push("/add-expense")}
 							style={{
 								top: -30,
@@ -114,6 +120,15 @@ export default function TabLayout() {
 					title: "Wallets",
 					tabBarIcon: ({ color }: { color: string }) => (
 						<Wallet size={24} color={color} />
+					),
+				}}
+			/>
+			<Tabs.Screen
+				name="social"
+				options={{
+					title: "Social",
+					tabBarIcon: ({ color }: { color: string }) => (
+						<Users size={24} color={color} />
 					),
 				}}
 			/>

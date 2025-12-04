@@ -29,6 +29,12 @@ export default function RootLayout() {
 					name="modal"
 					options={{ presentation: "modal", title: "Modal" }}
 				/>
+				<Stack.Screen
+					name="create-group"
+					options={{ presentation: "modal", headerShown: false }}
+				/>
+				<Stack.Screen name="user-detail" options={{ headerShown: false }} />
+				<Stack.Screen name="group-detail" options={{ headerShown: false }} />
 			</Stack>
 			<StatusBar style="auto" />
 		</ThemeProvider>
