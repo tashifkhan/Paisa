@@ -22,6 +22,9 @@ from .routes import (
     categories,
 )
 
+# Detect if running on Vercel (serverless)
+IS_VERCEL = os.environ.get("VERCEL", True)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -43,7 +46,12 @@ app = FastAPI(
 # Enable CORS for development frontend (adjust in production)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://*.vercel.app",
+        "https://*.tashif.codes",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -60,13 +68,13 @@ app.include_router(sync.router)
 app.include_router(debts.router)
 app.include_router(categories.router)
 
-# Ensure uploads directory exists
-uploads_dir = os.path.join(os.getcwd(), "uploads")
-os.makedirs(uploads_dir, exist_ok=True)
-logger.info(f"Uploads directory ready: {uploads_dir}")
-
-# Serve uploads/static for simple PWA assets or manifest
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# Only set up uploads directory for local development (not on Vercel serverless)
+if not IS_VERCEL:
+    uploads_dir = os.path.join(os.getcwd(), "uploads")
+    os.makedirs(uploads_dir, exist_ok=True)
+    logger.info(f"Uploads directory ready: {uploads_dir}")
+    # Serve uploads/static for simple PWA assets or manifest
+    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
 @app.get("/")
