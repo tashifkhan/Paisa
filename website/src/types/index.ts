@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 
 export interface Transaction {
-	id: number;
+	id: number | string;
 	title: string;
 	subtitle: string;
 	amount: string;

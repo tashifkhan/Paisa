@@ -1,7 +1,16 @@
-import { Home, Smartphone, ArrowUpRight } from "lucide-react";
+import {
+	ArrowUpRight,
+	Home,
+	Smartphone,
+	TrendingDown,
+	TrendingUp,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { debtService } from "../../services/debtService";
+import { statsService } from "../../services/statsService";
+import { CircularProgress } from "../shared/CircularProgress";
 import { ExpenseChart } from "../shared/ExpenseChart";
 import { StatsCard } from "../shared/StatsCard";
-import { CircularProgress } from "../shared/CircularProgress";
 import { TransactionItem } from "../shared/TransactionItem";
 import {
 	Select,
@@ -10,10 +19,70 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "../ui/select";
-import { useState } from "react";
+
+interface CategoryStat {
+	category_id?: string;
+	category_name: string;
+	total: number;
+	percentage: number;
+	count: number;
+}
 
 export const StatsView = () => {
 	const [activeTab, setActiveTab] = useState("Overview");
+	const [period, setPeriod] = useState("30");
+	const [loading, setLoading] = useState(true);
+
+	// Stats data
+	const [totalExpense, setTotalExpense] = useState(0);
+	const [totalIncome, setTotalIncome] = useState(0);
+	const [categories, setCategories] = useState<CategoryStat[]>([]);
+	const [comparison, setComparison] = useState<{
+		income: { change_percent: number };
+		expense: { change_percent: number };
+	} | null>(null);
+	const [debtSummary, setDebtSummary] = useState<{
+		owed_to_me: number;
+		owed_by_me: number;
+	} | null>(null);
+
+	useEffect(() => {
+		const fetchStats = async () => {
+			setLoading(true);
+			try {
+				const days = parseInt(period);
+
+				// Fetch full stats
+				const fullStats = await statsService.getFullStats(days);
+				setTotalExpense(fullStats.total_expense);
+				setTotalIncome(fullStats.total_income);
+				setCategories(fullStats.by_category);
+
+				// Fetch comparison
+				const comparisonData = await statsService.getComparison(days);
+				setComparison(comparisonData);
+
+				// Fetch debt summary
+				const debts = await debtService.getSummary();
+				setDebtSummary(debts);
+			} catch (error) {
+				console.error("Failed to fetch stats:", error);
+			} finally {
+				setLoading(false);
+			}
+		};
+
+		fetchStats();
+	}, [period]);
+
+	const formatCurrency = (amount: number) => {
+		return new Intl.NumberFormat("en-IN", {
+			style: "currency",
+			currency: "INR",
+			minimumFractionDigits: 0,
+			maximumFractionDigits: 0,
+		}).format(amount);
+	};
 
 	return (
 		<div className="flex flex-col h-full bg-(--background) pb-24 md:pb-6 overflow-y-auto hide-scrollbar transition-colors duration-300">
@@ -24,27 +93,20 @@ export const StatsView = () => {
 							Analysis
 						</h1>
 						<p className="text-sm text-(--muted-foreground)">
-							Detailed Breakdown
+							{loading ? "Loading..." : "Detailed Breakdown"}
 						</p>
 					</div>
 					<div className="flex items-center gap-2">
-						<Select defaultValue="june">
+						<Select value={period} onValueChange={setPeriod}>
 							<SelectTrigger className="w-[120px]">
-								<SelectValue placeholder="Select month" />
+								<SelectValue placeholder="Select period" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="january">January</SelectItem>
-								<SelectItem value="february">February</SelectItem>
-								<SelectItem value="march">March</SelectItem>
-								<SelectItem value="april">April</SelectItem>
-								<SelectItem value="may">May</SelectItem>
-								<SelectItem value="june">June</SelectItem>
-								<SelectItem value="july">July</SelectItem>
-								<SelectItem value="august">August</SelectItem>
-								<SelectItem value="september">September</SelectItem>
-								<SelectItem value="october">October</SelectItem>
-								<SelectItem value="november">November</SelectItem>
-								<SelectItem value="december">December</SelectItem>
+								<SelectItem value="7">7 days</SelectItem>
+								<SelectItem value="30">30 days</SelectItem>
+								<SelectItem value="90">90 days</SelectItem>
+								<SelectItem value="180">6 months</SelectItem>
+								<SelectItem value="365">1 year</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
@@ -77,36 +139,154 @@ export const StatsView = () => {
 
 							{activeTab === "Overview" && (
 								<div className="flex justify-between gap-3">
-									<StatsCard title="Day" amount="52" />
-									<StatsCard title="Week" amount="403" />
-									<StatsCard title="Month" amount="1,612" />
+									<StatsCard
+										title="Income"
+										amount={formatCurrency(totalIncome).replace("₹", "")}
+									/>
+									<StatsCard
+										title="Expense"
+										amount={formatCurrency(totalExpense).replace("₹", "")}
+									/>
+									<StatsCard
+										title="Net"
+										amount={formatCurrency(totalIncome - totalExpense).replace(
+											"₹",
+											""
+										)}
+									/>
 								</div>
 							)}
 
 							{activeTab === "Expenses" && (
-								<div className="flex justify-between gap-3">
-									<StatsCard title="Day" amount="52" />
-									<StatsCard title="Week" amount="403" />
-									<StatsCard title="Month" amount="1,612" />
+								<div className="space-y-3">
+									<div className="flex justify-between gap-3 mb-4">
+										<StatsCard
+											title="Total"
+											amount={formatCurrency(totalExpense).replace("₹", "")}
+										/>
+										{comparison && (
+											<div className="flex-1 bg-(--card) p-4 rounded-3xl shadow-sm border border-(--border)">
+												<div className="text-xs text-(--muted-foreground) mb-1">
+													vs Previous
+												</div>
+												<div
+													className={`flex items-center gap-1 font-bold ${
+														comparison.expense.change_percent > 0
+															? "text-red-500"
+															: "text-green-500"
+													}`}
+												>
+													{comparison.expense.change_percent > 0 ? (
+														<TrendingUp size={16} />
+													) : (
+														<TrendingDown size={16} />
+													)}
+													{Math.abs(comparison.expense.change_percent).toFixed(
+														1
+													)}
+													%
+												</div>
+											</div>
+										)}
+									</div>
+
+									{/* Category breakdown */}
+									<div className="space-y-2">
+										{categories.slice(0, 5).map((cat, idx) => (
+											<div
+												key={cat.category_id || idx}
+												className="flex items-center justify-between p-3 bg-(--card) rounded-2xl border border-(--border)"
+											>
+												<div className="flex items-center gap-3">
+													<div className="w-10 h-10 rounded-full bg-(--muted) flex items-center justify-center">
+														<span className="text-sm font-bold">
+															{cat.category_name.charAt(0)}
+														</span>
+													</div>
+													<div>
+														<div className="font-medium text-(--foreground)">
+															{cat.category_name}
+														</div>
+														<div className="text-xs text-(--muted-foreground)">
+															{cat.count} transactions
+														</div>
+													</div>
+												</div>
+												<div className="text-right">
+													<div className="font-bold text-(--foreground)">
+														{formatCurrency(cat.total)}
+													</div>
+													<div className="text-xs text-(--muted-foreground)">
+														{cat.percentage.toFixed(1)}%
+													</div>
+												</div>
+											</div>
+										))}
+									</div>
 								</div>
 							)}
 
 							{activeTab === "Income" && (
 								<div className="flex justify-between gap-3">
-									<StatsCard title="Day" amount="0" />
-									<StatsCard title="Week" amount="0" />
-									<StatsCard title="Month" amount="0" />
+									<StatsCard
+										title="Total"
+										amount={formatCurrency(totalIncome).replace("₹", "")}
+									/>
+									{comparison && (
+										<div className="flex-1 bg-(--card) p-4 rounded-3xl shadow-sm border border-(--border)">
+											<div className="text-xs text-(--muted-foreground) mb-1">
+												vs Previous
+											</div>
+											<div
+												className={`flex items-center gap-1 font-bold ${
+													comparison.income.change_percent > 0
+														? "text-green-500"
+														: "text-red-500"
+												}`}
+											>
+												{comparison.income.change_percent > 0 ? (
+													<TrendingUp size={16} />
+												) : (
+													<TrendingDown size={16} />
+												)}
+												{Math.abs(comparison.income.change_percent).toFixed(1)}%
+											</div>
+										</div>
+									)}
 								</div>
 							)}
 						</div>
 					</div>
 
 					<div className="md:col-span-4">
-						{/* Bills / Due Section (Integrated here) */}
+						{/* Debts Overview */}
 						<div className="px-6 md:px-0">
 							<h2 className="text-xl font-bold text-(--foreground) mb-4">
-								Bills & Payments
+								Debts Overview
 							</h2>
+
+							{debtSummary && (
+								<div className="bg-(--card) p-6 rounded-[2.5rem] shadow-sm border border-(--border) flex items-center gap-6 mb-6">
+									<CircularProgress
+										value={debtSummary.owed_to_me}
+										max={debtSummary.owed_to_me + debtSummary.owed_by_me || 1}
+										size={80}
+										color="stroke-(--chart-4)"
+										strokeWidth={8}
+									/>
+									<div>
+										<div className="text-(--muted-foreground) text-sm mb-1">
+											Owed to You
+										</div>
+										<div className="text-2xl font-bold text-green-500">
+											{formatCurrency(debtSummary.owed_to_me)}
+										</div>
+										<div className="text-(--muted-foreground) text-xs mt-1">
+											You owe: {formatCurrency(debtSummary.owed_by_me)}
+										</div>
+									</div>
+								</div>
+							)}
 
 							{/* Insight Card */}
 							<div className="bg-(--card) p-4 rounded-4xl shadow-sm flex items-center justify-between border border-(--border) mb-6">
@@ -116,39 +296,31 @@ export const StatsView = () => {
 									</div>
 									<div>
 										<p className="text-sm text-(--muted-foreground)">
-											You paid{" "}
-											<span className="font-bold text-(--foreground)">
-												₹50 more
-											</span>{" "}
-											on
-											<br />
-											your cell phone bill
+											{comparison && comparison.expense.change_percent > 0 ? (
+												<>
+													You spent{" "}
+													<span className="font-bold text-(--foreground)">
+														{comparison.expense.change_percent.toFixed(0)}% more
+													</span>{" "}
+													than
+													<br />
+													last period
+												</>
+											) : (
+												<>
+													You saved{" "}
+													<span className="font-bold text-(--foreground)">
+														{Math.abs(
+															comparison?.expense.change_percent || 0
+														).toFixed(0)}
+														%
+													</span>{" "}
+													compared to
+													<br />
+													last period
+												</>
+											)}
 										</p>
-									</div>
-								</div>
-								<button className="px-3 py-1.5 bg-(--muted) text-(--muted-foreground) text-xs font-bold rounded-lg">
-									Check
-								</button>
-							</div>
-
-							{/* Amount Paid Circle */}
-							<div className="bg-(--card) p-6 rounded-[2.5rem] shadow-sm border border-(--border) flex items-center gap-6 mb-6">
-								<CircularProgress
-									value={75}
-									max={100}
-									size={80}
-									color="stroke-(--chart-4)"
-									strokeWidth={8}
-								/>
-								<div>
-									<div className="text-(--muted-foreground) text-sm mb-1">
-										Total Paid
-									</div>
-									<div className="text-2xl font-bold text-(--foreground)">
-										₹883
-									</div>
-									<div className="text-(--muted-foreground) text-xs mt-1">
-										of ₹2,340 bills
 									</div>
 								</div>
 							</div>

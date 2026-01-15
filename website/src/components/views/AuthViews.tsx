@@ -1,5 +1,7 @@
-import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Mail, Lock, User, ArrowRight, Timer } from "lucide-react";
+import { ArrowLeft, ArrowRight, Lock, Mail, Timer, User } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { authService } from "../../services/authService";
 import { InputField } from "../shared/InputField";
 
 interface AuthViewProps {
@@ -8,10 +10,22 @@ interface AuthViewProps {
 }
 
 // --- OTP View ---
-export const OTPView = ({ setCurrentView }: AuthViewProps) => {
+export const OTPView = () => {
+	const navigate = useNavigate();
+	const location = useLocation();
+	const { email, name, password } = location.state || {}; // Get state passed from SignUp
+
 	const [otp, setOtp] = useState(["", "", "", ""]);
 	const [timer, setTimer] = useState(30);
+	const [loading, setLoading] = useState(false);
 	const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+	useEffect(() => {
+		if (!email) {
+			// If no email in state, redirect back to signup
+			navigate("/signup");
+		}
+	}, [email, navigate]);
 
 	useEffect(() => {
 		const interval = setInterval(() => {
@@ -41,10 +55,26 @@ export const OTPView = ({ setCurrentView }: AuthViewProps) => {
 		}
 	};
 
+	const handleVerify = async () => {
+		setLoading(true);
+		try {
+			const code = otp.join("");
+			await authService.verifyOtp(email, code, name, password);
+			// Assume success updates token in localStorage
+			// App.tsx auth check will pass now
+			navigate("/");
+		} catch (error) {
+			alert("Verification failed. Please try again.");
+			console.error(error);
+		} finally {
+			setLoading(false);
+		}
+	};
+
 	return (
 		<div className="flex flex-col h-full bg-(--background) px-6 pt-12 pb-6 overflow-y-auto animate-in fade-in slide-in-from-right duration-300">
 			<button
-				onClick={() => setCurrentView("signin")}
+				onClick={() => navigate("/signin")}
 				className="absolute top-6 left-6 p-3 bg-(--card) border border-(--border) rounded-full text-(--foreground) shadow-sm hover:shadow-md transition-all"
 			>
 				<ArrowLeft size={20} />
@@ -59,7 +89,7 @@ export const OTPView = ({ setCurrentView }: AuthViewProps) => {
 						Verification
 					</h1>
 					<p className="text-(--muted-foreground)">
-						Enter the 4-digit code sent to your email.
+						Enter the 4-digit code sent to {email}.
 					</p>
 				</div>
 
@@ -82,11 +112,12 @@ export const OTPView = ({ setCurrentView }: AuthViewProps) => {
 
 				<div className="w-full space-y-6">
 					<button
-						onClick={() => setCurrentView("home")}
-						className="w-full py-4 bg-(--primary) text-(--primary-foreground) rounded-4xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+						onClick={handleVerify}
+						disabled={loading}
+						className="w-full py-4 bg-(--primary) text-(--primary-foreground) rounded-4xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
 					>
-						Verify & Proceed
-						<ArrowRight size={20} />
+						{loading ? "Verifying..." : "Verify & Proceed"}
+						{!loading && <ArrowRight size={20} />}
 					</button>
 
 					<div className="text-center">
@@ -97,7 +128,7 @@ export const OTPView = ({ setCurrentView }: AuthViewProps) => {
 							</p>
 						) : (
 							<button
-								onClick={() => setTimer(30)}
+								onClick={() => setTimer(30)} // Implement resend logic
 								className="text-(--primary) font-bold hover:underline"
 							>
 								Resend Code
@@ -111,114 +142,190 @@ export const OTPView = ({ setCurrentView }: AuthViewProps) => {
 };
 
 // --- Sign In View ---
-export const SignInView = ({ setCurrentView, isDarkMode }: AuthViewProps) => (
-	<div className="flex flex-col h-full bg-(--background) px-6 pt-12 pb-6 overflow-y-auto animate-in fade-in duration-500">
-		<div className="flex-1 flex flex-col justify-center max-w-md mx-auto w-full">
-			<div className="mb-10 text-center">
-				<div className="relative w-24 h-24 mx-auto mb-6">
-					<div className="absolute inset-0 bg-(--primary)/20 rounded-4xl rotate-6 blur-sm"></div>
-					<div className="relative w-full h-full bg-(--card) rounded-4xl flex items-center justify-center shadow-xl overflow-hidden p-4">
-						<img
-							src={isDarkMode ? "/logo-light.png" : "/logo-dark.png"}
-							alt="Paisa Logo"
-							className="w-full h-full object-contain"
-						/>
+export const SignInView = ({ setCurrentView, isDarkMode }: AuthViewProps) => {
+	const navigate = useNavigate();
+	const [email, setEmail] = useState("");
+	const [password, setPassword] = useState("");
+	const [loading, setLoading] = useState(false);
+
+	const handleLogin = async () => {
+		setLoading(true);
+		try {
+			await authService.login(email, password);
+			navigate("/");
+		} catch (error) {
+			alert("Login failed. Check your credentials.");
+			console.error(error);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	return (
+		<div className="flex flex-col h-full bg-(--background) px-6 pt-12 pb-6 overflow-y-auto animate-in fade-in duration-500">
+			<div className="flex-1 flex flex-col justify-center max-w-md mx-auto w-full">
+				<div className="mb-10 text-center">
+					<div className="relative w-24 h-24 mx-auto mb-6">
+						<div className="absolute inset-0 bg-(--primary)/20 rounded-4xl rotate-6 blur-sm"></div>
+						<div className="relative w-full h-full bg-(--card) rounded-4xl flex items-center justify-center shadow-xl overflow-hidden p-4">
+							<img
+								src={isDarkMode ? "/logo-light.png" : "/logo-dark.png"}
+								alt="Paisa Logo"
+								className="w-full h-full object-contain"
+							/>
+						</div>
 					</div>
+					<h1 className="text-4xl font-bold text-(--foreground) mb-3 tracking-tight">
+						Welcome Back
+					</h1>
+					<p className="text-(--muted-foreground) text-lg">
+						Sign in to manage your finances
+					</p>
 				</div>
-				<h1 className="text-4xl font-bold text-(--foreground) mb-3 tracking-tight">
-					Welcome Back
-				</h1>
-				<p className="text-(--muted-foreground) text-lg">
-					Sign in to manage your finances
+
+				<div className="space-y-5">
+					<InputField
+						icon={Mail}
+						type="email"
+						placeholder="Email Address"
+						value={email}
+						onChange={(e) => setEmail(e.target.value)}
+					/>
+					<div className="space-y-1">
+						<InputField
+							icon={Lock}
+							type="password"
+							placeholder="Password"
+							value={password}
+							onChange={(e) => setPassword(e.target.value)}
+						/>
+						<div className="flex justify-end px-1">
+							<button
+								onClick={() => setCurrentView("forgot-password")}
+								className="text-sm text-(--primary) font-semibold hover:text-(--primary)/80 transition-colors"
+							>
+								Forgot Password?
+							</button>
+						</div>
+					</div>
+
+					<button
+						onClick={handleLogin}
+						disabled={loading}
+						className="w-full py-4 bg-(--primary) text-(--primary-foreground) rounded-4xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all mt-4 flex items-center justify-center gap-2 disabled:opacity-50"
+					>
+						{loading ? "Signing In..." : "Sign In"}
+						{!loading && <ArrowRight size={20} />}
+					</button>
+				</div>
+			</div>
+
+			<div className="text-center mt-8 pb-4">
+				<p className="text-(--muted-foreground)">
+					Don't have an account?{" "}
+					<button
+						onClick={() => setCurrentView("signup")}
+						className="text-(--primary) font-bold hover:underline transition-all"
+					>
+						Create Account
+					</button>
 				</p>
 			</div>
-
-			<div className="space-y-5">
-				<InputField icon={Mail} type="email" placeholder="Email Address" />
-				<div className="space-y-1">
-					<InputField icon={Lock} type="password" placeholder="Password" />
-					<div className="flex justify-end px-1">
-						<button
-							onClick={() => setCurrentView("forgot-password")}
-							className="text-sm text-(--primary) font-semibold hover:text-(--primary)/80 transition-colors"
-						>
-							Forgot Password?
-						</button>
-					</div>
-				</div>
-
-				<button
-					onClick={() => setCurrentView("home")}
-					className="w-full py-4 bg-(--primary) text-(--primary-foreground) rounded-4xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all mt-4 flex items-center justify-center gap-2"
-				>
-					Sign In
-					<ArrowRight size={20} />
-				</button>
-			</div>
 		</div>
-
-		<div className="text-center mt-8 pb-4">
-			<p className="text-(--muted-foreground)">
-				Don't have an account?{" "}
-				<button
-					onClick={() => setCurrentView("signup")}
-					className="text-(--primary) font-bold hover:underline transition-all"
-				>
-					Create Account
-				</button>
-			</p>
-		</div>
-	</div>
-);
+	);
+};
 
 // --- Sign Up View ---
-export const SignUpView = ({ setCurrentView }: AuthViewProps) => (
-	<div className="flex flex-col h-full bg-(--background) px-6 pt-12 pb-6 overflow-y-auto animate-in fade-in slide-in-from-right duration-300">
-		<button
-			onClick={() => setCurrentView("signin")}
-			className="absolute top-6 left-6 p-3 bg-(--card) border border-(--border) rounded-full text-(--foreground) shadow-sm hover:shadow-md transition-all"
-		>
-			<ArrowLeft size={20} />
-		</button>
+export const SignUpView = ({ setCurrentView }: AuthViewProps) => {
+	const navigate = useNavigate();
+	const [name, setName] = useState("");
+	const [email, setEmail] = useState("");
+	const [password, setPassword] = useState("");
+	const [loading, setLoading] = useState(false);
 
-		<div className="flex-1 flex flex-col justify-center max-w-md mx-auto w-full">
-			<div className="mb-10 text-center">
-				<h1 className="text-4xl font-bold text-(--foreground) mb-3 tracking-tight">
-					Create Account
-				</h1>
-				<p className="text-(--muted-foreground) text-lg">
-					Start your financial journey
+	const handleSignUp = async () => {
+		if (!name || !email || !password) return alert("Please fill all fields");
+		setLoading(true);
+		try {
+			// Request OTP
+			await authService.requestOtp(email);
+			// Navigate to OTP view with state
+			navigate("/otp", { state: { email, name, password } });
+		} catch (error) {
+			alert("Signup initiation failed.");
+			console.error(error);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	return (
+		<div className="flex flex-col h-full bg-(--background) px-6 pt-12 pb-6 overflow-y-auto animate-in fade-in slide-in-from-right duration-300">
+			<button
+				onClick={() => setCurrentView("signin")}
+				className="absolute top-6 left-6 p-3 bg-(--card) border border-(--border) rounded-full text-(--foreground) shadow-sm hover:shadow-md transition-all"
+			>
+				<ArrowLeft size={20} />
+			</button>
+
+			<div className="flex-1 flex flex-col justify-center max-w-md mx-auto w-full">
+				<div className="mb-10 text-center">
+					<h1 className="text-4xl font-bold text-(--foreground) mb-3 tracking-tight">
+						Create Account
+					</h1>
+					<p className="text-(--muted-foreground) text-lg">
+						Start your financial journey
+					</p>
+				</div>
+
+				<div className="space-y-5">
+					<InputField
+						icon={User}
+						type="text"
+						placeholder="Full Name"
+						value={name}
+						onChange={(e) => setName(e.target.value)}
+					/>
+					<InputField
+						icon={Mail}
+						type="email"
+						placeholder="Email Address"
+						value={email}
+						onChange={(e) => setEmail(e.target.value)}
+					/>
+					<InputField
+						icon={Lock}
+						type="password"
+						placeholder="Password"
+						value={password}
+						onChange={(e) => setPassword(e.target.value)}
+					/>
+
+					<button
+						onClick={handleSignUp}
+						disabled={loading}
+						className="w-full py-4 bg-(--primary) text-(--primary-foreground) rounded-4xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all mt-6 flex items-center justify-center gap-2 disabled:opacity-50"
+					>
+						{loading ? "Sending Code..." : "Sign Up"}
+						{!loading && <ArrowRight size={20} />}
+					</button>
+				</div>
+			</div>
+
+			<div className="text-center mt-8 pb-4">
+				<p className="text-(--muted-foreground)">
+					Already have an account?{" "}
+					<button
+						onClick={() => setCurrentView("signin")}
+						className="text-(--primary) font-bold hover:underline transition-all"
+					>
+						Sign In
+					</button>
 				</p>
 			</div>
-
-			<div className="space-y-5">
-				<InputField icon={User} type="text" placeholder="Full Name" />
-				<InputField icon={Mail} type="email" placeholder="Email Address" />
-				<InputField icon={Lock} type="password" placeholder="Password" />
-
-				<button
-					onClick={() => setCurrentView("otp")}
-					className="w-full py-4 bg-(--primary) text-(--primary-foreground) rounded-4xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all mt-6 flex items-center justify-center gap-2"
-				>
-					Sign Up
-					<ArrowRight size={20} />
-				</button>
-			</div>
 		</div>
-
-		<div className="text-center mt-8 pb-4">
-			<p className="text-(--muted-foreground)">
-				Already have an account?{" "}
-				<button
-					onClick={() => setCurrentView("signin")}
-					className="text-(--primary) font-bold hover:underline transition-all"
-				>
-					Sign In
-				</button>
-			</p>
-		</div>
-	</div>
-);
+	);
+};
 
 // --- Forgot Password View ---
 export const ForgotPasswordView = ({ setCurrentView }: AuthViewProps) => (
