@@ -1,4 +1,4 @@
-import { User, Users, MoreHorizontal, Plus } from "lucide-react";
+import { MoreHorizontal, User, Users } from "lucide-react";
 import React from "react";
 
 interface Debt {
@@ -25,6 +25,7 @@ interface SocialViewProps {
 	socialTab: string;
 	setSocialTab: (tab: string) => void;
 	setCurrentView: (view: string) => void;
+	setSelectedGroup: (group: any) => void;
 	setSelectedUser: (user: any) => void;
 }
 
@@ -35,6 +36,7 @@ export const SocialView = ({
 	setSocialTab,
 	setCurrentView,
 	setSelectedUser,
+	setSelectedGroup, // Destructure
 }: SocialViewProps) => {
 	const netBalance = debts.reduce(
 		(acc, curr) =>
@@ -170,7 +172,7 @@ export const SocialView = ({
 						{groups.map((group) => (
 							<div
 								key={group.id}
-								onClick={() => setCurrentView("group-detail")}
+								onClick={() => setSelectedGroup(group)} // Use prop
 								className="bg-(--card) border border-(--border) rounded-[2rem] p-5 hover:bg-(--muted)/50 transition-all cursor-pointer mb-4 md:mb-0"
 							>
 								<div className="flex justify-between items-start mb-4">

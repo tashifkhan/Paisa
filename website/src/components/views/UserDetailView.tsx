@@ -1,13 +1,10 @@
-import React from "react";
 import {
+	ArrowDownLeft,
 	ArrowLeft,
+	ArrowUpRight,
+	Mail,
 	MoreHorizontal,
 	Phone,
-	Mail,
-	Calendar,
-	DollarSign,
-	ArrowUpRight,
-	ArrowDownLeft,
 } from "lucide-react";
 
 interface Transaction {

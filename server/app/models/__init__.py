@@ -1,4 +1,14 @@
-from .db_models import User, Wallet, Group, Transaction, TransactionSplit, EmailOTP
+from .db_models import (
+    User,
+    Wallet,
+    Group,
+    GroupMember,
+    Transaction,
+    TransactionSplit,
+    EmailOTP,
+    Category,
+    Debt,
+)
 from .schemas import (
     UserCreate,
     UserOut,
@@ -12,8 +22,24 @@ from .schemas import (
     TransactionUpdate,
     WalletCreate,
     WalletOut,
+    WalletUpdate,
     GroupCreate,
     GroupOut,
+    GroupUpdate,
+    GroupMemberCreate,
+    GroupMemberOut,
+    GroupMemberWithUser,
+    GroupBalanceSummary,
+    UserBalance,
+    CategoryCreate,
+    CategoryOut,
+    CategoryUpdate,
+    DebtCreate,
+    DebtOut,
+    DebtUpdate,
+    StatsSummary,
+    CategoryStats,
+    StatsBreakdown,
 )
 
 __all__ = [
@@ -21,10 +47,13 @@ __all__ = [
     "User",
     "Wallet",
     "Group",
+    "GroupMember",
     "Transaction",
     "TransactionSplit",
     "EmailOTP",
-    # Schemas
+    "Category",
+    "Debt",
+    # User Schemas
     "UserCreate",
     "UserOut",
     "UserUpdate",
@@ -32,11 +61,33 @@ __all__ = [
     "OTPRequest",
     "OTPVerify",
     "PushTokenUpdate",
+    # Transaction Schemas
     "TransactionCreate",
     "TransactionOut",
     "TransactionUpdate",
+    # Wallet Schemas
     "WalletCreate",
     "WalletOut",
+    "WalletUpdate",
+    # Group Schemas
     "GroupCreate",
     "GroupOut",
+    "GroupUpdate",
+    "GroupMemberCreate",
+    "GroupMemberOut",
+    "GroupMemberWithUser",
+    "GroupBalanceSummary",
+    "UserBalance",
+    # Category Schemas
+    "CategoryCreate",
+    "CategoryOut",
+    "CategoryUpdate",
+    # Debt Schemas
+    "DebtCreate",
+    "DebtOut",
+    "DebtUpdate",
+    # Stats Schemas
+    "StatsSummary",
+    "CategoryStats",
+    "StatsBreakdown",
 ]

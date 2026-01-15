@@ -1,10 +1,14 @@
 import {
-	MoreHorizontal,
-	Wifi,
-	Cpu,
 	Banknote,
-	CreditCard as CreditCardIcon,
+	Cpu,
+	Loader2,
+	MoreHorizontal,
+	Plus,
+	Wifi,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+import type { BackendWallet } from "../../services/types";
+import { walletService } from "../../services/walletService";
 import { CreditCardComponent } from "../shared/CreditCardComponent";
 
 interface WalletsViewProps {
@@ -12,117 +16,170 @@ interface WalletsViewProps {
 	setActiveWalletTab: (tab: string) => void;
 }
 
+// Helper to get gradient based on wallet type
+const getWalletGradient = (type: string, index: number): string => {
+	const gradients = [
+		"from-(--chart-2) to-(--chart-1)",
+		"from-(--chart-3) to-(--chart-5)",
+		"from-blue-600 to-indigo-700",
+		"from-purple-600 to-pink-700",
+	];
+
+	if (type === "cash") return "from-green-600 to-teal-700";
+	if (type === "virtual") return "from-gray-800 to-gray-900";
+	return gradients[index % gradients.length];
+};
+
+// Helper to get icon based on wallet type
+const getWalletIcon = (type: string) => {
+	switch (type?.toLowerCase()) {
+		case "cash":
+			return Banknote;
+		case "virtual":
+			return Cpu;
+		default:
+			return Wifi;
+	}
+};
+
 export const WalletsView = ({
 	activeWalletTab,
 	setActiveWalletTab,
-}: WalletsViewProps) => (
-	<div className="flex flex-col h-full bg-(--background) pb-24 md:pb-6 overflow-y-auto hide-scrollbar transition-colors duration-300">
-		<div className="max-w-5xl mx-auto w-full">
-			<header className="flex justify-between items-center p-6">
-				<div className="flex flex-col">
-					<h1 className="text-3xl font-bold text-(--foreground)">My Wallets</h1>
-					<p className="text-(--muted-foreground) text-sm">
-						Manage your cards & cash
-					</p>
-				</div>
-				<button className="p-2 bg-(--card) border border-(--border) rounded-full text-(--foreground) shadow-sm">
-					<MoreHorizontal size={20} />
-				</button>
-			</header>
+}: WalletsViewProps) => {
+	const [wallets, setWallets] = useState<BackendWallet[]>([]);
+	const [totalBalance, setTotalBalance] = useState<number>(0);
+	const [loading, setLoading] = useState(true);
 
-			{/* Tabs */}
-			<div className="px-6 mb-6">
-				<div className="flex justify-between items-center bg-(--muted) rounded-4xl p-1 text-sm font-medium">
-					{["Cards", "Virtual", "Cash"].map((tab) => (
-						<button
-							key={tab}
-							onClick={() => setActiveWalletTab(tab)}
-							className={`flex-1 py-3 rounded-4xl transition-all ${
-								activeWalletTab === tab
-									? "bg-(--primary) text-(--primary-foreground) shadow-md"
-									: "text-(--muted-foreground)"
-							}`}
-						>
-							{tab}
-						</button>
-					))}
-				</div>
-			</div>
+	useEffect(() => {
+		const fetchWallets = async () => {
+			setLoading(true);
+			try {
+				const [walletsData, balanceData] = await Promise.all([
+					walletService.getWallets(),
+					walletService.getTotalBalance("INR"),
+				]);
+				setWallets(walletsData);
+				setTotalBalance(balanceData.total_balance);
+			} catch (error) {
+				console.error("Failed to fetch wallets:", error);
+			} finally {
+				setLoading(false);
+			}
+		};
 
-			{/* Cards List */}
-			<div className="px-6">
-				{activeWalletTab === "Cards" && (
-					<>
-						<h3 className="text-sm font-semibold text-(--muted-foreground) uppercase tracking-wider mb-4 ml-2">
-							Physical Cards
-						</h3>
-						<div className="md:grid md:grid-cols-2 md:gap-6">
-							<CreditCardComponent
-								type="VISA"
-								number="9038 4061 **** ****"
-								holder="Tashif Ahmad Khan"
-								exp="02/28"
-								gradient="from-(--chart-2) to-(--chart-1)"
-								icon={Wifi}
-							/>
-							<CreditCardComponent
-								type="Mastercard"
-								number="5500 1234 **** ****"
-								holder="Tashif Ahmad Khan"
-								exp="11/26"
-								gradient="from-(--chart-3) to-(--chart-5)"
-								icon={CreditCardIcon}
-							/>
-						</div>
-					</>
-				)}
+		fetchWallets();
+	}, []);
 
-				{activeWalletTab === "Virtual" && (
-					<>
-						<h3 className="text-sm font-semibold text-(--muted-foreground) uppercase tracking-wider mb-4 ml-2">
-							Virtual Cards
-						</h3>
-						<div className="md:grid md:grid-cols-2 md:gap-6">
-							<CreditCardComponent
-								type="VISA Platinum"
-								number="4111 1234 **** ****"
-								holder="Tashif Ahmad Khan"
-								exp="09/29"
-								gradient="from-gray-800 to-gray-900"
-								icon={Cpu}
-								isVirtual={true}
-							/>
-						</div>
-					</>
-				)}
+	const formatCurrency = (amount: number) => {
+		return new Intl.NumberFormat("en-IN", {
+			style: "currency",
+			currency: "INR",
+			minimumFractionDigits: 0,
+			maximumFractionDigits: 0,
+		}).format(amount);
+	};
 
-				{activeWalletTab === "Cash" && (
-					<>
-						<h3 className="text-sm font-semibold text-(--muted-foreground) uppercase tracking-wider mb-4 ml-2">
-							Cash on Hand
-						</h3>
-						<div className="md:grid md:grid-cols-2 md:gap-6">
-							<CreditCardComponent
-								type="Cash Wallet"
-								number="Physical Cash"
-								holder="Tashif Ahmad Khan"
-								exp="--"
-								gradient="from-green-600 to-teal-700"
-								icon={Banknote}
-								isCash={true}
-							/>
-						</div>
-					</>
-				)}
+	// Filter wallets by type
+	const filteredWallets = wallets.filter((wallet) => {
+		const type = wallet.type?.toLowerCase() || "personal";
+		if (activeWalletTab === "Cards") {
+			return type !== "cash" && type !== "virtual";
+		}
+		if (activeWalletTab === "Virtual") {
+			return type === "virtual";
+		}
+		if (activeWalletTab === "Cash") {
+			return type === "cash";
+		}
+		return true;
+	});
 
-				{/* Add New Card Button */}
-				<button className="w-full py-4 border-2 border-dashed border-(--border) rounded-4xl text-(--muted-foreground) font-medium hover:bg-(--muted) transition-colors flex items-center justify-center gap-2 mt-4">
-					<div className="w-6 h-6 rounded-full bg-(--primary) text-(--primary-foreground) flex items-center justify-center text-lg leading-none pb-1">
-						+
+	return (
+		<div className="flex flex-col h-full bg-(--background) pb-24 md:pb-6 overflow-y-auto hide-scrollbar transition-colors duration-300">
+			<div className="max-w-5xl mx-auto w-full">
+				<header className="flex justify-between items-center p-6">
+					<div className="flex flex-col">
+						<h1 className="text-3xl font-bold text-(--foreground)">
+							My Wallets
+						</h1>
+						<p className="text-(--muted-foreground) text-sm">
+							Total: {formatCurrency(totalBalance)}
+						</p>
 					</div>
-					Add New {activeWalletTab === "Cash" ? "Entry" : "Card"}
-				</button>
+					<button className="p-2 bg-(--card) border border-(--border) rounded-full text-(--foreground) shadow-sm">
+						<MoreHorizontal size={20} />
+					</button>
+				</header>
+
+				{/* Tabs */}
+				<div className="px-6 mb-6">
+					<div className="flex justify-between items-center bg-(--muted) rounded-4xl p-1 text-sm font-medium">
+						{["Cards", "Virtual", "Cash"].map((tab) => (
+							<button
+								key={tab}
+								onClick={() => setActiveWalletTab(tab)}
+								className={`flex-1 py-3 rounded-4xl transition-all ${
+									activeWalletTab === tab
+										? "bg-(--primary) text-(--primary-foreground) shadow-md"
+										: "text-(--muted-foreground)"
+								}`}
+							>
+								{tab}
+							</button>
+						))}
+					</div>
+				</div>
+
+				{/* Wallets List */}
+				<div className="px-6">
+					{loading ? (
+						<div className="flex items-center justify-center py-12">
+							<Loader2
+								className="animate-spin text-(--muted-foreground)"
+								size={32}
+							/>
+						</div>
+					) : (
+						<>
+							<h3 className="text-sm font-semibold text-(--muted-foreground) uppercase tracking-wider mb-4 ml-2">
+								{activeWalletTab === "Cards" && "Physical Cards"}
+								{activeWalletTab === "Virtual" && "Virtual Cards"}
+								{activeWalletTab === "Cash" && "Cash on Hand"}
+							</h3>
+
+							{filteredWallets.length > 0 ? (
+								<div className="md:grid md:grid-cols-2 md:gap-6">
+									{filteredWallets.map((wallet, index) => (
+										<CreditCardComponent
+											key={wallet.id}
+											type={wallet.name}
+											number={`Balance: ${formatCurrency(wallet.balance)}`}
+											holder={wallet.type || "Personal"}
+											exp={wallet.currency}
+											gradient={getWalletGradient(wallet.type || "", index)}
+											icon={getWalletIcon(wallet.type || "")}
+											isCash={wallet.type?.toLowerCase() === "cash"}
+											isVirtual={wallet.type?.toLowerCase() === "virtual"}
+										/>
+									))}
+								</div>
+							) : (
+								<div className="text-center py-12 text-(--muted-foreground)">
+									<p>No {activeWalletTab.toLowerCase()} wallets yet</p>
+								</div>
+							)}
+						</>
+					)}
+
+					{/* Add New Card Button */}
+					<button className="w-full py-4 border-2 border-dashed border-(--border) rounded-4xl text-(--muted-foreground) font-medium hover:bg-(--muted) transition-colors flex items-center justify-center gap-2 mt-4">
+						<div className="w-6 h-6 rounded-full bg-(--primary) text-(--primary-foreground) flex items-center justify-center">
+							<Plus size={16} />
+						</div>
+						Add New {activeWalletTab === "Cash" ? "Entry" : "Card"}
+					</button>
+				</div>
 			</div>
 		</div>
-	</div>
-);
+	);
+};

@@ -1,42 +1,33 @@
 // @ts-nocheck
-import { useState, useEffect } from "react";
+import { Plane, Shirt } from "lucide-react";
+import { useEffect, useState } from "react";
 import {
+	Route,
 	BrowserRouter as Router,
 	Routes,
-	Route,
-	useNavigate,
 	useLocation,
+	useNavigate,
 } from "react-router-dom";
-import {
-	Shirt,
-	Gift,
-	Pizza,
-	Wallet,
-	Smartphone,
-	Plane,
-	Home as HomeIcon,
-	Banknote,
-} from "lucide-react";
-import { themeStyles } from "./styles/theme";
-import type { Transaction } from "./types";
-import { HomeView } from "./components/views/HomeView";
-import { StatsView } from "./components/views/StatsView";
-import { WalletsView } from "./components/views/WalletsView";
+import { BottomNav } from "./components/shared/BottomNav";
+import { SideNav } from "./components/shared/SideNav";
 import { AddExpenseView } from "./components/views/AddExpenseView";
-import { ProfileView } from "./components/views/ProfileView";
-import { SocialView } from "./components/views/SocialView";
-import { GroupDetailView } from "./components/views/GroupDetailView";
-import { CreateGroupView } from "./components/views/CreateGroupView";
 import {
-	SignInView,
-	SignUpView,
 	ForgotPasswordView,
 	OTPView,
+	SignInView,
+	SignUpView,
 } from "./components/views/AuthViews";
+import { CreateGroupView } from "./components/views/CreateGroupView";
+import { GroupDetailView } from "./components/views/GroupDetailView";
+import { HomeView } from "./components/views/HomeView";
 import { NotFoundView } from "./components/views/NotFoundView";
-import { BottomNav } from "./components/shared/BottomNav";
+import { ProfileView } from "./components/views/ProfileView";
+import { SocialView } from "./components/views/SocialView";
+import { StatsView } from "./components/views/StatsView";
 import { UserDetailView } from "./components/views/UserDetailView";
-import { SideNav } from "./components/shared/SideNav";
+import { WalletsView } from "./components/views/WalletsView";
+import { themeStyles } from "./styles/theme";
+import type { Transaction } from "./types";
 
 // --- App Shell (with global state and Router) ---
 export default function App() {
@@ -60,129 +51,99 @@ function AppContent() {
 	useEffect(() => {
 		localStorage.setItem("theme", isDarkMode ? "dark" : "light");
 	}, [isDarkMode]);
+
+	// Check Backend Connection
+	useEffect(() => {
+		import("./lib/api").then(({ default: api }) => {
+			api
+				.get("/")
+				.then((res) => console.log("Backend Connected:", res.data))
+				.catch((err) => console.error("Backend Connection Failed:", err));
+		});
+	}, []);
 	const [notifications, setNotifications] = useState(true);
 	const [currency, setCurrency] = useState("INR");
 	const [language, setLanguage] = useState("English");
 	const [activeWalletTab, setActiveWalletTab] = useState("Cards");
 
-	const [transactions, setTransactions] = useState<Transaction[]>([
-		{
-			id: 1,
-			title: "Shopping",
-			subtitle: "Cash",
-			amount: "498.50",
-			percent: "32",
-			icon: Shirt,
-		},
-		{
-			id: 2,
-			title: "Gifts",
-			subtitle: "Cash - Card",
-			amount: "344.45",
-			percent: "21",
-			icon: Gift,
-		},
-		{
-			id: 3,
-			title: "Food",
-			subtitle: "Cash",
-			amount: "230.50",
-			percent: "12",
-			icon: Pizza,
-		},
-		{
-			id: 4,
-			title: "Taxi",
-			subtitle: "Card",
-			amount: "45.00",
-			percent: "5",
-			icon: Wallet,
-		},
-		{
-			id: 5,
-			title: "Mobile Bill",
-			subtitle: "Online",
-			amount: "55.00",
-			percent: "6",
-			icon: Smartphone,
-		},
-	]);
+	// --- API State ---
+	const [transactions, setTransactions] = useState<Transaction[]>([]);
+	const [groups, setGroups] = useState<any[]>([]);
+	const [debts, setDebts] = useState<any[]>([]);
+	const [groupExpenses, setGroupExpenses] = useState<any[]>([]);
 
-	const [debts, setDebts] = useState([
-		{
-			id: 1,
-			name: "Rahul Sharma",
-			amount: 500,
-			type: "owed_to_me",
-			date: "Due in 3 days",
-		},
-		{
-			id: 2,
-			name: "Anita Roy",
-			amount: 1200,
-			type: "owed_by_me",
-			date: "Due tomorrow",
-		},
-		{
-			id: 3,
-			name: "John Doe",
-			amount: 250,
-			type: "owed_to_me",
-			date: "Due in 1 week",
-		},
-	]);
+	useEffect(() => {
+		const checkAuthAndFetch = async () => {
+			const { authService } = await import("./services/authService");
 
-	const [groups, setGroups] = useState([
-		{
-			id: 1,
-			name: "Goa Trip",
-			members: 5,
-			balance: -2000,
-			type: "owe",
-			icon: Plane,
-			color: "bg-orange-500",
-		},
-		{
-			id: 2,
-			name: "Flat 302 Rent",
-			members: 3,
-			balance: 5000,
-			type: "owed",
-			icon: HomeIcon,
-			color: "bg-indigo-500",
-		},
-	]);
+			// Check Authentication
+			const isAuth = authService.isAuthenticated();
+			const publicRoutes = ["/signin", "/signup", "/otp", "/forgot-password"];
 
-	const [groupExpenses, setGroupExpenses] = useState([
-		{
-			id: 1,
-			title: "Dinner at Thalassa",
-			amount: 4500,
-			paidBy: "Tashif",
-			date: "Yesterday",
-			icon: Pizza,
-		},
-		{
-			id: 2,
-			title: "Scooty Rental",
-			amount: 1200,
-			paidBy: "Rahul",
-			date: "Today",
-			icon: Banknote,
-		},
-		{
-			id: 3,
-			title: "Villa Advance",
-			amount: 15000,
-			paidBy: "Anita",
-			date: "2 days ago",
-			icon: HomeIcon,
-		},
-	]);
+			if (!isAuth) {
+				if (!publicRoutes.includes(location.pathname)) {
+					navigate("/signin");
+				}
+				return;
+			}
+
+			try {
+				const { expenseService } = await import("./services/expenseService");
+				const { groupService } = await import("./services/groupService");
+				const { debtService } = await import("./services/debtService");
+
+				// Fetch Transactions
+				const txnsData = await expenseService.getTransactions();
+				const mappedTxns = txnsData.map((t: any) => ({
+					id: t.id,
+					title: t.note || t.type || "Expense",
+					subtitle: t.currency,
+					amount: t.amount.toString(),
+					percent: "0",
+					icon: Shirt,
+				}));
+				setTransactions(mappedTxns as any);
+
+				// Fetch Groups
+				const groupsData = await groupService.getGroups();
+				const mappedGroups = groupsData.map((g: any) => ({
+					id: g.id,
+					name: g.name,
+					members: 1,
+					balance: 0,
+					type: "owe",
+					icon: Plane,
+					color: "bg-blue-500",
+				}));
+				setGroups(mappedGroups);
+
+				// Fetch Debts
+				const debtsData = await debtService.getDebts();
+				setDebts(
+					debtsData.map((d: any) => ({
+						id: d.id,
+						name: d.counterparty_name,
+						amount: d.amount,
+						type: d.type,
+						date: d.due_date || "No due date",
+					}))
+				);
+			} catch (error) {
+				console.error("Failed to fetch data", error);
+				if ((error as any)?.response?.status === 401) {
+					authService.logout();
+					navigate("/signin");
+				}
+			}
+		};
+
+		checkAuthAndFetch();
+	}, [navigate, location.pathname]);
 
 	const [socialTab, setSocialTab] = useState("debts");
 	const [groupDetailTab, setGroupDetailTab] = useState("expenses");
 	const [selectedUser, setSelectedUser] = useState(null);
+	const [selectedGroup, setSelectedGroup] = useState<any>(null); // Add selectedGroup state
 
 	const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
@@ -317,6 +278,11 @@ function AppContent() {
 									socialTab={socialTab}
 									setSocialTab={setSocialTab}
 									setCurrentView={(view) => navigate(view)}
+									// Pass setSelectedGroup
+									setSelectedGroup={(group) => {
+										setSelectedGroup(group);
+										navigate("/group-detail");
+									}}
 									setSelectedUser={(user) => {
 										setSelectedUser(user);
 										navigate("/user-detail");
@@ -337,6 +303,7 @@ function AppContent() {
 							path="/group-detail"
 							element={
 								<GroupDetailView
+									group={selectedGroup} // Pass selectedGroup
 									groupExpenses={groupExpenses}
 									groupDetailTab={groupDetailTab}
 									setGroupDetailTab={setGroupDetailTab}
