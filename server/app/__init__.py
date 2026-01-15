@@ -10,7 +10,17 @@ import os
 
 from .core.database import init_db
 from .core.logger import logger
-from .routes import auth, users, expenses, wallets, groups, stats, sync
+from .routes import (
+    auth,
+    users,
+    expenses,
+    wallets,
+    groups,
+    stats,
+    sync,
+    debts,
+    categories,
+)
 
 
 @asynccontextmanager
@@ -47,6 +57,8 @@ app.include_router(wallets.router)
 app.include_router(groups.router)
 app.include_router(stats.router)
 app.include_router(sync.router)
+app.include_router(debts.router)
+app.include_router(categories.router)
 
 # Ensure uploads directory exists
 uploads_dir = os.path.join(os.getcwd(), "uploads")

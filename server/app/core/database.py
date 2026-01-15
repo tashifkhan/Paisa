@@ -3,12 +3,30 @@ from beanie import init_beanie
 from .config import settings
 
 # Import all models here so Beanie can register them
-from ..models.db_models import User, Wallet, Group, Transaction, EmailOTP
+from ..models.db_models import (
+    User,
+    Wallet,
+    Group,
+    GroupMember,
+    Transaction,
+    EmailOTP,
+    Debt,
+    Category,
+)
 
 
 async def init_db():
     client = AsyncIOMotorClient(settings.MONGODB_URL)
     await init_beanie(
         database=client.get_default_database(),
-        document_models=[User, Wallet, Group, Transaction, EmailOTP],
+        document_models=[
+            User,
+            Wallet,
+            Group,
+            GroupMember,
+            Transaction,
+            EmailOTP,
+            Debt,
+            Category,
+        ],
     )
