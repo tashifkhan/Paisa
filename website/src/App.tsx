@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Plane, Shirt } from "lucide-react";
+import { Plane } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
 	Route,
@@ -28,8 +28,8 @@ import { SocialView } from "./components/views/SocialView";
 import { StatsView } from "./components/views/StatsView";
 import { UserDetailView } from "./components/views/UserDetailView";
 import { WalletsView } from "./components/views/WalletsView";
+import type { BackendTransaction } from "./services/types";
 import { themeStyles } from "./styles/theme";
-import type { Transaction } from "./types";
 
 // --- App Shell (with global state and Router) ---
 export default function App() {
@@ -73,7 +73,8 @@ function AppContent() {
 	const [userEmail, setUserEmail] = useState<string>("");
 
 	// --- API State ---
-	const [transactions, setTransactions] = useState<Transaction[]>([]);
+	const [transactions, setTransactions] = useState<BackendTransaction[]>([]);
+
 	const [groups, setGroups] = useState<any[]>([]);
 	const [debts, setDebts] = useState<any[]>([]);
 	const [groupExpenses, setGroupExpenses] = useState<any[]>([]);
@@ -113,15 +114,7 @@ function AppContent() {
 
 				// Fetch Transactions
 				const txnsData = await expenseService.getTransactions();
-				const mappedTxns = txnsData.map((t: any) => ({
-					id: t.id,
-					title: t.note || t.type || "Expense",
-					subtitle: t.currency,
-					amount: t.amount.toString(),
-					percent: "0",
-					icon: Shirt,
-				}));
-				setTransactions(mappedTxns as any);
+				setTransactions(txnsData);
 
 				// Fetch Groups
 				const groupsData = await groupService.getGroups();
@@ -145,7 +138,7 @@ function AppContent() {
 						amount: d.amount,
 						type: d.type,
 						date: d.due_date || "No due date",
-					}))
+					})),
 				);
 			} catch (error) {
 				console.error("Failed to fetch data", error);
@@ -158,6 +151,16 @@ function AppContent() {
 
 		checkAuthAndFetch();
 	}, [navigate, location.pathname]);
+
+	const refreshTransactions = async () => {
+		try {
+			const { expenseService } = await import("./services/expenseService");
+			const txnsData = await expenseService.getTransactions();
+			setTransactions(txnsData);
+		} catch (error) {
+			console.error("Failed to refresh transactions:", error);
+		}
+	};
 
 	const [socialTab, setSocialTab] = useState("debts");
 	const [groupDetailTab, setGroupDetailTab] = useState("expenses");
@@ -204,15 +207,17 @@ function AppContent() {
 		if (key === "backspace") {
 			setAmount((prev) => (prev.length > 1 ? prev.slice(0, -1) : "0"));
 		} else if (key === "check") {
-			const newTransaction = {
-				id: Date.now(),
-				title: "New Expense",
-				subtitle: "Cash",
-				amount: amount,
-				percent: "10",
-				icon: Shirt,
+			const newTransaction: BackendTransaction = {
+				id: Date.now().toString(),
+				user_id: "current_user", // Placeholder
+				amount: parseFloat(amount),
+				currency: currency,
+				type: "expense",
+				date: new Date().toISOString(),
+				note: "New Expense",
 			};
 			setTransactions([newTransaction, ...transactions]);
+
 			setAmount("0");
 			navigate("/stats");
 		} else {
@@ -296,6 +301,7 @@ function AppContent() {
 									transactions={transactions}
 									isDarkMode={isDarkMode}
 									toggleTheme={toggleTheme}
+									onRefresh={refreshTransactions}
 								/>
 							}
 						/>
@@ -323,7 +329,9 @@ function AppContent() {
 									isDarkMode={isDarkMode}
 									toggleTheme={toggleTheme}
 									handleKeyPress={handleKeyPress}
-									setCurrentView={() => navigate("/stats")}
+									setCurrentView={(view) =>
+										navigate(view === "stats" ? "/stats" : `/${view}`)
+									}
 								/>
 							}
 						/>
@@ -353,12 +361,14 @@ function AppContent() {
 							element={
 								<UserDetailView
 									user={selectedUser}
-									setCurrentView={() => navigate("/debts")}
+									setCurrentView={(view, options) => {
+										const path = view === "debts" ? "/debts" : `/${view}`;
+										navigate(path, options);
+									}}
 									onDebtDeleted={async () => {
 										// Refetch debts after deletion
-										const { debtService } = await import(
-											"./services/debtService"
-										);
+										const { debtService } =
+											await import("./services/debtService");
 										const debtsData = await debtService.getDebts();
 										setDebts(
 											debtsData.map((d: any) => ({
@@ -367,7 +377,7 @@ function AppContent() {
 												amount: d.amount,
 												type: d.type,
 												date: d.due_date || "No due date",
-											}))
+											})),
 										);
 									}}
 								/>

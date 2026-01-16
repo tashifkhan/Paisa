@@ -1,5 +1,5 @@
-import { Home, LayoutGrid, Plus, Handshake, User } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Handshake, Home, LayoutGrid, Plus, User } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 export const BottomNav = () => {
 	const navigate = useNavigate();
@@ -7,34 +7,41 @@ export const BottomNav = () => {
 	const pathname = location.pathname.slice(1) || "home";
 
 	return (
-		<div className="absolute bottom-0 left-0 right-0 bg-(--card) border-t border-(--border) px-8 py-5 flex justify-between items-center rounded-t-4xl shadow-[0_-5px_20px_rgba(0,0,0,0.03) z-50 transition-colors duration-300 md:hidden">
+		<div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-(--card)/80 backdrop-blur-xl border border-(--border)/50 px-8 py-4 flex justify-between items-center rounded-2xl shadow-2xl z-50 transition-all duration-300 md:hidden w-[90%] max-w-md">
 			<button
 				onClick={() => navigate("/")}
 				className={`${
 					pathname === "home" || pathname === ""
-						? "text-(--primary)"
-						: "text-(--muted-foreground)"
-				} hover:text-(--foreground) transition-colors`}
+						? "text-(--primary) scale-110"
+						: "text-(--muted-foreground) hover:text-(--foreground)"
+				} transition-all duration-300 p-2`}
 			>
-				<Home size={24} />
+				<Home
+					size={24}
+					strokeWidth={pathname === "home" || pathname === "" ? 2.5 : 2}
+				/>
 			</button>
 			<button
 				onClick={() => navigate("/stats")}
 				className={`${
 					pathname === "stats"
-						? "text-(--primary)"
-						: "text-(--muted-foreground)"
-				} hover:text-(--foreground) transition-colors`}
+						? "text-(--primary) scale-110"
+						: "text-(--muted-foreground) hover:text-(--foreground)"
+				} transition-all duration-300 p-2`}
 			>
-				<LayoutGrid size={24} />
+				<LayoutGrid size={24} strokeWidth={pathname === "stats" ? 2.5 : 2} />
 			</button>
 
 			{/* Floating Action Button for Add Expense */}
 			<button
 				onClick={() => navigate("/add-expense")}
-				className="bg-(--primary) text-(--primary-foreground) p-4 rounded-full shadow-lg -mt-10 border-4 border-(--background) hover:scale-105 transition-all duration-300 flex items-center justify-center"
+				className="bg-linear-to-tr from-(--primary) to-(--primary)/90 text-(--primary-foreground) p-4 rounded-2xl shadow-lg -mt-12 border-4 border-(--background) hover:scale-110 hover:-translate-y-1 active:scale-95 transition-all duration-300 flex items-center justify-center group"
 			>
-				<Plus size={24} />
+				<Plus
+					size={26}
+					className="group-hover:rotate-90 transition-transform duration-300"
+					strokeWidth={3}
+				/>
 			</button>
 
 			<button
@@ -43,21 +50,30 @@ export const BottomNav = () => {
 					pathname === "debts" ||
 					pathname === "create-group" ||
 					pathname === "group-detail"
-						? "text-(--primary)"
-						: "text-(--muted-foreground)"
-				} hover:text-(--foreground) transition-colors`}
+						? "text-(--primary) scale-110"
+						: "text-(--muted-foreground) hover:text-(--foreground)"
+				} transition-all duration-300 p-2`}
 			>
-				<Handshake size={24} />
+				<Handshake
+					size={24}
+					strokeWidth={
+						pathname === "debts" ||
+						pathname === "create-group" ||
+						pathname === "group-detail"
+							? 2.5
+							: 2
+					}
+				/>
 			</button>
 			<button
 				onClick={() => navigate("/profile")}
 				className={`${
 					pathname === "profile"
-						? "text-(--primary)"
-						: "text-(--muted-foreground)"
-				} hover:text-(--foreground) transition-colors`}
+						? "text-(--primary) scale-110"
+						: "text-(--muted-foreground) hover:text-(--foreground)"
+				} transition-all duration-300 p-2`}
 			>
-				<User size={24} />
+				<User size={24} strokeWidth={pathname === "profile" ? 2.5 : 2} />
 			</button>
 		</div>
 	);

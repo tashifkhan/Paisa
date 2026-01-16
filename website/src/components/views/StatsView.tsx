@@ -1,10 +1,4 @@
-import {
-	ArrowUpRight,
-	Calendar,
-	Edit3,
-	TrendingDown,
-	TrendingUp,
-} from "lucide-react";
+import { ArrowUpRight, Calendar, TrendingDown, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { categoryService } from "../../services/categoryService";
 import { debtService } from "../../services/debtService";
@@ -100,7 +94,7 @@ export const StatsView = () => {
 					.filter((d) => d.due_date && new Date(d.due_date) >= now)
 					.sort(
 						(a, b) =>
-							new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime()
+							new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime(),
 					)
 					.slice(0, 5);
 				setUpcomingDues(upcoming);
@@ -208,7 +202,7 @@ export const StatsView = () => {
 										>
 											{tab}
 										</button>
-									)
+									),
 								)}
 							</div>
 
@@ -226,7 +220,7 @@ export const StatsView = () => {
 										title="Net"
 										amount={formatCurrency(totalIncome - totalExpense).replace(
 											"₹",
-											""
+											"",
 										)}
 									/>
 								</div>
@@ -257,7 +251,7 @@ export const StatsView = () => {
 														<TrendingDown size={16} />
 													)}
 													{Math.abs(comparison.expense.change_percent).toFixed(
-														1
+														1,
 													)}
 													%
 												</div>
@@ -357,91 +351,153 @@ export const StatsView = () => {
 								</div>
 
 								{/* Transaction List */}
-								<div className="space-y-2 max-h-[500px] overflow-y-auto">
-									{filteredTransactions.length === 0 ? (
-										<div className="text-center py-8 text-(--muted-foreground)">
+								<div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
+									{loading ? (
+										// Skeleton Loading State
+										Array.from({ length: 3 }).map((_, i) => (
+											<div key={i} className="space-y-3">
+												<div className="h-4 w-24 bg-(--muted) rounded animate-pulse mb-2" />
+												{Array.from({ length: 2 }).map((_, j) => (
+													<div
+														key={j}
+														className="flex items-center justify-between p-4 bg-(--card) rounded-2xl border border-(--border)"
+													>
+														<div className="flex items-center gap-3">
+															<div className="w-12 h-12 rounded-full bg-(--muted) animate-pulse" />
+															<div className="space-y-2">
+																<div className="h-4 w-32 bg-(--muted) rounded animate-pulse" />
+																<div className="h-3 w-24 bg-(--muted) rounded animate-pulse" />
+															</div>
+														</div>
+														<div className="space-y-2">
+															<div className="h-5 w-20 bg-(--muted) rounded animate-pulse ml-auto" />
+															<div className="h-3 w-12 bg-(--muted) rounded animate-pulse ml-auto" />
+														</div>
+													</div>
+												))}
+											</div>
+										))
+									) : filteredTransactions.length === 0 ? (
+										<div className="text-center py-12 text-(--muted-foreground)">
 											<p>No transactions found</p>
 										</div>
 									) : (
-										filteredTransactions.map((txn) => {
-											const category = getCategoryById(txn.category_id);
-											const wallet = getWalletById(txn.wallet_id);
-											return (
-												<div
-													key={txn.id}
-													className="flex items-center justify-between p-4 bg-(--card) rounded-2xl border border-(--border) hover:border-(--primary)/50 transition-colors"
-												>
-													<div className="flex items-center gap-3">
-														<div
-															className="w-10 h-10 rounded-full flex items-center justify-center"
-															style={{
-																backgroundColor: category?.color || "#6b7280",
-															}}
-														>
-															<span className="text-white text-sm font-bold">
-																{category?.name?.charAt(0) ||
-																	txn.type?.charAt(0)?.toUpperCase() ||
-																	"T"}
-															</span>
-														</div>
-														<div>
-															<div className="font-medium text-(--foreground)">
-																{txn.note ||
-																	category?.name ||
-																	(txn.type === "income"
-																		? "Income"
-																		: "Expense")}
-															</div>
-															<div className="text-xs text-(--muted-foreground) flex items-center gap-2">
-																<span>
-																	{txn.date
-																		? new Date(txn.date).toLocaleDateString(
-																				"en-IN",
-																				{
-																					month: "short",
-																					day: "numeric",
-																				}
-																		  )
-																		: "No date"}
-																</span>
-																{wallet && (
-																	<>
-																		<span>•</span>
-																		<span>{wallet.name}</span>
-																	</>
-																)}
-															</div>
-														</div>
-													</div>
-													<div className="flex items-center gap-3">
-														<div className="text-right">
-															<div
-																className={`font-bold ${
-																	txn.type === "income"
-																		? "text-green-500"
-																		: "text-(--foreground)"
-																}`}
-															>
-																{txn.type === "income" ? "+" : "-"}₹
-																{txn.amount.toLocaleString("en-IN")}
-															</div>
-															<div className="text-xs text-(--muted-foreground) capitalize">
-																{txn.type}
-															</div>
-														</div>
-														<button
-															onClick={() => setEditingTransaction(txn)}
-															className="p-2 hover:bg-(--muted) rounded-full transition-colors"
-														>
-															<Edit3
-																size={16}
-																className="text-(--muted-foreground)"
-															/>
-														</button>
+										// Grouped Transactions
+										Object.entries(
+											filteredTransactions.reduce(
+												(groups, txn) => {
+													const date = txn.date
+														? new Date(txn.date).toISOString().split("T")[0]
+														: "Unknown";
+													if (!groups[date]) groups[date] = [];
+													groups[date].push(txn);
+													return groups;
+												},
+												{} as Record<string, BackendTransaction[]>,
+											),
+										)
+											.sort((a, b) => b[0].localeCompare(a[0])) // Sort by date descending
+											.map(([date, txns]) => (
+												<div key={date}>
+													<h3 className="text-xs font-bold text-(--muted-foreground) mb-3 sticky top-0 bg-(--background)/80 backdrop-blur-md py-3 z-10 uppercase tracking-widest pl-2">
+														{(() => {
+															if (date === "Unknown") return "Unknown Date";
+															const today = new Date()
+																.toISOString()
+																.split("T")[0];
+															const yesterday = new Date(Date.now() - 86400000)
+																.toISOString()
+																.split("T")[0];
+															if (date === today) return "Today";
+															if (date === yesterday) return "Yesterday";
+															return new Date(date).toLocaleDateString(
+																"en-IN",
+																{
+																	weekday: "short",
+																	day: "numeric",
+																	month: "short",
+																},
+															);
+														})()}
+													</h3>
+													<div className="space-y-3">
+														{txns.map((txn) => {
+															const category = getCategoryById(txn.category_id);
+															const wallet = getWalletById(txn.wallet_id);
+															return (
+																<div
+																	key={txn.id}
+																	onClick={() => setEditingTransaction(txn)}
+																	className="group cursor-pointer flex items-center justify-between p-4 bg-(--card) rounded-2xl border border-transparent hover:border-(--border)/50 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 relative"
+																>
+																	<div className="flex items-center gap-4">
+																		<div
+																			className="w-12 h-12 rounded-full flex items-center justify-center shadow-xs transition-transform group-hover:scale-110"
+																			style={{
+																				backgroundColor: category?.color
+																					? `${category.color}20`
+																					: "#f3f4f6", // 20 hex = ~12% opacity
+																				color: category?.color || "#6b7280",
+																			}}
+																		>
+																			{/* You typically want icons here, fallback to initial */}
+																			{/* Using CSS safe check charAt */}
+																			<span className="text-lg font-bold">
+																				{category?.name?.charAt(0) ||
+																					txn.type?.charAt(0)?.toUpperCase()}
+																			</span>
+																		</div>
+																		<div>
+																			<div className="font-semibold text-(--foreground) text-base group-hover:text-(--primary) transition-colors">
+																				{txn.note ||
+																					category?.name ||
+																					(txn.type === "income"
+																						? "Income"
+																						: "Expense")}
+																			</div>
+																			<div className="text-xs text-(--muted-foreground) flex items-center gap-2 mt-0.5">
+																				{wallet && (
+																					<span className="flex items-center gap-1 bg-(--muted) px-2 py-0.5 rounded-full">
+																						<div className="w-1.5 h-1.5 rounded-full bg-(--muted-foreground)/50" />
+																						{wallet.name}
+																					</span>
+																				)}
+																				{txn.type === "income" && (
+																					<span className="text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
+																						Income
+																					</span>
+																				)}
+																			</div>
+																		</div>
+																	</div>
+																	<div className="text-right">
+																		<div
+																			className={`text-lg font-bold tracking-tight ${
+																				txn.type === "income"
+																					? "text-green-500"
+																					: "text-(--foreground)"
+																			}`}
+																		>
+																			{txn.type === "income" ? "+" : "-"}
+																			{formatCurrency(txn.amount).replace(
+																				"₹",
+																				"",
+																			)}
+																		</div>
+																		<div className="text-xs text-(--muted-foreground) font-medium mt-1">
+																			{formatCurrency(txn.amount).split(".")[0]}
+																		</div>
+																	</div>
+																	<ArrowUpRight
+																		size={16}
+																		className="text-(--muted-foreground) opacity-0 group-hover:opacity-100 transition-opacity absolute right-4 top-1/2 -translate-y-1/2"
+																	/>
+																</div>
+															);
+														})}
 													</div>
 												</div>
-											);
-										})
+											))
 									)}
 								</div>
 							</div>
@@ -456,23 +512,35 @@ export const StatsView = () => {
 							</h2>
 
 							{debtSummary && (
-								<div className="bg-(--card) p-6 rounded-[2.5rem] shadow-sm border border-(--border) flex items-center gap-6 mb-6">
-									<CircularProgress
-										value={debtSummary.owed_to_me}
-										max={debtSummary.owed_to_me + debtSummary.owed_by_me || 1}
-										size={80}
-										color="stroke-(--chart-4)"
-										strokeWidth={8}
-									/>
-									<div>
-										<div className="text-(--muted-foreground) text-sm mb-1">
-											Owed to You
+								<div className="bg-linear-to-br from-(--card) to-(--muted)/30 p-6 rounded-[2.5rem] shadow-sm border border-(--border)/50 flex items-center gap-8 mb-6 relative overflow-hidden">
+									{/* Decorative background element */}
+									<div className="absolute top-0 right-0 w-32 h-32 bg-(--primary)/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
+
+									<div className="relative z-10">
+										<CircularProgress
+											value={debtSummary.owed_to_me}
+											max={debtSummary.owed_to_me + debtSummary.owed_by_me || 1}
+											size={80}
+											color="stroke-(--primary)"
+											strokeWidth={8}
+										/>
+									</div>
+									<div className="flex-1 relative z-10 grid grid-cols-2 gap-4">
+										<div>
+											<div className="text-(--muted-foreground) text-xs uppercase tracking-wider font-semibold mb-1">
+												Owed to You
+											</div>
+											<div className="text-2xl font-black text-green-500 tracking-tight">
+												{formatCurrency(debtSummary.owed_to_me)}
+											</div>
 										</div>
-										<div className="text-2xl font-bold text-green-500">
-											{formatCurrency(debtSummary.owed_to_me)}
-										</div>
-										<div className="text-(--muted-foreground) text-xs mt-1">
-											You owe: {formatCurrency(debtSummary.owed_by_me)}
+										<div>
+											<div className="text-(--muted-foreground) text-xs uppercase tracking-wider font-semibold mb-1">
+												You Owe
+											</div>
+											<div className="text-xl font-bold text-(--foreground)">
+												{formatCurrency(debtSummary.owed_by_me)}
+											</div>
 										</div>
 									</div>
 								</div>
@@ -501,7 +569,7 @@ export const StatsView = () => {
 													You saved{" "}
 													<span className="font-bold text-(--foreground)">
 														{Math.abs(
-															comparison?.expense.change_percent || 0
+															comparison?.expense.change_percent || 0,
 														).toFixed(0)}
 														%
 													</span>{" "}
@@ -530,8 +598,8 @@ export const StatsView = () => {
 												debt.due_date
 													? `Due: ${new Date(debt.due_date).toLocaleDateString(
 															"en-IN",
-															{ month: "short", day: "numeric" }
-													  )}`
+															{ month: "short", day: "numeric" },
+														)}`
 													: "No due date"
 											}
 											amount={debt.amount.toFixed(2)}

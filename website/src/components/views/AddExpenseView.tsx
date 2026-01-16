@@ -5,12 +5,16 @@ import {
 	Edit3,
 	Loader2,
 	Moon,
+	Split,
 	Sun,
+	Users,
 	Wallet,
 	X,
 } from "lucide-react";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { useLocation } from "react-router-dom";
 import { categoryService } from "../../services/categoryService";
+import { debtService } from "../../services/debtService";
 import { expenseService } from "../../services/expenseService";
 import type { BackendCategory, BackendWallet } from "../../services/types";
 import { walletService } from "../../services/walletService";
@@ -21,6 +25,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "../ui/select";
+import { Switch } from "../ui/switch";
 
 interface AddExpenseViewProps {
 	amount: string;
@@ -134,13 +139,18 @@ export const AddExpenseView = ({
 	handleKeyPress,
 	setCurrentView,
 }: AddExpenseViewProps) => {
+	const location = useLocation();
 	const [categories, setCategories] = useState<BackendCategory[]>([]);
 	const [wallets, setWallets] = useState<BackendWallet[]>([]);
+	const [people, setPeople] = useState<any[]>([]); // Friends/Contacts
 	const [selectedCategory, setSelectedCategory] = useState<string>("");
 	const [selectedWallet, setSelectedWallet] = useState<string>("");
 	const [transactionType, setTransactionType] = useState<"expense" | "income">(
-		"expense"
+		"expense",
 	);
+	const [isSplit, setIsSplit] = useState(false);
+	const [splitWith, setSplitWith] = useState<string>("");
+
 	const [note, setNote] = useState("");
 	const [loading, setLoading] = useState(true);
 	const [submitting, setSubmitting] = useState(false);
@@ -150,15 +160,25 @@ export const AddExpenseView = ({
 		const fetchData = async () => {
 			setLoading(true);
 			try {
-				const [catsData, walletsData, balanceData] = await Promise.all([
-					categoryService.getCategories(),
-					walletService.getWallets(),
-					walletService.getTotalBalance("INR"),
-				]);
+				const [catsData, walletsData, balanceData, debtsData] =
+					await Promise.all([
+						categoryService.getCategories(),
+						walletService.getWallets(),
+						walletService.getTotalBalance("INR"),
+						debtService.getDebts(),
+					]);
 
 				setCategories(catsData);
 				setWallets(walletsData);
 				setTotalBalance(balanceData.total_balance);
+
+				// Process unique people from debts for "Split With"
+				const uniquePeople = Array.from(
+					new Map(debtsData.map((d: any) => [d.counterparty_name, d])).values(),
+				).filter(
+					(p: any) => p.counterparty_name && p.counterparty_name.trim() !== "",
+				);
+				setPeople(uniquePeople);
 
 				// If no categories exist, try to seed defaults
 				if (catsData.length === 0) {
@@ -168,7 +188,7 @@ export const AddExpenseView = ({
 						setCategories(newCats);
 						if (newCats.length > 0) {
 							const defaultCat = newCats.find(
-								(c) => c.type === "expense" || c.type === "both"
+								(c) => c.type === "expense" || c.type === "both",
 							);
 							if (defaultCat) setSelectedCategory(defaultCat.id);
 						}
@@ -178,7 +198,7 @@ export const AddExpenseView = ({
 				} else {
 					// Set defaults
 					const defaultCat = catsData.find(
-						(c) => c.type === "expense" || c.type === "both"
+						(c) => c.type === "expense" || c.type === "both",
 					);
 					if (defaultCat) setSelectedCategory(defaultCat.id);
 				}
@@ -195,6 +215,14 @@ export const AddExpenseView = ({
 		fetchData();
 	}, []);
 
+	// Handle pre-filled split data from location state
+	useEffect(() => {
+		if (location.state?.splitWith) {
+			setIsSplit(true);
+			setSplitWith(location.state.splitWith.name); // Using name for now as ID might be for debt record
+		}
+	}, [location.state]);
+
 	const handleSubmit = async () => {
 		const amountNum = parseFloat(amount);
 		if (isNaN(amountNum) || amountNum <= 0) {
@@ -202,17 +230,34 @@ export const AddExpenseView = ({
 			return;
 		}
 
+		if (isSplit && !splitWith) {
+			alert("Please select who to split with");
+			return;
+		}
+
 		setSubmitting(true);
 		try {
+			// 1. Add the main expense transaction
 			await expenseService.addTransaction({
 				amount: amountNum,
 				currency: "INR",
 				type: transactionType,
 				date: new Date().toISOString(),
-				note: note || undefined,
+				note: note || (isSplit ? `Split with ${splitWith}` : undefined),
 				wallet_id: selectedWallet || undefined,
 				category_id: selectedCategory || undefined,
 			});
+
+			// 2. If split, create a debt record
+			// Assuming equal split for now: User paid full, other owes 50%
+			if (isSplit) {
+				const splitAmount = amountNum / 2;
+				await debtService.addDebt({
+					counterparty_name: splitWith,
+					amount: splitAmount,
+					type: "owed_to_me", // You paid, they owe you
+				});
+			}
 
 			// Navigate back to stats view
 			setCurrentView("stats");
@@ -240,7 +285,7 @@ export const AddExpenseView = ({
 
 	// Filter categories based on transaction type
 	const filteredCategories = categories.filter(
-		(cat) => cat.type === transactionType || cat.type === "both"
+		(cat) => cat.type === transactionType || cat.type === "both",
 	);
 
 	return (
@@ -299,7 +344,7 @@ export const AddExpenseView = ({
 						</button>
 					</div>
 
-					<div className="flex gap-4 w-full justify-between mb-8">
+					<div className="flex gap-4 w-full justify-between mb-4">
 						{/* Wallet Select */}
 						<Select value={selectedWallet} onValueChange={setSelectedWallet}>
 							<SelectTrigger className="flex-1">
@@ -366,6 +411,56 @@ export const AddExpenseView = ({
 								)}
 							</SelectContent>
 						</Select>
+					</div>
+
+					{/* Split Toggle */}
+					<div className="w-full mb-6">
+						<div className="flex items-center justify-between mb-2">
+							<div className="flex items-center gap-2 text-(--muted-foreground)">
+								<Split size={18} />
+								<span className="text-sm font-medium">Split Expense</span>
+							</div>
+							<Switch
+								checked={isSplit}
+								onCheckedChange={setIsSplit}
+								className="data-[state=checked]:bg-(--primary)"
+							/>
+						</div>
+
+						{isSplit && (
+							<Select value={splitWith} onValueChange={setSplitWith}>
+								<SelectTrigger className="w-full mt-2">
+									<div className="flex items-center gap-2">
+										<Users size={18} />
+										<SelectValue placeholder="Split with..." />
+									</div>
+								</SelectTrigger>
+								<SelectContent>
+									{people
+										.filter(
+											(person) =>
+												person.counterparty_name &&
+												person.counterparty_name.trim() !== "",
+										)
+										.map((person) => (
+											<SelectItem
+												key={person.id || person.counterparty_name}
+												value={person.counterparty_name}
+											>
+												<div className="flex items-center gap-2">
+													<Users size={18} />
+													{person.counterparty_name}
+												</div>
+											</SelectItem>
+										))}
+									{people.length === 0 && (
+										<SelectItem value="none" disabled>
+											No contacts
+										</SelectItem>
+									)}
+								</SelectContent>
+							</Select>
+						)}
 					</div>
 
 					<div className="flex flex-col items-center justify-center flex-1 w-full mb-8">

@@ -7,7 +7,7 @@ import {
 	Wallet,
 	X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { expenseService } from "../../services/expenseService";
 import type {
 	BackendCategory,
@@ -41,26 +41,44 @@ export const EditExpenseModal = ({
 }: EditExpenseModalProps) => {
 	const [amount, setAmount] = useState(transaction.amount.toString());
 	const [transactionType, setTransactionType] = useState<"expense" | "income">(
-		transaction.type as "expense" | "income"
+		transaction.type as "expense" | "income",
 	);
 	const [selectedCategory, setSelectedCategory] = useState(
-		transaction.category_id || ""
+		transaction.category_id || "",
 	);
 	const [selectedWallet, setSelectedWallet] = useState(
-		transaction.wallet_id || ""
+		transaction.wallet_id || "",
 	);
 	const [note, setNote] = useState(transaction.note || "");
-	const [date, setDate] = useState(
-		transaction.date
-			? transaction.date.split("T")[0]
-			: new Date().toISOString().split("T")[0]
-	);
+
+	// Helper to safely format date
+	const getFormattedDate = (dateStr?: string | Date) => {
+		if (!dateStr) return new Date().toISOString().split("T")[0];
+		try {
+			return new Date(dateStr).toISOString().split("T")[0];
+		} catch (e) {
+			return new Date().toISOString().split("T")[0];
+		}
+	};
+
+	const [date, setDate] = useState(getFormattedDate(transaction.date));
 	const [saving, setSaving] = useState(false);
 	const [deleting, setDeleting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	// Sync state when transaction prop changes
+	useEffect(() => {
+		setAmount(transaction.amount.toString());
+		setTransactionType(transaction.type as "expense" | "income");
+		setSelectedCategory(transaction.category_id || "");
+		setSelectedWallet(transaction.wallet_id || "");
+		setNote(transaction.note || "");
+		setDate(getFormattedDate(transaction.date));
+		setError(null);
+	}, [transaction]);
+
 	const filteredCategories = categories.filter(
-		(cat) => cat.type === transactionType || cat.type === "both"
+		(cat) => cat.type === transactionType || cat.type === "both",
 	);
 
 	const handleSave = async () => {
@@ -78,7 +96,10 @@ export const EditExpenseModal = ({
 				type: transactionType,
 				date: new Date(date).toISOString(),
 				note: note || undefined,
-				wallet_id: selectedWallet || undefined,
+				wallet_id:
+					selectedWallet && selectedWallet !== "__none__"
+						? selectedWallet
+						: undefined,
 				category_id: selectedCategory || undefined,
 			});
 			onSave();
@@ -211,7 +232,7 @@ export const EditExpenseModal = ({
 									</div>
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="">No wallet</SelectItem>
+									<SelectItem value="__none__">No wallet</SelectItem>
 									{wallets.map((wallet) => (
 										<SelectItem key={wallet.id} value={wallet.id}>
 											{wallet.name}

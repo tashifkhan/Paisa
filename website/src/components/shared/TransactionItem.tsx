@@ -6,10 +6,21 @@ interface TransactionItemProps {
 	subtitle: string;
 	amount: string;
 	percent?: string;
+	onClick?: () => void;
 }
 
-export const TransactionItem = ({ icon: Icon, title, subtitle, amount, percent }: TransactionItemProps) => (
-	<div className="flex items-center justify-between py-4 group cursor-pointer hover:bg-(--muted) rounded-3xl px-3 transition-all">
+export const TransactionItem = ({
+	icon: Icon,
+	title,
+	subtitle,
+	amount,
+	percent,
+	onClick,
+}: TransactionItemProps) => (
+	<div
+		onClick={onClick}
+		className={`flex items-center justify-between py-4 group ${onClick ? "cursor-pointer hover:bg-(--muted)" : ""} rounded-3xl px-3 transition-all`}
+	>
 		<div className="flex items-center gap-4">
 			<div
 				className={`w-12 h-12 rounded-full flex items-center justify-center bg-(--muted) transition-colors duration-300`}

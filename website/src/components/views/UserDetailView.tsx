@@ -7,6 +7,7 @@ import {
 	X,
 } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { debtService } from "../../services/debtService";
 
 interface UserDetailViewProps {
@@ -18,7 +19,7 @@ interface UserDetailViewProps {
 		date: string;
 		email?: string;
 	} | null;
-	setCurrentView: (view: string) => void;
+	setCurrentView: (view: string, options?: any) => void;
 	onDebtDeleted?: () => void;
 }
 
@@ -27,6 +28,7 @@ export const UserDetailView = ({
 	setCurrentView,
 	onDebtDeleted,
 }: UserDetailViewProps) => {
+	const navigate = useNavigate();
 	const [isDeleting, setIsDeleting] = useState(false);
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 	const [isSettling, setIsSettling] = useState(false);
@@ -132,6 +134,14 @@ export const UserDetailView = ({
 									Settle Up
 								</button>
 							)}
+							<button
+								onClick={() =>
+									navigate("/add-expense", { state: { splitWith: user } })
+								}
+								className="px-6 py-2 bg-white text-(--primary) rounded-xl text-sm font-bold hover:bg-white/90 transition-colors shadow-lg"
+							>
+								Add Transaction
+							</button>
 						</div>
 					</div>
 				</div>
@@ -144,6 +154,14 @@ export const UserDetailView = ({
 						Transaction history will appear here when you add expenses with{" "}
 						{user.name}.
 					</p>
+					<button
+						onClick={() =>
+							navigate("/add-expense", { state: { splitWith: user } })
+						}
+						className="mt-6 px-6 py-3 bg-(--primary) text-(--primary-foreground) rounded-full font-bold shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2 mx-auto"
+					>
+						+ Add Transaction
+					</button>
 				</div>
 			</div>
 

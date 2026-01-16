@@ -15,18 +15,25 @@ import {
 	Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { categoryService } from "../../services/categoryService";
 import { statsService } from "../../services/statsService";
-import type { BackendComparison, BackendWallet } from "../../services/types";
+import type {
+	BackendCategory,
+	BackendComparison,
+	BackendTransaction,
+	BackendWallet,
+} from "../../services/types";
 import { userService } from "../../services/userService";
 import { walletService } from "../../services/walletService";
-import type { Transaction } from "../../types";
 import { CreditCardComponent } from "../shared/CreditCardComponent";
+import { EditExpenseModal } from "../shared/EditExpenseModal";
 import { TransactionItem } from "../shared/TransactionItem";
 
 interface HomeViewProps {
-	transactions: Transaction[];
+	transactions: BackendTransaction[];
 	isDarkMode: boolean;
 	toggleTheme: () => void;
+	onRefresh?: () => void;
 }
 
 // Map category names to icons
@@ -44,6 +51,7 @@ export const HomeView = ({
 	transactions,
 	isDarkMode,
 	toggleTheme,
+	onRefresh,
 }: HomeViewProps) => {
 	const [showBalance, setShowBalance] = useState(true);
 	const [loading, setLoading] = useState(true);
@@ -53,6 +61,9 @@ export const HomeView = ({
 	const [comparison, setComparison] = useState<BackendComparison | null>(null);
 	const [monthlyIncome, setMonthlyIncome] = useState(0);
 	const [monthlyExpense, setMonthlyExpense] = useState(0);
+	const [editingTransaction, setEditingTransaction] =
+		useState<BackendTransaction | null>(null);
+	const [allCategories, setAllCategories] = useState<BackendCategory[]>([]);
 
 	useEffect(() => {
 		const fetchData = async () => {
@@ -63,6 +74,10 @@ export const HomeView = ({
 				if (user.name) {
 					setUserName(user.name.split(" ")[0]);
 				}
+
+				// Fetch categories for edit modal
+				const cats = await categoryService.getCategories();
+				setAllCategories(cats);
 
 				// Fetch wallets
 				const walletsData = await walletService.getWallets();
@@ -191,7 +206,7 @@ export const HomeView = ({
 													>
 														{comparison.income.change_percent >= 0 ? "↑" : "↓"}{" "}
 														{Math.abs(comparison.income.change_percent).toFixed(
-															1
+															1,
 														)}
 														%
 													</span>
@@ -225,7 +240,7 @@ export const HomeView = ({
 													>
 														{comparison.expense.change_percent >= 0 ? "↑" : "↓"}{" "}
 														{Math.abs(
-															comparison.expense.change_percent
+															comparison.expense.change_percent,
 														).toFixed(1)}
 														%
 													</span>
@@ -329,18 +344,24 @@ export const HomeView = ({
 
 							<div className="space-y-1">
 								{transactions.length > 0 ? (
-									transactions
-										.slice(0, 5)
-										.map((t) => (
+									transactions.slice(0, 5).map((t) => {
+										const category = allCategories.find(
+											(c) => c.id === t.category_id,
+										);
+										return (
 											<TransactionItem
 												key={t.id}
-												icon={t.icon || getCategoryIcon(t.title)}
-												title={t.title}
-												subtitle={t.subtitle}
-												amount={t.amount}
-												percent={t.percent}
+												icon={getCategoryIcon(
+													t.note || category?.name || t.type || "Expense",
+												)}
+												title={t.note || category?.name || t.type || "Expense"}
+												subtitle={t.currency}
+												amount={t.amount.toString()}
+												percent="0"
+												onClick={() => setEditingTransaction(t)}
 											/>
-										))
+										);
+									})
 								) : (
 									<div className="text-center py-8 text-(--muted-foreground)">
 										No transactions yet
@@ -351,6 +372,24 @@ export const HomeView = ({
 					</div>
 				</div>
 			</div>
+
+			{/* Edit Expense Modal */}
+			{editingTransaction && (
+				<EditExpenseModal
+					transaction={editingTransaction}
+					categories={allCategories}
+					wallets={wallets}
+					onClose={() => setEditingTransaction(null)}
+					onSave={() => {
+						setEditingTransaction(null);
+						if (onRefresh) onRefresh();
+					}}
+					onDelete={() => {
+						setEditingTransaction(null);
+						if (onRefresh) onRefresh();
+					}}
+				/>
+			)}
 		</div>
 	);
 };
