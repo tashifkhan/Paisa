@@ -292,3 +292,46 @@ async def add_group_expense(
 
     await txn.create()
     return {"status": "created", "id": str(txn.id)}
+
+
+@router.post("/{group_id}/simplify-debts", response_model=schemas.SimplifyDebtsResponse)
+async def simplify_group_debts(group_id: str, current_user=Depends(get_current_user)):
+    """
+    Calculate simplified debt settlements for a group.
+    Uses a greedy algorithm to minimize the number of transactions
+    needed to settle all balances.
+    """
+    try:
+        uuid_obj = UUID(group_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Invalid UUID")
+
+    # Check membership
+    if not await GroupService.is_member(uuid_obj, current_user.id):
+        raise HTTPException(status_code=403, detail="Not a member of this group")
+
+    g = await GroupService.get_group(uuid_obj)
+    if not g:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    # Get simplified debts
+    simplified = await GroupService.simplify_debts(uuid_obj)
+
+    # Convert to response format
+    simplified_debts = [
+        {
+            "from_user_id": str(s["from_id"]),
+            "from_user_name": s["from_name"],
+            "to_user_id": str(s["to_id"]),
+            "to_user_name": s["to_name"],
+            "amount": s["amount"],
+        }
+        for s in simplified
+    ]
+
+    return {
+        "group_id": str(uuid_obj),
+        "group_name": g.name,
+        "simplified_debts": simplified_debts,
+        "total_transactions": len(simplified_debts),
+    }

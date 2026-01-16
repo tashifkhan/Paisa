@@ -259,3 +259,19 @@ class StatsBreakdown(BaseModel):
     total_income: float
     net: float
     by_category: List[CategoryStats]
+
+
+# Simplify Debts Schemas
+class SimplifiedDebt(BaseModel):
+    from_user_id: str
+    from_user_name: str
+    to_user_id: str
+    to_user_name: str
+    amount: float
+
+
+class SimplifyDebtsResponse(BaseModel):
+    group_id: str
+    group_name: str
+    simplified_debts: List[SimplifiedDebt]
+    total_transactions: int

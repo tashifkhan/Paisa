@@ -249,3 +249,79 @@ class GroupService:
                     balances[payer_id] += amount
 
         return balances
+
+    @staticmethod
+    async def simplify_debts(group_id: UUID) -> list[dict]:
+        """
+        Calculate simplified debt settlements using a greedy algorithm.
+        Minimizes the number of transactions needed to settle all balances.
+
+        Returns a list of simplified transactions:
+        [{"from_id": UUID, "from_name": str, "to_id": UUID, "to_name": str, "amount": float}, ...]
+        """
+        # Get current balances
+        balances_raw = await GroupService.calculate_group_balances(group_id)
+
+        if not balances_raw:
+            return []
+
+        # Get user names for display
+        user_names: dict[UUID, str] = {}
+        for user_id in balances_raw.keys():
+            user = await models.User.get(user_id)
+            user_names[user_id] = user.name if user else "Unknown"
+
+        # Build list with user info
+        balance_list = [
+            {
+                "user_id": uid,
+                "user_name": user_names.get(uid, "Unknown"),
+                "balance": bal,
+            }
+            for uid, bal in balances_raw.items()
+        ]
+
+        # Separate into creditors (positive = owed money) and debtors (negative = owe money)
+        creditors = sorted(
+            [b for b in balance_list if b["balance"] > 0.01],
+            key=lambda x: -x["balance"],  # Highest creditor first
+        )
+        debtors = sorted(
+            [b for b in balance_list if b["balance"] < -0.01],
+            key=lambda x: x["balance"],  # Most negative (biggest debtor) first
+        )
+
+        transactions = []
+        i = 0  # debtor index
+        j = 0  # creditor index
+
+        while i < len(debtors) and j < len(creditors):
+            debtor = debtors[i]
+            creditor = creditors[j]
+
+            debt_amount = abs(debtor["balance"])
+            credit_amount = creditor["balance"]
+            settle_amount = min(debt_amount, credit_amount)
+
+            if settle_amount > 0.01:  # Avoid tiny amounts
+                transactions.append(
+                    {
+                        "from_id": debtor["user_id"],
+                        "from_name": debtor["user_name"],
+                        "to_id": creditor["user_id"],
+                        "to_name": creditor["user_name"],
+                        "amount": round(settle_amount, 2),
+                    }
+                )
+
+            # Update balances
+            debtor["balance"] += settle_amount
+            creditor["balance"] -= settle_amount
+
+            # Move to next debtor/creditor if settled
+            if abs(debtor["balance"]) < 0.01:
+                i += 1
+            if abs(creditor["balance"]) < 0.01:
+                j += 1
+
+        return transactions

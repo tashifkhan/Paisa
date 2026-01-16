@@ -1,5 +1,6 @@
 import {
 	ArrowLeft,
+	ArrowRight,
 	Loader2,
 	MoreHorizontal,
 	Plane,
@@ -8,6 +9,7 @@ import {
 	Share2,
 	ShoppingBag,
 	Users,
+	X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { groupService } from "../../services/groupService";
@@ -26,6 +28,14 @@ interface GroupDetailViewProps {
 	setCurrentView: (view: string) => void;
 }
 
+interface SimplifiedDebt {
+	from: string;
+	fromName: string;
+	to: string;
+	toName: string;
+	amount: number;
+}
+
 export const GroupDetailView = ({
 	group,
 	groupExpenses: _initialExpenses, // Kept for prop compatibility but using API data
@@ -37,9 +47,14 @@ export const GroupDetailView = ({
 	const [expenses, setExpenses] = useState<BackendTransaction[]>([]);
 	const [members, setMembers] = useState<BackendGroupMember[]>([]);
 	const [balances, setBalances] = useState<BackendGroupBalanceSummary | null>(
-		null
+		null,
 	);
 	const [totalExpenses, setTotalExpenses] = useState(0);
+
+	// Simplify Debts State
+	const [showSimplifyModal, setShowSimplifyModal] = useState(false);
+	const [simplifiedDebts, setSimplifiedDebts] = useState<SimplifiedDebt[]>([]);
+	const [isSimplifying, setIsSimplifying] = useState(false);
 
 	useEffect(() => {
 		if (!group?.id) return;
@@ -95,6 +110,35 @@ export const GroupDetailView = ({
 	};
 
 	const userBalance = getCurrentUserBalance();
+
+	// Simplify Debts Algorithm (now uses backend API)
+	const simplifyDebts = async () => {
+		if (!group?.id) return;
+
+		setIsSimplifying(true);
+		try {
+			const response = await groupService.simplifyDebts(group.id);
+
+			// Map backend response to frontend format
+			const transactions: SimplifiedDebt[] = response.simplified_debts.map(
+				(debt) => ({
+					from: debt.from_user_id,
+					fromName: debt.from_user_name,
+					to: debt.to_user_id,
+					toName: debt.to_user_name,
+					amount: debt.amount,
+				}),
+			);
+
+			setSimplifiedDebts(transactions);
+			setShowSimplifyModal(true);
+		} catch (error) {
+			console.error("Failed to simplify debts:", error);
+			alert("Failed to calculate simplified settlements. Please try again.");
+		} finally {
+			setIsSimplifying(false);
+		}
+	};
 
 	return (
 		<div className="flex flex-col h-full bg-(--background) overflow-y-auto hide-scrollbar transition-colors duration-300">
@@ -270,7 +314,7 @@ export const GroupDetailView = ({
 														{formatCurrency(Math.abs(balance.balance))}
 													</div>
 												</div>
-											)
+											),
 										)}
 
 										<div className="bg-(--muted) rounded-2xl p-6 text-center mt-8">
@@ -285,8 +329,12 @@ export const GroupDetailView = ({
 												Minimize the number of transactions required to settle
 												up.
 											</p>
-											<button className="px-6 py-2 bg-(--foreground) text-(--background) rounded-xl text-sm font-bold">
-												Simplify Now
+											<button
+												onClick={simplifyDebts}
+												disabled={isSimplifying}
+												className="px-6 py-2 bg-(--foreground) text-(--background) rounded-xl text-sm font-bold disabled:opacity-50"
+											>
+												{isSimplifying ? "Calculating..." : "Simplify Now"}
 											</button>
 										</div>
 									</>
@@ -349,6 +397,73 @@ export const GroupDetailView = ({
 					<Plus size={24} />
 				</button>
 			</div>
+
+			{/* Simplify Debts Modal */}
+			{showSimplifyModal && (
+				<div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+					<div className="bg-(--card) border border-(--border) rounded-3xl p-6 w-full max-w-md shadow-xl max-h-[80vh] overflow-y-auto">
+						<div className="flex justify-between items-center mb-4">
+							<h3 className="text-lg font-bold text-(--foreground)">
+								Simplified Settlements
+							</h3>
+							<button
+								onClick={() => setShowSimplifyModal(false)}
+								className="p-1 text-(--muted-foreground) hover:text-(--foreground)"
+							>
+								<X size={20} />
+							</button>
+						</div>
+
+						{simplifiedDebts.length > 0 ? (
+							<div className="space-y-3">
+								<p className="text-sm text-(--muted-foreground) mb-4">
+									Minimized to {simplifiedDebts.length} transaction
+									{simplifiedDebts.length > 1 ? "s" : ""}:
+								</p>
+								{simplifiedDebts.map((debt, index) => (
+									<div
+										key={index}
+										className="flex items-center justify-between p-4 bg-(--muted) rounded-2xl"
+									>
+										<div className="flex items-center gap-2">
+											<div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold">
+												{debt.fromName.charAt(0)}
+											</div>
+											<span className="text-sm font-medium text-(--foreground)">
+												{debt.fromName}
+											</span>
+											<ArrowRight
+												size={16}
+												className="text-(--muted-foreground)"
+											/>
+											<div className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs font-bold">
+												{debt.toName.charAt(0)}
+											</div>
+											<span className="text-sm font-medium text-(--foreground)">
+												{debt.toName}
+											</span>
+										</div>
+										<span className="font-bold text-(--primary)">
+											{formatCurrency(debt.amount)}
+										</span>
+									</div>
+								))}
+							</div>
+						) : (
+							<div className="text-center py-8 text-(--muted-foreground)">
+								<p>All balances are already settled!</p>
+							</div>
+						)}
+
+						<button
+							onClick={() => setShowSimplifyModal(false)}
+							className="w-full mt-6 py-3 bg-(--primary) text-(--primary-foreground) rounded-2xl font-medium"
+						>
+							Got it
+						</button>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 };

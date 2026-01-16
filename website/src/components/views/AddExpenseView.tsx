@@ -151,6 +151,14 @@ export const AddExpenseView = ({
 	const [isSplit, setIsSplit] = useState(false);
 	const [splitWith, setSplitWith] = useState<string>("");
 
+	// New states for enhanced splitting
+	const [paidBy, setPaidBy] = useState<"me" | "them">("me");
+	const [splitType, setSplitType] = useState<"equal" | "percentage" | "exact">(
+		"equal",
+	);
+	const [myPercentage, setMyPercentage] = useState(50);
+	const [myExactAmount, setMyExactAmount] = useState(0);
+
 	const [note, setNote] = useState("");
 	const [loading, setLoading] = useState(true);
 	const [submitting, setSubmitting] = useState(false);
@@ -223,6 +231,28 @@ export const AddExpenseView = ({
 		}
 	}, [location.state]);
 
+	// Calculate split amounts based on type
+	const calculateSplitAmount = (
+		totalAmount: number,
+	): { myShare: number; theirShare: number } => {
+		switch (splitType) {
+			case "equal":
+				return { myShare: totalAmount / 2, theirShare: totalAmount / 2 };
+			case "percentage":
+				return {
+					myShare: (totalAmount * myPercentage) / 100,
+					theirShare: (totalAmount * (100 - myPercentage)) / 100,
+				};
+			case "exact":
+				return {
+					myShare: myExactAmount,
+					theirShare: totalAmount - myExactAmount,
+				};
+			default:
+				return { myShare: totalAmount / 2, theirShare: totalAmount / 2 };
+		}
+	};
+
 	const handleSubmit = async () => {
 		const amountNum = parseFloat(amount);
 		if (isNaN(amountNum) || amountNum <= 0) {
@@ -237,25 +267,46 @@ export const AddExpenseView = ({
 
 		setSubmitting(true);
 		try {
-			// 1. Add the main expense transaction
-			await expenseService.addTransaction({
-				amount: amountNum,
-				currency: "INR",
-				type: transactionType,
-				date: new Date().toISOString(),
-				note: note || (isSplit ? `Split with ${splitWith}` : undefined),
-				wallet_id: selectedWallet || undefined,
-				category_id: selectedCategory || undefined,
-			});
+			const { myShare, theirShare } = calculateSplitAmount(amountNum);
 
-			// 2. If split, create a debt record
-			// Assuming equal split for now: User paid full, other owes 50%
 			if (isSplit) {
-				const splitAmount = amountNum / 2;
-				await debtService.addDebt({
-					counterparty_name: splitWith,
-					amount: splitAmount,
-					type: "owed_to_me", // You paid, they owe you
+				if (paidBy === "me") {
+					// I paid the full amount
+					// Record my expense
+					await expenseService.addTransaction({
+						amount: amountNum,
+						currency: "INR",
+						type: transactionType,
+						date: new Date().toISOString(),
+						note: note || `Split with ${splitWith}`,
+						wallet_id: selectedWallet || undefined,
+						category_id: selectedCategory || undefined,
+					});
+					// They owe me their share
+					await debtService.addDebt({
+						counterparty_name: splitWith,
+						amount: theirShare,
+						type: "owed_to_me",
+					});
+				} else {
+					// They paid the full amount
+					// I owe them my share
+					await debtService.addDebt({
+						counterparty_name: splitWith,
+						amount: myShare,
+						type: "owed_by_me",
+					});
+				}
+			} else {
+				// No split, just a regular transaction
+				await expenseService.addTransaction({
+					amount: amountNum,
+					currency: "INR",
+					type: transactionType,
+					date: new Date().toISOString(),
+					note: note || undefined,
+					wallet_id: selectedWallet || undefined,
+					category_id: selectedCategory || undefined,
 				});
 			}
 
@@ -428,38 +479,139 @@ export const AddExpenseView = ({
 						</div>
 
 						{isSplit && (
-							<Select value={splitWith} onValueChange={setSplitWith}>
-								<SelectTrigger className="w-full mt-2">
-									<div className="flex items-center gap-2">
-										<Users size={18} />
-										<SelectValue placeholder="Split with..." />
-									</div>
-								</SelectTrigger>
-								<SelectContent>
-									{people
-										.filter(
-											(person) =>
-												person.counterparty_name &&
-												person.counterparty_name.trim() !== "",
-										)
-										.map((person) => (
-											<SelectItem
-												key={person.id || person.counterparty_name}
-												value={person.counterparty_name}
-											>
-												<div className="flex items-center gap-2">
-													<Users size={18} />
-													{person.counterparty_name}
-												</div>
+							<div className="space-y-3 mt-3">
+								{/* Split With Person */}
+								<Select value={splitWith} onValueChange={setSplitWith}>
+									<SelectTrigger className="w-full">
+										<div className="flex items-center gap-2">
+											<Users size={18} />
+											<SelectValue placeholder="Split with..." />
+										</div>
+									</SelectTrigger>
+									<SelectContent>
+										{people
+											.filter(
+												(person) =>
+													person.counterparty_name &&
+													person.counterparty_name.trim() !== "",
+											)
+											.map((person) => (
+												<SelectItem
+													key={person.id || person.counterparty_name}
+													value={person.counterparty_name}
+												>
+													<div className="flex items-center gap-2">
+														<Users size={18} />
+														{person.counterparty_name}
+													</div>
+												</SelectItem>
+											))}
+										{people.length === 0 && (
+											<SelectItem value="none" disabled>
+												No contacts
 											</SelectItem>
+										)}
+									</SelectContent>
+								</Select>
+
+								{/* Paid By Toggle */}
+								{splitWith && (
+									<div className="flex bg-(--muted) rounded-full p-1 w-full">
+										<button
+											onClick={() => setPaidBy("me")}
+											className={`flex-1 py-2 px-3 rounded-full text-xs font-medium transition-all ${
+												paidBy === "me"
+													? "bg-(--primary) text-(--primary-foreground)"
+													: "text-(--muted-foreground)"
+											}`}
+										>
+											You Paid
+										</button>
+										<button
+											onClick={() => setPaidBy("them")}
+											className={`flex-1 py-2 px-3 rounded-full text-xs font-medium transition-all ${
+												paidBy === "them"
+													? "bg-(--primary) text-(--primary-foreground)"
+													: "text-(--muted-foreground)"
+											}`}
+										>
+											{splitWith} Paid
+										</button>
+									</div>
+								)}
+
+								{/* Split Type Selector */}
+								{splitWith && (
+									<div className="flex bg-(--muted) rounded-xl p-1 w-full">
+										{(["equal", "percentage", "exact"] as const).map((type) => (
+											<button
+												key={type}
+												onClick={() => setSplitType(type)}
+												className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all capitalize ${
+													splitType === type
+														? "bg-(--card) text-(--foreground) shadow-sm"
+														: "text-(--muted-foreground)"
+												}`}
+											>
+												{type}
+											</button>
 										))}
-									{people.length === 0 && (
-										<SelectItem value="none" disabled>
-											No contacts
-										</SelectItem>
-									)}
-								</SelectContent>
-							</Select>
+									</div>
+								)}
+
+								{/* Custom Split Inputs */}
+								{splitWith && splitType === "percentage" && (
+									<div className="flex items-center gap-2 text-sm">
+										<span className="text-(--muted-foreground)">You:</span>
+										<input
+											type="number"
+											min="0"
+											max="100"
+											value={myPercentage}
+											onChange={(e) =>
+												setMyPercentage(
+													Math.min(100, Math.max(0, Number(e.target.value))),
+												)
+											}
+											className="w-16 px-2 py-1 rounded-lg bg-(--muted) text-(--foreground) text-center border border-(--border)"
+										/>
+										<span className="text-(--muted-foreground)">%</span>
+										<span className="mx-2 text-(--muted-foreground)">|</span>
+										<span className="text-(--muted-foreground)">
+											{splitWith}:
+										</span>
+										<span className="font-medium text-(--foreground)">
+											{100 - myPercentage}%
+										</span>
+									</div>
+								)}
+
+								{splitWith && splitType === "exact" && (
+									<div className="flex items-center gap-2 text-sm">
+										<span className="text-(--muted-foreground)">You:</span>
+										<span className="text-(--muted-foreground)">₹</span>
+										<input
+											type="number"
+											min="0"
+											value={myExactAmount}
+											onChange={(e) =>
+												setMyExactAmount(Math.max(0, Number(e.target.value)))
+											}
+											className="w-20 px-2 py-1 rounded-lg bg-(--muted) text-(--foreground) text-center border border-(--border)"
+										/>
+										<span className="mx-2 text-(--muted-foreground)">|</span>
+										<span className="text-(--muted-foreground)">
+											{splitWith}:
+										</span>
+										<span className="font-medium text-(--foreground)">
+											₹
+											{Math.max(0, parseFloat(amount) - myExactAmount).toFixed(
+												2,
+											)}
+										</span>
+									</div>
+								)}
+							</div>
 						)}
 					</div>
 
