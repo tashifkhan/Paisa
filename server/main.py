@@ -6,6 +6,7 @@ Or: uvicorn app:app --reload
 """
 
 import uvicorn
+from app import app
 
 
 def main():
