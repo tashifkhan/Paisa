@@ -24,7 +24,12 @@ from .routes import (
 )
 
 # Detect if running in serverless environment (set via env var)
-IS_SERVERLESS = os.environ.get("SERVERLESS", "false").lower() == "true"
+# Detect if running in serverless environment (set via env var)
+# Vercel sets VERCEL=1
+IS_SERVERLESS = (
+    os.environ.get("SERVERLESS", "false").lower() == "true"
+    or os.environ.get("VERCEL") == "1"
+)
 
 
 @asynccontextmanager
@@ -72,11 +77,16 @@ app.include_router(data.router, prefix="/data", tags=["Data"])
 
 # Only set up uploads directory for non-serverless environments
 if not IS_SERVERLESS:
-    uploads_dir = os.path.join(os.getcwd(), "uploads")
-    os.makedirs(uploads_dir, exist_ok=True)
-    logger.info(f"Uploads directory ready: {uploads_dir}")
-    # Serve uploads/static for simple PWA assets or manifest
-    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+    try:
+        uploads_dir = os.path.join(os.getcwd(), "uploads")
+        os.makedirs(uploads_dir, exist_ok=True)
+        logger.info(f"Uploads directory ready: {uploads_dir}")
+        # Serve uploads/static for simple PWA assets or manifest
+        app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+    except OSError:
+        logger.warning(
+            "Could not create uploads directory (likely read-only filesystem). Uploads disabled."
+        )
 
 
 @app.get("/")
