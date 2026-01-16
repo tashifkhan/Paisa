@@ -68,6 +68,10 @@ function AppContent() {
 	const [language, setLanguage] = useState("English");
 	const [activeWalletTab, setActiveWalletTab] = useState("Cards");
 
+	// --- User State ---
+	const [userName, setUserName] = useState<string | undefined>();
+	const [userEmail, setUserEmail] = useState<string>("");
+
 	// --- API State ---
 	const [transactions, setTransactions] = useState<Transaction[]>([]);
 	const [groups, setGroups] = useState<any[]>([]);
@@ -93,6 +97,19 @@ function AppContent() {
 				const { expenseService } = await import("./services/expenseService");
 				const { groupService } = await import("./services/groupService");
 				const { debtService } = await import("./services/debtService");
+				const { userService } = await import("./services/userService");
+
+				// Fetch User Data
+				try {
+					const userData = await userService.getCurrentUser();
+					setUserName(userData.name);
+					setUserEmail(userData.email);
+					if (userData.currency) setCurrency(userData.currency);
+					if (userData.language)
+						setLanguage(userData.language === "en" ? "English" : "Hindi");
+				} catch (err) {
+					console.error("Failed to fetch user data", err);
+				}
 
 				// Fetch Transactions
 				const txnsData = await expenseService.getTransactions();
@@ -148,6 +165,39 @@ function AppContent() {
 	const [selectedGroup, setSelectedGroup] = useState<any>(null); // Add selectedGroup state
 
 	const toggleTheme = () => setIsDarkMode(!isDarkMode);
+
+	// Handle logout
+	const handleLogout = async () => {
+		const { authService } = await import("./services/authService");
+		authService.logout();
+		setUserName(undefined);
+		setUserEmail("");
+		navigate("/signin");
+	};
+
+	// Handle currency change with API persistence
+	const handleCurrencyChange = async (newCurrency: string) => {
+		setCurrency(newCurrency);
+		try {
+			const { userService } = await import("./services/userService");
+			await userService.updateCurrentUser({ currency: newCurrency });
+		} catch (err) {
+			console.error("Failed to update currency", err);
+		}
+	};
+
+	// Handle language change with API persistence
+	const handleLanguageChange = async (newLanguage: string) => {
+		setLanguage(newLanguage);
+		try {
+			const { userService } = await import("./services/userService");
+			await userService.updateCurrentUser({
+				language: newLanguage === "English" ? "en" : "hi",
+			});
+		} catch (err) {
+			console.error("Failed to update language", err);
+		}
+	};
 
 	// Keypad Logic
 	const handleKeyPress = (key) => {
@@ -352,10 +402,13 @@ function AppContent() {
 									notifications={notifications}
 									setNotifications={setNotifications}
 									currency={currency}
-									setCurrency={setCurrency}
+									setCurrency={handleCurrencyChange}
 									language={language}
-									setLanguage={setLanguage}
+									setLanguage={handleLanguageChange}
 									setCurrentView={handleAuthNavigation}
+									userName={userName}
+									userEmail={userEmail}
+									onLogout={handleLogout}
 								/>
 							}
 						/>

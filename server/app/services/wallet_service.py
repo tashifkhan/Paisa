@@ -100,3 +100,26 @@ class WalletService:
             models.Wallet.deleted == False,
         ).to_list()
         return sum(w.balance for w in wallets)
+
+    @staticmethod
+    async def seed_default_wallet(user_id: UUID) -> models.Wallet:
+        """Create a default Cash wallet for new users."""
+        # Check if user already has wallets
+        existing = await models.Wallet.find(
+            models.Wallet.user_id == user_id,
+            models.Wallet.deleted == False,
+        ).first_or_none()
+
+        if existing:
+            return existing
+
+        # Create default Cash wallet
+        wallet = models.Wallet(
+            user_id=user_id,
+            name="Cash",
+            type="cash",
+            currency="INR",
+            balance=0.0,
+        )
+        await wallet.create()
+        return wallet

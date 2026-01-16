@@ -22,6 +22,9 @@ interface ProfileViewProps {
 	language: string;
 	setLanguage: (value: string) => void;
 	setCurrentView: (view: string) => void;
+	userName?: string;
+	userEmail: string;
+	onLogout: () => void;
 }
 
 export const ProfileView = ({
@@ -34,6 +37,9 @@ export const ProfileView = ({
 	language,
 	setLanguage,
 	setCurrentView,
+	userName,
+	userEmail,
+	onLogout,
 }: ProfileViewProps) => (
 	<div className="flex flex-col h-full bg-(--background) pb-24 md:pb-6 overflow-y-auto hide-scrollbar transition-colors duration-300">
 		<div className="max-w-5xl mx-auto w-full">
@@ -56,9 +62,9 @@ export const ProfileView = ({
 					</div>
 				</div>
 				<h2 className="text-2xl font-bold text-(--foreground)">
-					Tashif Ahmad Khan
+					{userName || "User"}
 				</h2>
-				<p className="text-(--muted-foreground)">admin@tashif.codes</p>
+				<p className="text-(--muted-foreground)">{userEmail}</p>
 			</div>
 
 			{/* Settings List */}
@@ -118,7 +124,10 @@ export const ProfileView = ({
 						Support
 					</h3>
 					<SettingItem icon={CircleHelp} title="Help & Support" />
-					<button className="w-full flex items-center justify-start p-4 gap-4 bg-(--destructive)/10 text-(--destructive) rounded-2xl mt-4 hover:bg-(--destructive)/20 transition-all">
+					<button
+						onClick={onLogout}
+						className="w-full flex items-center justify-start p-4 gap-4 bg-(--destructive)/10 text-(--destructive) rounded-2xl mt-4 hover:bg-(--destructive)/20 transition-all"
+					>
 						<div className="w-10 h-10 rounded-full bg-(--destructive)/20 flex items-center justify-center">
 							<LogOut size={20} />
 						</div>

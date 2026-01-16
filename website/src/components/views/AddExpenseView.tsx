@@ -160,13 +160,29 @@ export const AddExpenseView = ({
 				setWallets(walletsData);
 				setTotalBalance(balanceData.total_balance);
 
-				// Set defaults
-				if (catsData.length > 0) {
+				// If no categories exist, try to seed defaults
+				if (catsData.length === 0) {
+					try {
+						await categoryService.seedDefaults();
+						const newCats = await categoryService.getCategories();
+						setCategories(newCats);
+						if (newCats.length > 0) {
+							const defaultCat = newCats.find(
+								(c) => c.type === "expense" || c.type === "both"
+							);
+							if (defaultCat) setSelectedCategory(defaultCat.id);
+						}
+					} catch (seedError) {
+						console.error("Failed to seed default categories:", seedError);
+					}
+				} else {
+					// Set defaults
 					const defaultCat = catsData.find(
 						(c) => c.type === "expense" || c.type === "both"
 					);
 					if (defaultCat) setSelectedCategory(defaultCat.id);
 				}
+
 				if (walletsData.length > 0) {
 					setSelectedWallet(walletsData[0].id);
 				}
@@ -198,11 +214,16 @@ export const AddExpenseView = ({
 				category_id: selectedCategory || undefined,
 			});
 
-			// Navigate back and trigger refresh
-			handleKeyPress("check");
-		} catch (error) {
+			// Navigate back to stats view
+			setCurrentView("stats");
+		} catch (error: unknown) {
 			console.error("Failed to add transaction:", error);
-			alert("Failed to add transaction. Please try again.");
+			const message =
+				error instanceof Error
+					? error.message
+					: (error as { response?: { data?: { detail?: string } } })?.response
+							?.data?.detail || "Failed to add transaction. Please try again.";
+			alert(message);
 		} finally {
 			setSubmitting(false);
 		}

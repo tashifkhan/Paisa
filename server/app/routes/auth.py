@@ -8,8 +8,64 @@ from ..models import schemas
 from ..core.security import get_password_hash, verify_password, create_access_token
 from ..core.logger import logger
 from ..services.email_service import EmailService
+from ..services.wallet_service import WalletService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+# Default categories to seed for new users
+DEFAULT_CATEGORIES = [
+    {
+        "name": "Food & Dining",
+        "icon": "utensils",
+        "color": "#FF6B6B",
+        "type": "expense",
+    },
+    {"name": "Transportation", "icon": "car", "color": "#4ECDC4", "type": "expense"},
+    {"name": "Shopping", "icon": "shopping-bag", "color": "#45B7D1", "type": "expense"},
+    {"name": "Entertainment", "icon": "film", "color": "#96CEB4", "type": "expense"},
+    {
+        "name": "Bills & Utilities",
+        "icon": "file-text",
+        "color": "#FFEAA7",
+        "type": "expense",
+    },
+    {"name": "Health", "icon": "heart", "color": "#DDA0DD", "type": "expense"},
+    {
+        "name": "Groceries",
+        "icon": "shopping-cart",
+        "color": "#82E0AA",
+        "type": "expense",
+    },
+    {"name": "Other", "icon": "more-horizontal", "color": "#95A5A6", "type": "both"},
+    {"name": "Salary", "icon": "briefcase", "color": "#27AE60", "type": "income"},
+    {"name": "Freelance", "icon": "laptop", "color": "#3498DB", "type": "income"},
+    {"name": "Investment", "icon": "trending-up", "color": "#9B59B6", "type": "income"},
+]
+
+
+async def seed_user_defaults(user_id):
+    """Seed default wallet and categories for a new user."""
+    # Create default Cash wallet
+    await WalletService.seed_default_wallet(user_id)
+
+    # Check if default categories exist (system-wide), if not create user-specific ones
+    existing_defaults = await models.Category.find(
+        models.Category.is_default == True,
+        models.Category.deleted == False,
+    ).first_or_none()
+
+    if not existing_defaults:
+        # No global defaults, create them as system defaults
+        for cat_data in DEFAULT_CATEGORIES:
+            cat = models.Category(
+                user_id=None,  # System default
+                name=cat_data["name"],
+                icon=cat_data["icon"],
+                color=cat_data["color"],
+                type=cat_data["type"],
+                is_default=True,
+            )
+            await cat.create()
 
 
 @router.post("/request-otp")
@@ -59,6 +115,9 @@ async def verify_otp(payload: schemas.OTPVerify):
     hashed = get_password_hash(payload.password)
     user = models.User(email=payload.email, name=payload.name, password_hash=hashed)
     await user.create()
+
+    # Seed default wallet and categories for new user
+    await seed_user_defaults(user.id)
 
     otp.used = True
     await otp.save()

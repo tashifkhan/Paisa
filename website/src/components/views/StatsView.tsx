@@ -1,8 +1,23 @@
-import { ArrowUpRight, Calendar, TrendingDown, TrendingUp } from "lucide-react";
+import {
+	ArrowUpRight,
+	Calendar,
+	Edit3,
+	TrendingDown,
+	TrendingUp,
+} from "lucide-react";
 import { useEffect, useState } from "react";
+import { categoryService } from "../../services/categoryService";
 import { debtService } from "../../services/debtService";
+import { expenseService } from "../../services/expenseService";
 import { statsService } from "../../services/statsService";
+import type {
+	BackendCategory,
+	BackendTransaction,
+	BackendWallet,
+} from "../../services/types";
+import { walletService } from "../../services/walletService";
 import { CircularProgress } from "../shared/CircularProgress";
+import { EditExpenseModal } from "../shared/EditExpenseModal";
 import { ExpenseChart } from "../shared/ExpenseChart";
 import { StatsCard } from "../shared/StatsCard";
 import { TransactionItem } from "../shared/TransactionItem";
@@ -48,6 +63,16 @@ export const StatsView = () => {
 		}>
 	>([]);
 
+	// Transaction list state
+	const [transactions, setTransactions] = useState<BackendTransaction[]>([]);
+	const [allCategories, setAllCategories] = useState<BackendCategory[]>([]);
+	const [allWallets, setAllWallets] = useState<BackendWallet[]>([]);
+	const [editingTransaction, setEditingTransaction] =
+		useState<BackendTransaction | null>(null);
+	const [transactionTypeFilter, setTransactionTypeFilter] = useState<
+		"all" | "expense" | "income"
+	>("all");
+
 	useEffect(() => {
 		const fetchStats = async () => {
 			setLoading(true);
@@ -79,6 +104,16 @@ export const StatsView = () => {
 					)
 					.slice(0, 5);
 				setUpcomingDues(upcoming);
+
+				// Fetch transactions and related data for the Transactions tab
+				const [txns, cats, wallets] = await Promise.all([
+					expenseService.getTransactions({ limit: 100 }),
+					categoryService.getCategories(),
+					walletService.getWallets(),
+				]);
+				setTransactions(txns);
+				setAllCategories(cats);
+				setAllWallets(wallets);
 			} catch (error) {
 				console.error("Failed to fetch stats:", error);
 			} finally {
@@ -88,6 +123,30 @@ export const StatsView = () => {
 
 		fetchStats();
 	}, [period]);
+
+	const refreshTransactions = async () => {
+		try {
+			const txns = await expenseService.getTransactions({ limit: 100 });
+			setTransactions(txns);
+		} catch (error) {
+			console.error("Failed to refresh transactions:", error);
+		}
+	};
+
+	const getCategoryById = (id?: string) => {
+		if (!id) return null;
+		return allCategories.find((c) => c.id === id);
+	};
+
+	const getWalletById = (id?: string) => {
+		if (!id) return null;
+		return allWallets.find((w) => w.id === id);
+	};
+
+	const filteredTransactions = transactions.filter((t) => {
+		if (transactionTypeFilter === "all") return true;
+		return t.type === transactionTypeFilter;
+	});
 
 	const formatCurrency = (amount: number) => {
 		return new Intl.NumberFormat("en-IN", {
@@ -136,19 +195,21 @@ export const StatsView = () => {
 						{/* Stats Cards */}
 						<div className="px-6 md:px-0 mb-8">
 							<div className="flex justify-between items-center bg-(--muted) rounded-4xl p-1 text-sm font-medium mb-4">
-								{["Overview", "Expenses", "Income"].map((tab) => (
-									<button
-										key={tab}
-										onClick={() => setActiveTab(tab)}
-										className={`flex-1 py-3 rounded-4xl transition-all ${
-											activeTab === tab
-												? "bg-(--primary) text-(--primary-foreground) shadow-md"
-												: "text-(--muted-foreground)"
-										}`}
-									>
-										{tab}
-									</button>
-								))}
+								{["Overview", "Expenses", "Income", "Transactions"].map(
+									(tab) => (
+										<button
+											key={tab}
+											onClick={() => setActiveTab(tab)}
+											className={`flex-1 py-3 rounded-4xl transition-all text-xs md:text-sm ${
+												activeTab === tab
+													? "bg-(--primary) text-(--primary-foreground) shadow-md"
+													: "text-(--muted-foreground)"
+											}`}
+										>
+											{tab}
+										</button>
+									)
+								)}
 							</div>
 
 							{activeTab === "Overview" && (
@@ -270,6 +331,121 @@ export const StatsView = () => {
 								</div>
 							)}
 						</div>
+
+						{activeTab === "Transactions" && (
+							<div className="space-y-4">
+								{/* Filter Row */}
+								<div className="flex items-center gap-3">
+									<div className="flex bg-(--muted) rounded-xl p-1 text-xs font-medium">
+										{(["all", "expense", "income"] as const).map((type) => (
+											<button
+												key={type}
+												onClick={() => setTransactionTypeFilter(type)}
+												className={`px-3 py-1.5 rounded-lg transition-all capitalize ${
+													transactionTypeFilter === type
+														? "bg-(--card) text-(--foreground) shadow-sm"
+														: "text-(--muted-foreground)"
+												}`}
+											>
+												{type}
+											</button>
+										))}
+									</div>
+									<span className="text-xs text-(--muted-foreground)">
+										{filteredTransactions.length} transactions
+									</span>
+								</div>
+
+								{/* Transaction List */}
+								<div className="space-y-2 max-h-[500px] overflow-y-auto">
+									{filteredTransactions.length === 0 ? (
+										<div className="text-center py-8 text-(--muted-foreground)">
+											<p>No transactions found</p>
+										</div>
+									) : (
+										filteredTransactions.map((txn) => {
+											const category = getCategoryById(txn.category_id);
+											const wallet = getWalletById(txn.wallet_id);
+											return (
+												<div
+													key={txn.id}
+													className="flex items-center justify-between p-4 bg-(--card) rounded-2xl border border-(--border) hover:border-(--primary)/50 transition-colors"
+												>
+													<div className="flex items-center gap-3">
+														<div
+															className="w-10 h-10 rounded-full flex items-center justify-center"
+															style={{
+																backgroundColor: category?.color || "#6b7280",
+															}}
+														>
+															<span className="text-white text-sm font-bold">
+																{category?.name?.charAt(0) ||
+																	txn.type?.charAt(0)?.toUpperCase() ||
+																	"T"}
+															</span>
+														</div>
+														<div>
+															<div className="font-medium text-(--foreground)">
+																{txn.note ||
+																	category?.name ||
+																	(txn.type === "income"
+																		? "Income"
+																		: "Expense")}
+															</div>
+															<div className="text-xs text-(--muted-foreground) flex items-center gap-2">
+																<span>
+																	{txn.date
+																		? new Date(txn.date).toLocaleDateString(
+																				"en-IN",
+																				{
+																					month: "short",
+																					day: "numeric",
+																				}
+																		  )
+																		: "No date"}
+																</span>
+																{wallet && (
+																	<>
+																		<span>•</span>
+																		<span>{wallet.name}</span>
+																	</>
+																)}
+															</div>
+														</div>
+													</div>
+													<div className="flex items-center gap-3">
+														<div className="text-right">
+															<div
+																className={`font-bold ${
+																	txn.type === "income"
+																		? "text-green-500"
+																		: "text-(--foreground)"
+																}`}
+															>
+																{txn.type === "income" ? "+" : "-"}₹
+																{txn.amount.toLocaleString("en-IN")}
+															</div>
+															<div className="text-xs text-(--muted-foreground) capitalize">
+																{txn.type}
+															</div>
+														</div>
+														<button
+															onClick={() => setEditingTransaction(txn)}
+															className="p-2 hover:bg-(--muted) rounded-full transition-colors"
+														>
+															<Edit3
+																size={16}
+																className="text-(--muted-foreground)"
+															/>
+														</button>
+													</div>
+												</div>
+											);
+										})
+									)}
+								</div>
+							</div>
+						)}
 					</div>
 
 					<div className="md:col-span-4">
@@ -371,6 +547,24 @@ export const StatsView = () => {
 					</div>
 				</div>
 			</div>
+
+			{/* Edit Expense Modal */}
+			{editingTransaction && (
+				<EditExpenseModal
+					transaction={editingTransaction}
+					categories={allCategories}
+					wallets={allWallets}
+					onClose={() => setEditingTransaction(null)}
+					onSave={() => {
+						setEditingTransaction(null);
+						refreshTransactions();
+					}}
+					onDelete={() => {
+						setEditingTransaction(null);
+						refreshTransactions();
+					}}
+				/>
+			)}
 		</div>
 	);
 };
