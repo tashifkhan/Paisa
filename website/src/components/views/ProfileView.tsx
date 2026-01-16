@@ -1,13 +1,14 @@
 import {
 	ArrowLeft,
-	User,
-	Languages,
-	DollarSign,
-	Moon,
 	Bell,
-	Shield,
 	CircleHelp,
+	Database,
+	DollarSign,
+	Languages,
 	LogOut,
+	Moon,
+	Shield,
+	User,
 } from "lucide-react";
 import { SettingItem } from "../shared/SettingItem";
 
@@ -87,6 +88,12 @@ export const ProfileView = ({
 						type="toggle"
 						isToggled={isDarkMode}
 						onClick={toggleTheme}
+					/>
+					<SettingItem
+						icon={Database}
+						title="Data Management"
+						value="Import/Export"
+						onClick={() => setCurrentView("data-management")}
 					/>
 				</div>
 

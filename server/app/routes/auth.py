@@ -7,13 +7,9 @@ from ..models import db_models as models
 from ..models import schemas
 from ..core.security import get_password_hash, verify_password, create_access_token
 from ..core.logger import logger
+from ..services.email_service import EmailService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-def _send_otp_email(email: str, code: str):
-    # In production: send via SMTP / third-party provider.
-    logger.info(f"Sending OTP to {email}: {code}")
 
 
 @router.post("/request-otp")
@@ -23,7 +19,13 @@ async def request_otp(payload: schemas.OTPRequest):
     otp = models.EmailOTP(email=payload.email, code=code, expires_at=expires)
     await otp.create()
 
-    _send_otp_email(payload.email, code)
+    # Send OTP via email
+    email_sent = await EmailService.send_otp_email(payload.email, code)
+    if not email_sent:
+        logger.warning(
+            f"Failed to send OTP email to {payload.email}, but OTP was created"
+        )
+
     return {"status": "otp_sent"}
 
 

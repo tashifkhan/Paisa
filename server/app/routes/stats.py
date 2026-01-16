@@ -71,6 +71,19 @@ async def monthly_trends(
     }
 
 
+@router.get("/daily")
+async def daily_breakdown(
+    current_user=Depends(get_current_user),
+    days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+):
+    """Get daily expense breakdown for charts."""
+    daily_data = await StatsService.get_daily_breakdown(current_user.id, days)
+    return {
+        "period_days": days,
+        "daily": daily_data,
+    }
+
+
 @router.get("/range")
 async def date_range_summary(
     current_user=Depends(get_current_user),

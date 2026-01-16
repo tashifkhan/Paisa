@@ -26,5 +26,10 @@ export const userService = {
     async updatePushToken(token: string): Promise<{ status: string }> {
         const response = await api.put('/users/push-token', { token });
         return response.data;
+    },
+
+    async searchUsers(query: string): Promise<BackendUser[]> {
+        const response = await api.get<BackendUser[]>(`/users/search/?q=${encodeURIComponent(query)}`);
+        return response.data;
     }
 };

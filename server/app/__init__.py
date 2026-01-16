@@ -20,10 +20,11 @@ from .routes import (
     sync,
     debts,
     categories,
+    data,
 )
 
-# Detect if running on Vercel (serverless)
-IS_VERCEL = os.environ.get("VERCEL", True)
+# Detect if running in serverless environment (set via env var)
+IS_SERVERLESS = os.environ.get("SERVERLESS", "false").lower() == "true"
 
 
 @asynccontextmanager
@@ -67,9 +68,10 @@ app.include_router(stats.router)
 app.include_router(sync.router)
 app.include_router(debts.router)
 app.include_router(categories.router)
+app.include_router(data.router, prefix="/data", tags=["Data"])
 
-# Only set up uploads directory for local development (not on Vercel serverless)
-if not IS_VERCEL:
+# Only set up uploads directory for non-serverless environments
+if not IS_SERVERLESS:
     uploads_dir = os.path.join(os.getcwd(), "uploads")
     os.makedirs(uploads_dir, exist_ok=True)
     logger.info(f"Uploads directory ready: {uploads_dir}")

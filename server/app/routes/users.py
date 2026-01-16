@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from uuid import UUID
 
 from ..core.deps import get_current_user
 from ..models import db_models as models
 from ..models.schemas import PushTokenUpdate, UserOut, UserUpdate
+from ..services.user_service import UserService
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -54,3 +55,12 @@ async def get_user(user_id: str):
             detail="User not found",
         )
     return u
+
+
+@router.get("/search/", response_model=list[UserOut])
+async def search_users(
+    q: str = Query(..., min_length=1),
+    current_user=Depends(get_current_user),
+):
+    """Search users by name or email."""
+    return await UserService.search_users(q)

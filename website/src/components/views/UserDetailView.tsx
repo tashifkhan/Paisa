@@ -1,61 +1,67 @@
 import {
-	ArrowDownLeft,
 	ArrowLeft,
-	ArrowUpRight,
+	Loader2,
 	Mail,
 	MoreHorizontal,
-	Phone,
+	Trash2,
+	X,
 } from "lucide-react";
-
-interface Transaction {
-	id: number;
-	title: string;
-	amount: number;
-	date: string;
-	type: "paid" | "received";
-}
+import { useState } from "react";
+import { debtService } from "../../services/debtService";
 
 interface UserDetailViewProps {
 	user: {
-		id: number;
+		id: string | number;
 		name: string;
 		amount: number;
 		type: "owed_to_me" | "owed_by_me";
 		date: string;
+		email?: string;
 	} | null;
 	setCurrentView: (view: string) => void;
+	onDebtDeleted?: () => void;
 }
 
 export const UserDetailView = ({
 	user,
 	setCurrentView,
+	onDebtDeleted,
 }: UserDetailViewProps) => {
+	const [isDeleting, setIsDeleting] = useState(false);
+	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+	const [isSettling, setIsSettling] = useState(false);
+
 	if (!user) return null;
 
-	// Mock transactions
-	const transactions: Transaction[] = [
-		{
-			id: 1,
-			title: "Dinner at Thalassa",
-			amount: 1200,
-			date: "Yesterday",
-			type: "paid",
-		},
-		{
-			id: 2,
-			title: "Movie Tickets",
-			amount: 500,
-			date: "3 days ago",
-			type: "received",
-		},
-		{
-			id: 3,
-			title: "Uber Split",
-			amount: 250,
-			date: "1 week ago",
-			type: "paid",
-		},
-	];
+	const handleDelete = async () => {
+		setIsDeleting(true);
+		try {
+			await debtService.deleteDebt(String(user.id));
+			onDebtDeleted?.();
+			setCurrentView("debts");
+		} catch (error) {
+			console.error("Failed to delete:", error);
+		} finally {
+			setIsDeleting(false);
+			setShowDeleteConfirm(false);
+		}
+	};
+
+	const handleSettle = async () => {
+		setIsSettling(true);
+		try {
+			await debtService.settleDebt(String(user.id));
+			onDebtDeleted?.();
+			setCurrentView("debts");
+		} catch (error) {
+			console.error("Failed to settle:", error);
+		} finally {
+			setIsSettling(false);
+		}
+	};
+
+	// Check if this is a manually added contact (no transactions, just a debt record)
+	const isManualContact = user.date === "New Contact" || user.amount === 0;
 
 	return (
 		<div className="flex flex-col h-full bg-(--background) overflow-y-auto hide-scrollbar transition-colors duration-300">
@@ -66,28 +72,41 @@ export const UserDetailView = ({
 				>
 					<ArrowLeft size={20} />
 				</button>
-				<button className="p-2 text-(--foreground)">
+				<button
+					onClick={() => setShowDeleteConfirm(true)}
+					className="p-2 text-(--foreground) hover:text-red-500 transition-colors"
+					title="Delete contact"
+				>
 					<MoreHorizontal size={20} />
 				</button>
 			</header>
 
 			<div className="flex flex-col items-center px-6 mb-8">
 				<div className="w-24 h-24 rounded-full bg-(--muted) flex items-center justify-center text-4xl font-bold text-(--foreground) mb-4 border-4 border-(--card) shadow-lg">
-					{user.name.charAt(0)}
+					{user.name.charAt(0).toUpperCase()}
 				</div>
 				<h1 className="text-2xl font-bold text-(--foreground) mb-1">
 					{user.name}
 				</h1>
-				<p className="text-(--muted-foreground) text-sm">+91 98765 43210</p>
+				{user.email && (
+					<p className="text-(--muted-foreground) text-sm">{user.email}</p>
+				)}
+				{isManualContact && (
+					<span className="mt-2 text-xs bg-(--muted) text-(--muted-foreground) px-3 py-1 rounded-full">
+						Manually Added
+					</span>
+				)}
 
-				<div className="flex gap-4 mt-6 w-full">
-					<button className="flex-1 py-3 bg-(--card) border border-(--border) rounded-2xl flex items-center justify-center gap-2 text-(--foreground) font-medium shadow-sm hover:bg-(--muted) transition-colors">
-						<Phone size={18} /> Call
-					</button>
-					<button className="flex-1 py-3 bg-(--card) border border-(--border) rounded-2xl flex items-center justify-center gap-2 text-(--foreground) font-medium shadow-sm hover:bg-(--muted) transition-colors">
-						<Mail size={18} /> Email
-					</button>
-				</div>
+				{user.email && (
+					<div className="flex gap-4 mt-6 w-full">
+						<a
+							href={`mailto:${user.email}`}
+							className="flex-1 py-3 bg-(--card) border border-(--border) rounded-2xl flex items-center justify-center gap-2 text-(--foreground) font-medium shadow-sm hover:bg-(--muted) transition-colors"
+						>
+							<Mail size={18} /> Email
+						</a>
+					</div>
+				)}
 			</div>
 
 			<div className="px-6 mb-8">
@@ -103,12 +122,14 @@ export const UserDetailView = ({
 						<div className="text-4xl font-bold mb-4">₹{user.amount}</div>
 
 						<div className="flex gap-3 justify-center">
-							<button className="px-6 py-2 bg-white/20 backdrop-blur-md rounded-xl text-sm font-bold hover:bg-white/30 transition-colors">
-								Settle Up
-							</button>
-							{user.type === "owed_to_me" && (
-								<button className="px-6 py-2 bg-white text-black rounded-xl text-sm font-bold hover:opacity-90 transition-opacity">
-									Remind
+							{user.amount > 0 && (
+								<button
+									onClick={handleSettle}
+									disabled={isSettling}
+									className="px-6 py-2 bg-white/20 backdrop-blur-md rounded-xl text-sm font-bold hover:bg-white/30 transition-colors disabled:opacity-50 flex items-center gap-2"
+								>
+									{isSettling && <Loader2 size={16} className="animate-spin" />}
+									Settle Up
 								</button>
 							)}
 						</div>
@@ -116,50 +137,68 @@ export const UserDetailView = ({
 				</div>
 			</div>
 
+			{/* No hardcoded transaction history - show empty state or real data when available */}
 			<div className="flex-1 px-6 pb-24">
-				<h2 className="text-lg font-bold text-(--foreground) mb-4">
-					Transaction History
-				</h2>
-				<div className="space-y-4">
-					{transactions.map((tx) => (
-						<div
-							key={tx.id}
-							className="flex items-center justify-between p-4 bg-(--card) border border-(--border) rounded-2xl"
-						>
-							<div className="flex items-center gap-4">
-								<div
-									className={`w-10 h-10 rounded-full flex items-center justify-center ${
-										tx.type === "paid"
-											? "bg-red-100 text-red-600"
-											: "bg-green-100 text-green-600"
-									}`}
-								>
-									{tx.type === "paid" ? (
-										<ArrowUpRight size={18} />
-									) : (
-										<ArrowDownLeft size={18} />
-									)}
-								</div>
-								<div>
-									<div className="font-bold text-(--foreground)">
-										{tx.title}
-									</div>
-									<div className="text-xs text-(--muted-foreground)">
-										{tx.date}
-									</div>
-								</div>
-							</div>
-							<div
-								className={`font-bold ${
-									tx.type === "paid" ? "text-red-500" : "text-green-500"
-								}`}
-							>
-								{tx.type === "paid" ? "-" : "+"}₹{tx.amount}
-							</div>
-						</div>
-					))}
+				<div className="text-center py-8 text-(--muted-foreground)">
+					<p className="text-sm">
+						Transaction history will appear here when you add expenses with{" "}
+						{user.name}.
+					</p>
 				</div>
 			</div>
+
+			{/* Delete action at bottom */}
+			<div className="px-6 pb-24">
+				<button
+					onClick={() => setShowDeleteConfirm(true)}
+					className="w-full py-3 border border-red-500/30 text-red-500 rounded-2xl font-medium hover:bg-red-500/10 transition-colors flex items-center justify-center gap-2"
+				>
+					<Trash2 size={18} /> Remove Contact
+				</button>
+			</div>
+
+			{/* Delete Confirmation Modal */}
+			{showDeleteConfirm && (
+				<div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+					<div className="bg-(--card) border border-(--border) rounded-3xl p-6 w-full max-w-sm shadow-xl">
+						<div className="flex justify-between items-start mb-4">
+							<h3 className="text-lg font-bold text-(--foreground)">
+								Remove Contact?
+							</h3>
+							<button
+								onClick={() => setShowDeleteConfirm(false)}
+								className="p-1 text-(--muted-foreground) hover:text-(--foreground)"
+							>
+								<X size={20} />
+							</button>
+						</div>
+						<p className="text-sm text-(--muted-foreground) mb-6">
+							This will remove {user.name} from your contacts and delete any
+							debt records. This action cannot be undone.
+						</p>
+						<div className="flex gap-3">
+							<button
+								onClick={() => setShowDeleteConfirm(false)}
+								className="flex-1 py-3 bg-(--muted) text-(--foreground) rounded-2xl font-medium"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={handleDelete}
+								disabled={isDeleting}
+								className="flex-1 py-3 bg-red-500 text-white rounded-2xl font-medium hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+							>
+								{isDeleting ? (
+									<Loader2 size={18} className="animate-spin" />
+								) : (
+									<Trash2 size={18} />
+								)}
+								Remove
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 };

@@ -46,8 +46,7 @@ class GroupService:
         """Get all non-deleted groups that user is a member of."""
         # First get all group memberships for this user
         memberships = await models.GroupMember.find(
-            models.GroupMember.user_id == user_id,
-            models.GroupMember.deleted == False,
+            {"user_id": user_id, "deleted": False}
         ).to_list()
 
         group_ids = [m.group_id for m in memberships]
