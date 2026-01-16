@@ -213,3 +213,45 @@ class StatsService:
             "net": income - expense,
             "by_category": categories,
         }
+
+    @staticmethod
+    async def get_daily_breakdown(user_id: UUID, days: int = 30) -> List[dict]:
+        """Get daily expense breakdown for charts."""
+        since = datetime.utcnow() - timedelta(days=days)
+
+        txns = await models.Transaction.find(
+            models.Transaction.user_id == user_id,
+            models.Transaction.date >= since,
+            models.Transaction.type == "expense",
+            models.Transaction.deleted == False,
+        ).to_list()
+
+        # Group by day
+        by_day: Dict[str, float] = defaultdict(float)
+        for t in txns:
+            if t.date:
+                day_key = t.date.strftime("%Y-%m-%d")
+                by_day[day_key] += t.amount or 0.0
+
+        # Calculate total for percentages
+        total = sum(by_day.values())
+
+        # Generate result for each day in the period
+        result = []
+        current = datetime.utcnow()
+        for i in range(days):
+            day = current - timedelta(days=days - 1 - i)
+            day_key = day.strftime("%Y-%m-%d")
+            amount = by_day.get(day_key, 0.0)
+            percentage = (amount / total * 100) if total > 0 else 0
+
+            result.append(
+                {
+                    "date": day_key,
+                    "day": day.day,
+                    "amount": amount,
+                    "percentage": round(percentage, 2),
+                }
+            )
+
+        return result

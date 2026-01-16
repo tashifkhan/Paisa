@@ -15,7 +15,7 @@ export const OTPView = () => {
 	const location = useLocation();
 	const { email, name, password } = location.state || {}; // Get state passed from SignUp
 
-	const [otp, setOtp] = useState(["", "", "", ""]);
+	const [otp, setOtp] = useState(["", "", "", "", "", ""]);
 	const [timer, setTimer] = useState(30);
 	const [loading, setLoading] = useState(false);
 	const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -35,14 +35,46 @@ export const OTPView = () => {
 	}, []);
 
 	const handleChange = (index: number, value: string) => {
-		if (value.length > 1) return; // Prevent multiple chars
+		// If pasting multiple characters, distribute them across inputs
+		if (value.length > 1) {
+			const digits = value.replace(/\D/g, "").slice(0, 6).split("");
+			const newOtp = [...otp];
+			digits.forEach((digit, i) => {
+				if (index + i < 6) {
+					newOtp[index + i] = digit;
+				}
+			});
+			setOtp(newOtp);
+			// Focus the last filled input or the next empty one
+			const focusIndex = Math.min(index + digits.length, 5);
+			inputRefs.current[focusIndex]?.focus();
+			return;
+		}
+
 		const newOtp = [...otp];
 		newOtp[index] = value;
 		setOtp(newOtp);
 
 		// Auto-focus next input
-		if (value && index < 3) {
+		if (value && index < 5) {
 			inputRefs.current[index + 1]?.focus();
+		}
+	};
+
+	const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+		e.preventDefault();
+		const pastedData = e.clipboardData.getData("text");
+		const digits = pastedData.replace(/\D/g, "").slice(0, 6).split("");
+
+		if (digits.length > 0) {
+			const newOtp = ["", "", "", "", "", ""];
+			digits.forEach((digit, i) => {
+				if (i < 6) newOtp[i] = digit;
+			});
+			setOtp(newOtp);
+			// Focus the last filled input
+			const focusIndex = Math.min(digits.length - 1, 5);
+			inputRefs.current[focusIndex]?.focus();
 		}
 	};
 
@@ -89,7 +121,7 @@ export const OTPView = () => {
 						Verification
 					</h1>
 					<p className="text-(--muted-foreground)">
-						Enter the 4-digit code sent to {email}.
+						Enter the 6-digit code sent to {email}.
 					</p>
 				</div>
 
@@ -105,7 +137,8 @@ export const OTPView = () => {
 							value={digit}
 							onChange={(e) => handleChange(index, e.target.value)}
 							onKeyDown={(e) => handleKeyDown(index, e)}
-							className="w-14 h-16 text-center text-2xl font-bold bg-(--card) border-2 border-(--border) rounded-2xl focus:border-(--primary) focus:ring-4 focus:ring-(--primary)/10 outline-none transition-all caret-(--primary)"
+							onPaste={handlePaste}
+							className="w-12 h-14 text-center text-xl font-bold bg-(--card) border-2 border-(--border) rounded-xl focus:border-(--primary) focus:ring-4 focus:ring-(--primary)/10 outline-none transition-all caret-(--primary)"
 						/>
 					))}
 				</div>

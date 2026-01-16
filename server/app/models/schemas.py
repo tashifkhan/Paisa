@@ -1,6 +1,35 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional, Literal, List
+from pydantic import BaseModel, EmailStr, model_validator
+from typing import Optional, Literal, List, Any
 from datetime import datetime
+from uuid import UUID
+
+
+def convert_uuid_to_str(v: Any) -> Any:
+    """Convert UUID to string."""
+    if isinstance(v, UUID):
+        return str(v)
+    return v
+
+
+class BaseOutModel(BaseModel):
+    """Base model for all output schemas with UUID conversion support."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def convert_uuids(cls, data: Any) -> Any:
+        if hasattr(data, "__dict__") and not isinstance(data, dict):
+            # It's an ORM model, convert to dict
+            result = {}
+            for field in cls.model_fields:
+                val = getattr(data, field, None)
+                result[field] = convert_uuid_to_str(val)
+            return result
+        elif isinstance(data, dict):
+            return {k: convert_uuid_to_str(v) for k, v in data.items()}
+        return data
+
+    class Config:
+        from_attributes = True
 
 
 class UserCreate(BaseModel):
@@ -9,15 +38,12 @@ class UserCreate(BaseModel):
     password: str
 
 
-class UserOut(BaseModel):
+class UserOut(BaseOutModel):
     id: str
     email: EmailStr
     name: Optional[str]
     currency: Optional[str] = "INR"
     language: Optional[str] = "en"
-
-    class Config:
-        from_attributes = True
 
 
 class UserUpdate(BaseModel):
@@ -62,16 +88,13 @@ class CategoryUpdate(BaseModel):
     type: Optional[Literal["expense", "income", "both"]] = None
 
 
-class CategoryOut(BaseModel):
+class CategoryOut(BaseOutModel):
     id: str
     name: str
     icon: Optional[str]
     color: Optional[str]
     type: str
     is_default: bool
-
-    class Config:
-        from_attributes = True
 
 
 # Transaction Schemas
@@ -87,7 +110,7 @@ class TransactionCreate(BaseModel):
     category_id: Optional[str] = None
 
 
-class TransactionOut(BaseModel):
+class TransactionOut(BaseOutModel):
     id: str
     user_id: str
     wallet_id: Optional[str]
@@ -98,9 +121,6 @@ class TransactionOut(BaseModel):
     type: str
     date: Optional[datetime]
     note: Optional[str]
-
-    class Config:
-        from_attributes = True
 
 
 class TransactionUpdate(BaseModel):
@@ -127,15 +147,12 @@ class WalletUpdate(BaseModel):
     currency: Optional[str] = None
 
 
-class WalletOut(BaseModel):
+class WalletOut(BaseOutModel):
     id: str
     name: str
     type: Optional[str]
     balance: float
     currency: str
-
-    class Config:
-        from_attributes = True
 
 
 # Group Schemas
@@ -153,16 +170,13 @@ class GroupUpdate(BaseModel):
     color: Optional[str] = None
 
 
-class GroupOut(BaseModel):
+class GroupOut(BaseOutModel):
     id: str
     name: str
     base_currency: str
     created_by_user_id: Optional[str]
     icon: Optional[str]
     color: Optional[str]
-
-    class Config:
-        from_attributes = True
 
 
 # Group Member Schemas
@@ -171,27 +185,21 @@ class GroupMemberCreate(BaseModel):
     role: Literal["admin", "member"] = "member"
 
 
-class GroupMemberOut(BaseModel):
+class GroupMemberOut(BaseOutModel):
     id: str
     group_id: str
     user_id: str
     role: str
     joined_at: datetime
 
-    class Config:
-        from_attributes = True
 
-
-class GroupMemberWithUser(BaseModel):
+class GroupMemberWithUser(BaseOutModel):
     id: str
     user_id: str
     role: str
     joined_at: datetime
     user_name: Optional[str]
     user_email: Optional[str]
-
-    class Config:
-        from_attributes = True
 
 
 # Group Balance Schemas
@@ -223,15 +231,12 @@ class DebtUpdate(BaseModel):
     due_date: Optional[str] = None
 
 
-class DebtOut(BaseModel):
+class DebtOut(BaseOutModel):
     id: str
     counterparty_name: str
     amount: float
     type: str
     due_date: Optional[str]
-
-    class Config:
-        from_attributes = True
 
 
 # Stats Schemas

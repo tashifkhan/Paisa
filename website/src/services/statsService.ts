@@ -18,6 +18,19 @@ export const statsService = {
         return response.data;
     },
 
+    async getDailyBreakdown(days: number = 30): Promise<{
+        period_days: number;
+        daily: Array<{
+            date: string;
+            day: number;
+            amount: number;
+            percentage: number;
+        }>;
+    }> {
+        const response = await api.get(`/stats/daily?days=${days}`);
+        return response.data;
+    },
+
     async getCategoryBreakdown(days: number = 30, type: string = 'expense'): Promise<{
         period_days: number;
         type: string;

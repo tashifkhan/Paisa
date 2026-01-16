@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: paisa-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - ENVIRONMENT=production
+    env_file:
+      - .env
+    volumes:
+      # Mount the app directory for development
+      - ./app:/app/app
+      - ./main.py:/app/main.py
+    depends_on:
+      - mongo
+    restart: unless-stopped
+    networks:
+      - paisa-network
+
+  mongo:
+    image: mongo:7
+    container_name: paisa-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./data/mongo:/data/db
+    restart: unless-stopped
+    networks:
+      - paisa-network
+
+networks:
+  paisa-network:
+    driver: bridge

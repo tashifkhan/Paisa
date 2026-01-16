@@ -291,23 +291,19 @@ export const HomeView = ({
 												/>
 											</div>
 										))}
-										<div className="w-16 h-56 md:w-full md:h-56 bg-(--muted) rounded-4xl flex items-center justify-center flex-shrink-0 border-2 border-dashed border-(--border) cursor-pointer hover:bg-(--muted)/80 transition-colors">
+										<div
+											onClick={() => (window.location.href = "/add-wallet")}
+											className="w-16 h-56 md:w-full md:h-56 bg-(--muted) rounded-4xl flex items-center justify-center flex-shrink-0 border-2 border-dashed border-(--border) cursor-pointer hover:bg-(--muted)/80 transition-colors"
+										>
 											<Plus size={24} className="text-(--muted-foreground)" />
 										</div>
 									</>
 								) : (
 									<>
-										<div className="mr-4 md:mr-0 flex-shrink-0">
-											<CreditCardComponent
-												type="VISA"
-												number="9038 4061 **** ****"
-												holder="Personal"
-												exp="02/28"
-												gradient="from-(--chart-2) to-(--chart-1)"
-												icon={Wifi}
-											/>
-										</div>
-										<div className="w-16 h-56 md:w-full md:h-56 bg-(--muted) rounded-4xl flex items-center justify-center flex-shrink-0 border-2 border-dashed border-(--border) cursor-pointer hover:bg-(--muted)/80 transition-colors">
+										<div
+											onClick={() => (window.location.href = "/add-wallet")}
+											className="w-16 h-56 md:w-full md:h-56 bg-(--muted) rounded-4xl flex items-center justify-center flex-shrink-0 border-2 border-dashed border-(--border) cursor-pointer hover:bg-(--muted)/80 transition-colors"
+										>
 											<Plus size={24} className="text-(--muted-foreground)" />
 										</div>
 									</>

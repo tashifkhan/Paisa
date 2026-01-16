@@ -7,6 +7,7 @@ import {
 	Wifi,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { BackendWallet } from "../../services/types";
 import { walletService } from "../../services/walletService";
 import { CreditCardComponent } from "../shared/CreditCardComponent";
@@ -46,6 +47,7 @@ export const WalletsView = ({
 	activeWalletTab,
 	setActiveWalletTab,
 }: WalletsViewProps) => {
+	const navigate = useNavigate();
 	const [wallets, setWallets] = useState<BackendWallet[]>([]);
 	const [totalBalance, setTotalBalance] = useState<number>(0);
 	const [loading, setLoading] = useState(true);
@@ -172,11 +174,14 @@ export const WalletsView = ({
 					)}
 
 					{/* Add New Card Button */}
-					<button className="w-full py-4 border-2 border-dashed border-(--border) rounded-4xl text-(--muted-foreground) font-medium hover:bg-(--muted) transition-colors flex items-center justify-center gap-2 mt-4">
+					<button
+						onClick={() => navigate("/add-wallet")}
+						className="w-full py-4 border-2 border-dashed border-(--border) rounded-4xl text-(--muted-foreground) font-medium hover:bg-(--muted) transition-colors flex items-center justify-center gap-2 mt-4"
+					>
 						<div className="w-6 h-6 rounded-full bg-(--primary) text-(--primary-foreground) flex items-center justify-center">
 							<Plus size={16} />
 						</div>
-						Add New {activeWalletTab === "Cash" ? "Entry" : "Card"}
+						Add New {activeWalletTab === "Cash" ? "Entry" : "Wallet"}
 					</button>
 				</div>
 			</div>

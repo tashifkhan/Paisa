@@ -1,4 +1,4 @@
-from . import auth, users, expenses, wallets, groups, stats, sync, debts, categories
+from . import auth, users, expenses, wallets, groups, stats, sync, debts, data
 
 __all__ = [
     "auth",
@@ -9,5 +9,5 @@ __all__ = [
     "stats",
     "sync",
     "debts",
-    "categories",
+    "data",
 ]

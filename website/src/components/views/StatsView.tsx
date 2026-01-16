@@ -1,10 +1,4 @@
-import {
-	ArrowUpRight,
-	Home,
-	Smartphone,
-	TrendingDown,
-	TrendingUp,
-} from "lucide-react";
+import { ArrowUpRight, Calendar, TrendingDown, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { debtService } from "../../services/debtService";
 import { statsService } from "../../services/statsService";
@@ -45,6 +39,14 @@ export const StatsView = () => {
 		owed_to_me: number;
 		owed_by_me: number;
 	} | null>(null);
+	const [upcomingDues, setUpcomingDues] = useState<
+		Array<{
+			id: string;
+			counterparty_name: string;
+			amount: number;
+			due_date?: string;
+		}>
+	>([]);
 
 	useEffect(() => {
 		const fetchStats = async () => {
@@ -65,6 +67,18 @@ export const StatsView = () => {
 				// Fetch debt summary
 				const debts = await debtService.getSummary();
 				setDebtSummary(debts);
+
+				// Fetch upcoming dues (debts with future due dates)
+				const allDebts = await debtService.getDebts();
+				const now = new Date();
+				const upcoming = allDebts
+					.filter((d) => d.due_date && new Date(d.due_date) >= now)
+					.sort(
+						(a, b) =>
+							new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime()
+					)
+					.slice(0, 5);
+				setUpcomingDues(upcoming);
 			} catch (error) {
 				console.error("Failed to fetch stats:", error);
 			} finally {
@@ -116,7 +130,7 @@ export const StatsView = () => {
 					<div className="md:col-span-8">
 						{/* Chart Section */}
 						<div className="px-6 md:px-0 bg-(--card) mx-6 md:mx-0 p-4 rounded-[2.5rem] shadow-sm border border-(--border) z-10 transition-colors duration-300 mb-6">
-							<ExpenseChart />
+							<ExpenseChart period={parseInt(period)} />
 						</div>
 
 						{/* Stats Cards */}
@@ -330,18 +344,28 @@ export const StatsView = () => {
 								Upcoming Dues
 							</h3>
 							<div className="space-y-1">
-								<TransactionItem
-									icon={Home}
-									title="Home Rent"
-									subtitle="Due date: Mar 25"
-									amount="339.30"
-								/>
-								<TransactionItem
-									icon={Smartphone}
-									title="Mobile Bill"
-									subtitle="Due date: Mar 28"
-									amount="55.00"
-								/>
+								{upcomingDues.length > 0 ? (
+									upcomingDues.map((debt) => (
+										<TransactionItem
+											key={debt.id}
+											icon={Calendar}
+											title={debt.counterparty_name}
+											subtitle={
+												debt.due_date
+													? `Due: ${new Date(debt.due_date).toLocaleDateString(
+															"en-IN",
+															{ month: "short", day: "numeric" }
+													  )}`
+													: "No due date"
+											}
+											amount={debt.amount.toFixed(2)}
+										/>
+									))
+								) : (
+									<div className="text-center py-4 text-(--muted-foreground) text-sm">
+										No upcoming dues
+									</div>
+								)}
 							</div>
 						</div>
 					</div>

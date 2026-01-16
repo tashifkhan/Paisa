@@ -11,6 +11,7 @@ import {
 import { BottomNav } from "./components/shared/BottomNav";
 import { SideNav } from "./components/shared/SideNav";
 import { AddExpenseView } from "./components/views/AddExpenseView";
+import { AddWalletView } from "./components/views/AddWalletView";
 import {
 	ForgotPasswordView,
 	OTPView,
@@ -18,6 +19,7 @@ import {
 	SignUpView,
 } from "./components/views/AuthViews";
 import { CreateGroupView } from "./components/views/CreateGroupView";
+import DataManagement from "./components/views/DataManagement";
 import { GroupDetailView } from "./components/views/GroupDetailView";
 import { HomeView } from "./components/views/HomeView";
 import { NotFoundView } from "./components/views/NotFoundView";
@@ -258,6 +260,12 @@ function AppContent() {
 							}
 						/>
 						<Route
+							path="/add-wallet"
+							element={
+								<AddWalletView setCurrentView={() => navigate("/wallets")} />
+							}
+						/>
+						<Route
 							path="/add-expense"
 							element={
 								<AddExpenseView
@@ -296,6 +304,22 @@ function AppContent() {
 								<UserDetailView
 									user={selectedUser}
 									setCurrentView={() => navigate("/debts")}
+									onDebtDeleted={async () => {
+										// Refetch debts after deletion
+										const { debtService } = await import(
+											"./services/debtService"
+										);
+										const debtsData = await debtService.getDebts();
+										setDebts(
+											debtsData.map((d: any) => ({
+												id: d.id,
+												name: d.counterparty_name,
+												amount: d.amount,
+												type: d.type,
+												date: d.due_date || "No due date",
+											}))
+										);
+									}}
 								/>
 							}
 						/>
@@ -317,6 +341,8 @@ function AppContent() {
 								<CreateGroupView setCurrentView={() => navigate("/debts")} />
 							}
 						/>
+
+						<Route path="/data-management" element={<DataManagement />} />
 						<Route
 							path="/profile"
 							element={
@@ -329,7 +355,7 @@ function AppContent() {
 									setCurrency={setCurrency}
 									language={language}
 									setLanguage={setLanguage}
-									setCurrentView={() => navigate("/")}
+									setCurrentView={handleAuthNavigation}
 								/>
 							}
 						/>

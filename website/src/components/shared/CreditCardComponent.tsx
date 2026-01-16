@@ -1,5 +1,5 @@
+import { Banknote, Cpu, Nfc, Wifi, type LucideIcon } from "lucide-react";
 import React from "react";
-import { Wifi, Cpu, Nfc, Banknote, type LucideIcon } from "lucide-react";
 
 interface CreditCardComponentProps {
 	type?: string;
@@ -55,7 +55,7 @@ export const CreditCardComponent = ({
 						Total Cash
 					</div>
 					<div className="text-3xl font-bold text-white tracking-widest mb-4 shadow-sm">
-						₹4,500.00
+						{number}
 					</div>
 				</>
 			) : (
