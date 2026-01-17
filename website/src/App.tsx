@@ -326,8 +326,6 @@ function AppContent() {
 							element={
 								<AddExpenseView
 									amount={amount}
-									isDarkMode={isDarkMode}
-									toggleTheme={toggleTheme}
 									handleKeyPress={handleKeyPress}
 									setCurrentView={(view) =>
 										navigate(view === "stats" ? "/stats" : `/${view}`)

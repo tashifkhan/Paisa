@@ -2,11 +2,8 @@ import {
 	Calendar,
 	Check,
 	Delete,
-	Edit3,
 	Loader2,
-	Moon,
 	Split,
-	Sun,
 	Users,
 	Wallet,
 	X,
@@ -29,8 +26,6 @@ import { Switch } from "../ui/switch";
 
 interface AddExpenseViewProps {
 	amount: string;
-	isDarkMode: boolean;
-	toggleTheme: () => void;
 	handleKeyPress: (key: string) => void;
 	setCurrentView: (view: string) => void;
 }
@@ -134,8 +129,6 @@ const RippleButton = ({
 
 export const AddExpenseView = ({
 	amount,
-	isDarkMode,
-	toggleTheme,
 	handleKeyPress,
 	setCurrentView,
 }: AddExpenseViewProps) => {
@@ -357,22 +350,12 @@ export const AddExpenseView = ({
 							Total Balance
 						</div>
 					</div>
-					<div className="flex items-center gap-1">
-						<RippleButton
-							onClick={toggleTheme}
-							className="p-2 text-(--foreground) hover:bg-(--muted) rounded-full transition-colors"
-						>
-							{isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-						</RippleButton>
-						<RippleButton className="p-2 text-(--foreground)">
-							<Edit3 size={20} />
-						</RippleButton>
-					</div>
+					<div className="w-10" /> {/* Spacer to balance the X button */}
 				</header>
 
-				<div className="flex-1 flex flex-col items-center px-8 pt-4">
+				<div className="flex-1 flex flex-col items-center px-8 pt-4 overflow-y-auto no-scrollbar">
 					{/* Type Toggle */}
-					<div className="flex bg-(--muted) rounded-full p-1 mb-6 w-full max-w-xs">
+					<div className="flex bg-(--muted) rounded-full p-1 mb-6 w-full max-w-xs shrink-0">
 						<button
 							onClick={() => setTransactionType("expense")}
 							className={`flex-1 py-2 px-4 rounded-full text-sm font-medium transition-all ${
@@ -395,7 +378,7 @@ export const AddExpenseView = ({
 						</button>
 					</div>
 
-					<div className="flex gap-4 w-full justify-between mb-4">
+					<div className="flex gap-4 w-full justify-between mb-4 shrink-0">
 						{/* Wallet Select */}
 						<Select value={selectedWallet} onValueChange={setSelectedWallet}>
 							<SelectTrigger className="flex-1">
@@ -465,7 +448,7 @@ export const AddExpenseView = ({
 					</div>
 
 					{/* Split Toggle */}
-					<div className="w-full mb-6">
+					<div className="w-full mb-6 shrink-0">
 						<div className="flex items-center justify-between mb-2">
 							<div className="flex items-center gap-2 text-(--muted-foreground)">
 								<Split size={18} />
@@ -615,7 +598,7 @@ export const AddExpenseView = ({
 						)}
 					</div>
 
-					<div className="flex flex-col items-center justify-center flex-1 w-full mb-8">
+					<div className="flex flex-col items-center justify-center flex-1 w-full mb-8 min-h-[120px]">
 						<span className="text-(--muted-foreground) text-sm mb-2">
 							{transactionType === "expense" ? "Expense" : "Income"}
 						</span>
@@ -634,7 +617,7 @@ export const AddExpenseView = ({
 					</div>
 				</div>
 
-				<div className="bg-(--card) rounded-t-[3rem] p-8 pb-10 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] border-t border-(--border) transition-colors duration-300">
+				<div className="bg-(--card) rounded-t-[3rem] p-8 pb-10 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] border-t border-(--border) transition-colors duration-300 z-10 relative">
 					<div className="grid grid-cols-4 gap-4 h-80">
 						{[1, 2, 3].map((num) => (
 							<RippleButton
