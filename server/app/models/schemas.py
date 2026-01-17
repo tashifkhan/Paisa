@@ -73,6 +73,10 @@ class PushTokenUpdate(BaseModel):
     token: str
 
 
+class GoogleAuthRequest(BaseModel):
+    credential: str  # Google ID token from frontend
+
+
 # Category Schemas
 class CategoryCreate(BaseModel):
     name: str

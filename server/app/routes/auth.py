@@ -3,9 +3,13 @@ from fastapi.security import OAuth2PasswordRequestForm
 from datetime import datetime, timedelta
 import random
 
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+
 from ..models import db_models as models
 from ..models import schemas
 from ..core.security import get_password_hash, verify_password, create_access_token
+from ..core.config import settings
 from ..core.logger import logger
 from ..services.email_service import EmailService
 from ..services.wallet_service import WalletService
@@ -129,7 +133,11 @@ async def verify_otp(payload: schemas.OTPVerify):
 @router.post("/login", response_model=schemas.Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     user = await models.User.find_one(models.User.email == form_data.username)
-    if not user or not verify_password(form_data.password, user.password_hash):
+    if (
+        not user
+        or not user.password_hash
+        or not verify_password(form_data.password, user.password_hash)
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -141,3 +149,50 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         "token_type": "bearer",
         "user_id": str(user.id),
     }
+
+
+@router.post("/google", response_model=schemas.Token)
+async def google_auth(payload: schemas.GoogleAuthRequest):
+    """Authenticate or register user via Google OAuth."""
+    try:
+        # Verify the Google ID token
+        idinfo = id_token.verify_oauth2_token(
+            payload.credential, google_requests.Request(), settings.GOOGLE_CLIENT_ID
+        )
+
+        email = idinfo.get("email")
+        google_id = idinfo.get("sub")
+        name = idinfo.get("name")
+
+        if not email:
+            raise HTTPException(status_code=400, detail="Email not provided by Google")
+
+        # Check if user exists by email
+        user = await models.User.find_one(models.User.email == email)
+
+        if user:
+            # Link Google account if not already linked
+            if not user.google_id:
+                user.google_id = google_id
+                await user.save()
+                logger.info(f"Linked Google account for existing user: {email}")
+        else:
+            # Create new user with Google account
+            user = models.User(
+                email=email,
+                name=name,
+                google_id=google_id,
+                password_hash=None,  # No password for OAuth users
+            )
+            await user.create()
+            logger.info(f"Created new user via Google OAuth: {email}")
+
+            # Seed default wallet and categories for new user
+            await seed_user_defaults(user.id)
+
+        token = create_access_token({"sub": str(user.id)})
+        return {"access_token": token, "token_type": "bearer", "user_id": str(user.id)}
+
+    except ValueError as e:
+        logger.error(f"Google OAuth verification failed: {e}")
+        raise HTTPException(status_code=401, detail="Invalid Google token")

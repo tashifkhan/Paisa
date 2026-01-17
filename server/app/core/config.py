@@ -18,6 +18,8 @@ class Settings(BaseSettings):
 
     SMTP_FROM: str | None = ""
 
+    GOOGLE_CLIENT_ID: str = ""  # Google OAuth client ID
+
     class Config:
         env_file = ".env"
 

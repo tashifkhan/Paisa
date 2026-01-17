@@ -1,3 +1,4 @@
+import { GoogleLogin } from "@react-oauth/google";
 import { ArrowLeft, ArrowRight, Lock, Mail, Timer, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -80,7 +81,7 @@ export const OTPView = () => {
 
 	const handleKeyDown = (
 		index: number,
-		e: React.KeyboardEvent<HTMLInputElement>
+		e: React.KeyboardEvent<HTMLInputElement>,
 	) => {
 		if (e.key === "Backspace" && !otp[index] && index > 0) {
 			inputRefs.current[index - 1]?.focus();
@@ -250,6 +251,45 @@ export const SignInView = ({ setCurrentView, isDarkMode }: AuthViewProps) => {
 						{loading ? "Signing In..." : "Sign In"}
 						{!loading && <ArrowRight size={20} />}
 					</button>
+
+					{/* Google Sign-In Divider */}
+					<div className="relative my-6">
+						<div className="absolute inset-0 flex items-center">
+							<div className="w-full border-t border-(--border)"></div>
+						</div>
+						<div className="relative flex justify-center text-sm">
+							<span className="px-4 bg-(--background) text-(--muted-foreground)">
+								Or continue with
+							</span>
+						</div>
+					</div>
+
+					{/* Google Sign-In Button */}
+					<div className="flex justify-center">
+						<GoogleLogin
+							onSuccess={async (response) => {
+								if (!response.credential) return;
+								setLoading(true);
+								try {
+									await authService.googleLogin(response.credential);
+									navigate("/");
+								} catch (error) {
+									alert("Google login failed. Please try again.");
+									console.error(error);
+								} finally {
+									setLoading(false);
+								}
+							}}
+							onError={() => {
+								alert("Google login failed. Please try again.");
+							}}
+							theme="outline"
+							size="large"
+							text="signin_with"
+							shape="pill"
+							width="300"
+						/>
+					</div>
 				</div>
 			</div>
 
@@ -342,6 +382,45 @@ export const SignUpView = ({ setCurrentView }: AuthViewProps) => {
 						{loading ? "Sending Code..." : "Sign Up"}
 						{!loading && <ArrowRight size={20} />}
 					</button>
+
+					{/* Google Sign-Up Divider */}
+					<div className="relative my-6">
+						<div className="absolute inset-0 flex items-center">
+							<div className="w-full border-t border-(--border)"></div>
+						</div>
+						<div className="relative flex justify-center text-sm">
+							<span className="px-4 bg-(--background) text-(--muted-foreground)">
+								Or sign up with
+							</span>
+						</div>
+					</div>
+
+					{/* Google Sign-Up Button */}
+					<div className="flex justify-center">
+						<GoogleLogin
+							onSuccess={async (response) => {
+								if (!response.credential) return;
+								setLoading(true);
+								try {
+									await authService.googleLogin(response.credential);
+									navigate("/");
+								} catch (error) {
+									alert("Google sign up failed. Please try again.");
+									console.error(error);
+								} finally {
+									setLoading(false);
+								}
+							}}
+							onError={() => {
+								alert("Google sign up failed. Please try again.");
+							}}
+							theme="outline"
+							size="large"
+							text="signup_with"
+							shape="pill"
+							width="300"
+						/>
+					</div>
 				</div>
 			</div>
 

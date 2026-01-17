@@ -9,6 +9,7 @@ import {
 	useNavigate,
 } from "react-router-dom";
 import { BottomNav } from "./components/shared/BottomNav";
+import { GoogleAuthProviderWrapper } from "./components/shared/GoogleAuthProvider";
 import { SideNav } from "./components/shared/SideNav";
 import { AddExpenseView } from "./components/views/AddExpenseView";
 import { AddWalletView } from "./components/views/AddWalletView";
@@ -34,9 +35,11 @@ import { themeStyles } from "./styles/theme";
 // --- App Shell (with global state and Router) ---
 export default function App() {
 	return (
-		<Router>
-			<AppContent />
-		</Router>
+		<GoogleAuthProviderWrapper>
+			<Router>
+				<AppContent />
+			</Router>
+		</GoogleAuthProviderWrapper>
 	);
 }
 

@@ -17,7 +17,8 @@ class TransactionSplit(BaseModel):
 class User(Document):
     id: UUID = Field(default_factory=uuid4)
     email: Indexed(str, unique=True)
-    password_hash: str
+    password_hash: Optional[str] = None  # Optional for OAuth users
+    google_id: Optional[str] = None  # Google OAuth user ID
     name: Optional[str] = None
     currency: str = "INR"
     language: str = "en"
