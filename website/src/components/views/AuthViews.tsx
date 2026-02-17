@@ -5,6 +5,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { authService } from "../../services/authService";
 import { InputField } from "../shared/InputField";
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+
 interface AuthViewProps {
 	setCurrentView: (view: string) => void;
 	isDarkMode?: boolean;
@@ -181,6 +183,9 @@ export const SignInView = ({ setCurrentView, isDarkMode }: AuthViewProps) => {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [loading, setLoading] = useState(false);
+	const [showGoogleLogin, setShowGoogleLogin] = useState(
+		Boolean(GOOGLE_CLIENT_ID),
+	);
 
 	const handleLogin = async () => {
 		setLoading(true);
@@ -252,44 +257,48 @@ export const SignInView = ({ setCurrentView, isDarkMode }: AuthViewProps) => {
 						{!loading && <ArrowRight size={20} />}
 					</button>
 
-					{/* Google Sign-In Divider */}
-					<div className="relative my-6">
-						<div className="absolute inset-0 flex items-center">
-							<div className="w-full border-t border-(--border)"></div>
-						</div>
-						<div className="relative flex justify-center text-sm">
-							<span className="px-4 bg-(--background) text-(--muted-foreground)">
-								Or continue with
-							</span>
-						</div>
-					</div>
+					{showGoogleLogin && (
+						<>
+							{/* Google Sign-In Divider */}
+							<div className="relative my-6">
+								<div className="absolute inset-0 flex items-center">
+									<div className="w-full border-t border-(--border)"></div>
+								</div>
+								<div className="relative flex justify-center text-sm">
+									<span className="px-4 bg-(--background) text-(--muted-foreground)">
+										Or continue with
+									</span>
+								</div>
+							</div>
 
-					{/* Google Sign-In Button */}
-					<div className="flex justify-center">
-						<GoogleLogin
-							onSuccess={async (response) => {
-								if (!response.credential) return;
-								setLoading(true);
-								try {
-									await authService.googleLogin(response.credential);
-									navigate("/");
-								} catch (error) {
-									alert("Google login failed. Please try again.");
-									console.error(error);
-								} finally {
-									setLoading(false);
-								}
-							}}
-							onError={() => {
-								alert("Google login failed. Please try again.");
-							}}
-							theme="outline"
-							size="large"
-							text="signin_with"
-							shape="pill"
-							width="300"
-						/>
-					</div>
+							{/* Google Sign-In Button */}
+							<div className="flex justify-center">
+								<GoogleLogin
+									onSuccess={async (response) => {
+										if (!response.credential) return;
+										setLoading(true);
+										try {
+											await authService.googleLogin(response.credential);
+											navigate("/");
+										} catch (error) {
+											alert("Google login failed. Please try again.");
+											console.error(error);
+										} finally {
+											setLoading(false);
+										}
+									}}
+									onError={() => {
+										setShowGoogleLogin(false);
+									}}
+									theme="outline"
+									size="large"
+									text="signin_with"
+									shape="pill"
+									width="300"
+								/>
+							</div>
+						</>
+					)}
 				</div>
 			</div>
 
