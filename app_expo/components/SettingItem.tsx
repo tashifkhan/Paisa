@@ -1,9 +1,9 @@
-import { ChevronRight, LucideIcon } from "lucide-react-native";
 import React from "react";
-import { Switch, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { List, Switch, Text, TouchableRipple, useTheme } from "react-native-paper";
 
 interface SettingItemProps {
-	icon: LucideIcon;
+	icon: string; // Material Community Icon name
 	title: string;
 	value?: string;
 	type?: "arrow" | "toggle";
@@ -12,59 +12,83 @@ interface SettingItemProps {
 }
 
 const SettingItem = ({
-	icon: Icon,
+	icon,
 	title,
 	value,
 	type = "arrow",
 	onClick,
 	isToggled,
-}: SettingItemProps) => (
-	<TouchableOpacity
-		onPress={onClick}
-		activeOpacity={0.7}
-		className="w-full flex-row items-center justify-between p-4 bg-[var(--card)] border border-[var(--border)] rounded-2xl mb-3 active:bg-[var(--muted)]"
-	>
-		<View className="flex-row items-center gap-4">
-			<View className="w-10 h-10 rounded-full bg-[var(--muted)] items-center justify-center">
-				<Icon
-					size={20}
-					className="text-[var(--primary)]"
-					color="var(--primary)"
-				/>
-			</View>
-			<View>
-				<Text className="font-medium text-[var(--foreground)] text-base">
+}: SettingItemProps) => {
+	const theme = useTheme();
+
+	return (
+		<TouchableRipple
+			onPress={type === "toggle" ? undefined : onClick}
+			borderless
+			style={[styles.container, { backgroundColor: theme.colors.surface }]}
+			rippleColor={theme.colors.primary + "14"}
+		>
+			<View style={styles.row}>
+				<View style={[styles.iconBox, { backgroundColor: theme.colors.primaryContainer }]}>
+					<List.Icon icon={icon} color={theme.colors.primary} style={styles.icon} />
+				</View>
+				<Text variant="bodyLarge" style={[styles.title, { color: theme.colors.onSurface }]}>
 					{title}
 				</Text>
+				<View style={styles.trailing}>
+					{value && (
+						<Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+							{value}
+						</Text>
+					)}
+					{type === "arrow" && (
+						<List.Icon icon="chevron-right" color={theme.colors.onSurfaceVariant} style={styles.icon} />
+					)}
+					{type === "toggle" && (
+						<Switch
+							value={isToggled}
+							onValueChange={onClick}
+							color={theme.colors.primary}
+						/>
+					)}
+				</View>
 			</View>
-		</View>
+		</TouchableRipple>
+	);
+};
 
-		<View className="flex-row items-center gap-2">
-			{value && (
-				<Text className="text-sm text-[var(--muted-foreground)]">{value}</Text>
-			)}
-
-			{type === "arrow" && (
-				<ChevronRight
-					size={18}
-					className="text-[var(--muted-foreground)]"
-					color="var(--muted-foreground)"
-				/>
-			)}
-
-			{type === "toggle" && (
-				<Switch
-					value={isToggled}
-					onValueChange={onClick}
-					trackColor={{
-						false: "var(--muted-foreground)",
-						true: "var(--primary)",
-					}}
-					thumbColor={"white"}
-				/>
-			)}
-		</View>
-	</TouchableOpacity>
-);
+const styles = StyleSheet.create({
+	container: {
+		borderRadius: 16,
+		marginBottom: 8,
+		overflow: "hidden",
+	},
+	row: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingVertical: 12,
+		paddingHorizontal: 16,
+	},
+	iconBox: {
+		width: 40,
+		height: 40,
+		borderRadius: 12,
+		alignItems: "center",
+		justifyContent: "center",
+		marginRight: 16,
+	},
+	icon: {
+		margin: 0,
+	},
+	title: {
+		flex: 1,
+		fontWeight: "500",
+	},
+	trailing: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 4,
+	},
+});
 
 export default SettingItem;
