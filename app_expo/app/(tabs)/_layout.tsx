@@ -1,146 +1,165 @@
-import { Tabs, router } from "expo-router";
-import {
-	Home,
-	LayoutGrid,
-	Plus,
-	User,
-	Users,
-	Wallet,
-} from "lucide-react-native";
+import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { Tabs, router, useSegments } from "expo-router";
+import { Plus } from "lucide-react-native";
 import React from "react";
-import { TouchableOpacity, View, useColorScheme } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+import { BottomNavigation, useTheme } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const Colors = {
-	light: {
-		card: "#ffffff",
-		border: "#cec9d9",
-		primary: "#8a79ab",
-		mutedForeground: "#6b6880",
+/**
+ * Map expo-router route names → Paper BottomNavigation.Bar route descriptors.
+ * Icons are Material Community Icons names (bundled with Paper).
+ */
+const ROUTE_CONFIG: Record<
+	string,
+	{ title: string; focusedIcon: string; unfocusedIcon: string }
+> = {
+	index: {
+		title: "Home",
+		focusedIcon: "home",
+		unfocusedIcon: "home-outline",
 	},
-	dark: {
-		card: "#232030",
-		border: "#302c40",
-		primary: "#a995c9",
-		mutedForeground: "#a09aad",
+	stats: {
+		title: "Stats",
+		focusedIcon: "view-grid",
+		unfocusedIcon: "view-grid-outline",
+	},
+	wallets: {
+		title: "Wallets",
+		focusedIcon: "wallet",
+		unfocusedIcon: "wallet-outline",
+	},
+	social: {
+		title: "Social",
+		focusedIcon: "account-group",
+		unfocusedIcon: "account-group-outline",
+	},
+	profile: {
+		title: "Profile",
+		focusedIcon: "account",
+		unfocusedIcon: "account-outline",
 	},
 };
 
-export default function TabLayout() {
-	const colorScheme = useColorScheme() ?? "light";
-	const theme = Colors[colorScheme];
+const HREF_MAP: Record<string, string> = {
+	index: "/",
+	stats: "/stats",
+	wallets: "/wallets",
+	social: "/social",
+	profile: "/profile",
+};
+
+const NAV_BAR_H = 80;
+
+/**
+ * Custom tab bar using react-native-paper's BottomNavigation.Bar.
+ * This gives us the real M3 navigation bar: animated pill indicators,
+ * proper platform ripple, label typography, shifting/compact modes,
+ * and safe-area handling — all out of the box.
+ */
+function PaperTabBar({ state }: BottomTabBarProps) {
+	// Build the Paper navigation state, skipping the hidden "add" route
+	const visibleRoutes: Array<{
+		key: string;
+		title: string;
+		focusedIcon: string;
+		unfocusedIcon: string;
+	}> = [];
+	const expoIndexMap: number[] = []; // maps Paper index → expo state index
+
+	state.routes.forEach((route, expoIdx) => {
+		const cfg = ROUTE_CONFIG[route.name];
+		if (!cfg) return; // skip "add"
+		expoIndexMap.push(expoIdx);
+		visibleRoutes.push({ key: route.name, ...cfg });
+	});
+
+	// Translate the expo state.index to our filtered Paper index
+	let paperIndex = expoIndexMap.indexOf(state.index);
+	if (paperIndex === -1) paperIndex = 0; // fallback to Home
 
 	return (
-		<Tabs
-			screenOptions={{
-				headerShown: false,
-				tabBarStyle: {
-					position: "absolute",
-					bottom: 0,
-					left: 0,
-					right: 0,
-					backgroundColor: theme.card,
-					borderTopWidth: 1,
-					borderTopColor: theme.border,
-					borderTopLeftRadius: 48, // 3rem
-					borderTopRightRadius: 48, // 3rem
-					height: 90,
-					paddingBottom: 20,
-					paddingHorizontal: 20,
-					elevation: 0,
-					shadowColor: "#000",
-					shadowOffset: { width: 0, height: -5 },
-					shadowOpacity: 0.03,
-					shadowRadius: 20,
-				},
-				tabBarShowLabel: false,
-				tabBarActiveTintColor: theme.primary,
-				tabBarInactiveTintColor: theme.mutedForeground,
+		<BottomNavigation.Bar
+			navigationState={{ index: paperIndex, routes: visibleRoutes }}
+			onTabPress={({ route }) => {
+				const href = HREF_MAP[route.key];
+				if (href) router.navigate(href as any);
 			}}
-		>
-			<Tabs.Screen
-				name="index"
-				options={{
-					title: "Home",
-					tabBarIcon: ({ color }: { color: string }) => (
-						<Home size={24} color={color} />
-					),
-				}}
-			/>
-			<Tabs.Screen
-				name="stats"
-				options={{
-					title: "Stats",
-					tabBarIcon: ({ color }: { color: string }) => (
-						<LayoutGrid size={24} color={color} />
-					),
-				}}
-			/>
-			<Tabs.Screen
-				name="add"
-				options={{
-					title: "Add",
-					tabBarButton: (props: any) => (
-						<TouchableOpacity
-							onPress={() => router.push("/add-expense")}
-							style={{
-								top: -30,
-								justifyContent: "center",
-								alignItems: "center",
-							}}
-						>
-							<View
-								style={{
-									backgroundColor: theme.primary,
-									padding: 16,
-									borderRadius: 9999,
-									borderWidth: 4,
-									borderColor: colorScheme === "dark" ? "#1c1923" : "#f9f7fc",
-									shadowColor: "#000",
-									shadowOffset: { width: 0, height: -4 },
-									shadowOpacity: 0.3,
-									shadowRadius: 8,
-									elevation: 8,
-								}}
-							>
-								<Plus size={24} color="white" />
-							</View>
-						</TouchableOpacity>
-					),
-				}}
-				listeners={{
-					tabPress: (e) => {
-						e.preventDefault();
-						router.push("/add-expense");
-					},
-				}}
-			/>
-			<Tabs.Screen
-				name="wallets"
-				options={{
-					title: "Wallets",
-					tabBarIcon: ({ color }: { color: string }) => (
-						<Wallet size={24} color={color} />
-					),
-				}}
-			/>
-			<Tabs.Screen
-				name="social"
-				options={{
-					title: "Social",
-					tabBarIcon: ({ color }: { color: string }) => (
-						<Users size={24} color={color} />
-					),
-				}}
-			/>
-			<Tabs.Screen
-				name="profile"
-				options={{
-					title: "Profile",
-					tabBarIcon: ({ color }: { color: string }) => (
-						<User size={24} color={color} />
-					),
-				}}
-			/>
-		</Tabs>
+			shifting={false}
+			labeled={true}
+			compact={false}
+		/>
 	);
 }
+
+export default function TabLayout() {
+	const theme = useTheme();
+	const insets = useSafeAreaInsets();
+	const segments = useSegments();
+
+	const isWallets = segments[segments.length - 1] === "wallets";
+
+	return (
+		<View style={{ flex: 1 }}>
+			<Tabs
+				screenOptions={{ headerShown: false }}
+				tabBar={(props) => <PaperTabBar {...props} />}
+			>
+				<Tabs.Screen name="index" />
+				<Tabs.Screen name="stats" />
+				<Tabs.Screen
+					name="add"
+					listeners={{
+						tabPress: (e) => {
+							e.preventDefault();
+							router.push("/add-expense");
+						},
+					}}
+				/>
+				<Tabs.Screen name="wallets" />
+				<Tabs.Screen name="social" />
+				<Tabs.Screen name="profile" />
+			</Tabs>
+
+			{/* M3 FAB — floating above the navigation bar, bottom-right */}
+			<Pressable
+				onPress={() => router.push(isWallets ? "/add-wallet" : "/add-expense")}
+				android_ripple={{
+					color: theme.colors.onPrimary + "30",
+					borderless: true,
+				}}
+				style={[
+					styles.fab,
+					{
+						backgroundColor: theme.colors.primaryContainer,
+						bottom: NAV_BAR_H + (insets.bottom || 0),
+						shadowColor: theme.colors.shadow,
+					},
+				]}
+			>
+				<Plus
+					size={26}
+					color={theme.colors.onPrimaryContainer}
+					strokeWidth={2.5}
+				/>
+			</Pressable>
+		</View>
+	);
+}
+
+const styles = StyleSheet.create({
+	fab: {
+		position: "absolute",
+		right: 16,
+		width: 56,
+		height: 56,
+		borderRadius: 16,
+		alignItems: "center",
+		justifyContent: "center",
+		elevation: 6,
+		shadowOffset: { width: 0, height: 3 },
+		shadowOpacity: 0.25,
+		shadowRadius: 8,
+		zIndex: 100,
+	},
+});
