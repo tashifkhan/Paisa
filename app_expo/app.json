@@ -40,6 +40,9 @@
         }
       ]
     ],
+    "extra": {
+      "apiUrl": "http://localhost:8000"
+    },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
