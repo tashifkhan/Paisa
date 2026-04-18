@@ -1,51 +1,88 @@
-import { LucideIcon } from "lucide-react-native";
 import React from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { List, Surface, Text, TouchableRipple, useTheme } from "react-native-paper";
 
 interface TransactionItemProps {
-	icon: LucideIcon;
+	icon: string; // Material Community Icon name
 	title: string;
 	subtitle: string;
 	amount: string;
 	percent?: string;
+	onPress?: () => void;
 }
 
 const TransactionItem = ({
-	icon: Icon,
+	icon,
 	title,
 	subtitle,
 	amount,
 	percent,
-}: TransactionItemProps) => (
-	<TouchableOpacity className="flex-row items-center justify-between py-4 px-3 rounded-3xl active:bg-[var(--muted)]">
-		<View className="flex-row items-center gap-4">
-			<View className="w-12 h-12 rounded-full items-center justify-center bg-[var(--muted)]">
-				<Icon
-					size={20}
-					className="text-[var(--foreground)]"
-					color="var(--foreground)"
-				/>
+	onPress,
+}: TransactionItemProps) => {
+	const theme = useTheme();
+
+	return (
+		<TouchableRipple
+			onPress={onPress}
+			borderless
+			style={styles.container}
+			rippleColor={theme.colors.primary + "14"}
+		>
+			<View style={styles.row}>
+				<View style={[styles.iconBox, { backgroundColor: theme.colors.primaryContainer }]}>
+					<List.Icon icon={icon} color={theme.colors.primary} style={styles.icon} />
+				</View>
+				<View style={styles.content}>
+					<Text variant="titleSmall" style={{ fontWeight: "600" }}>
+						{title}
+					</Text>
+					<Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+						{subtitle}
+					</Text>
+				</View>
+				<View style={styles.trailing}>
+					<Text variant="titleSmall" style={{ fontWeight: "700" }}>
+						{amount.startsWith("₹") ? amount : `₹${amount}`}
+					</Text>
+					{percent && (
+						<Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
+							{percent}%
+						</Text>
+					)}
+				</View>
 			</View>
-			<View>
-				<Text className="font-bold text-[var(--foreground)] text-base">
-					{title}
-				</Text>
-				<Text className="text-sm text-[var(--muted-foreground)]">
-					{subtitle}
-				</Text>
-			</View>
-		</View>
-		<View className="items-end">
-			<Text className="font-bold text-[var(--foreground)] text-base">
-				₹{amount}
-			</Text>
-			{percent && (
-				<Text className="text-xs text-[var(--muted-foreground)]">
-					{percent}%
-				</Text>
-			)}
-		</View>
-	</TouchableOpacity>
-);
+		</TouchableRipple>
+	);
+};
+
+const styles = StyleSheet.create({
+	container: {
+		borderRadius: 16,
+		overflow: "hidden",
+	},
+	row: {
+		flexDirection: "row",
+		alignItems: "center",
+		paddingVertical: 12,
+		paddingHorizontal: 12,
+		gap: 12,
+	},
+	iconBox: {
+		width: 44,
+		height: 44,
+		borderRadius: 14,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	icon: {
+		margin: 0,
+	},
+	content: {
+		flex: 1,
+	},
+	trailing: {
+		alignItems: "flex-end",
+	},
+});
 
 export default TransactionItem;
