@@ -1,246 +1,271 @@
-import CreditCardComponent from "@/components/CreditCard";
-import TransactionItem from "@/components/TransactionItem";
-import { useRouter } from "expo-router";
-import {
-	Banknote,
-	Bell,
-	EyeOff,
-	Gift,
-	Moon,
-	Pizza,
-	Plus,
-	Shirt,
-	Smartphone,
-	Sun,
-	Wallet,
-	Wifi,
-} from "lucide-react-native";
-import { useColorScheme } from "nativewind";
-import React from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import CreditCardComponent from '@/components/CreditCard';
+import { useProfile } from '@/hooks/useProfile';
+import { useStatsComparison } from '@/hooks/useStats';
+import { useTransactions } from '@/hooks/useTransactions';
+import { useWalletTotal, useWallets } from '@/hooks/useWallets';
+import { useRouter } from 'expo-router';
+import { useColorScheme } from 'nativewind';
+import React, { useCallback, useMemo, useState } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Button, Card, IconButton, Text, useTheme } from 'react-native-paper';
+import { useQueryClient } from '@tanstack/react-query';
+
+function formatAmount(amount: number, currency: string = 'INR') {
+  const symbol = currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency;
+  return `${symbol}${Math.abs(amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+}
+
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
+const GRADIENTS = [
+  'from-[#8a79ab] to-[#6a5990]',
+  'from-[#77b8a1] to-[#4a9080]',
+  'from-[#e6a5b8] to-[#c87a94]',
+  'from-[#f0c88d] to-[#d4964a]',
+  'from-[#a0bbe3] to-[#6090c8]',
+];
 
 export default function HomeScreen() {
-	const { colorScheme, toggleColorScheme } = useColorScheme();
-	const isDarkMode = colorScheme === "dark";
-	const router = useRouter();
+  const { colorScheme, toggleColorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const router = useRouter();
+  const theme = useTheme();
+  const queryClient = useQueryClient();
 
-	const transactions = [
-		{
-			id: 1,
-			title: "Shopping",
-			subtitle: "Cash",
-			amount: "498.50",
-			percent: "32",
-			icon: Shirt,
-		},
-		{
-			id: 2,
-			title: "Gifts",
-			subtitle: "Cash - Card",
-			amount: "344.45",
-			percent: "21",
-			icon: Gift,
-		},
-		{
-			id: 3,
-			title: "Food",
-			subtitle: "Cash",
-			amount: "230.50",
-			percent: "12",
-			icon: Pizza,
-		},
-		{
-			id: 4,
-			title: "Taxi",
-			subtitle: "Card",
-			amount: "45.00",
-			percent: "5",
-			icon: Wallet,
-		},
-		{
-			id: 5,
-			title: "Mobile Bill",
-			subtitle: "Online",
-			amount: "55.00",
-			percent: "6",
-			icon: Smartphone,
-		},
-	];
+  const { data: user } = useProfile();
+  const { data: wallets = [], isLoading: walletsLoading } = useWallets();
+  const { data: totalData, isLoading: totalLoading } = useWalletTotal();
+  const { data: transactions = [], isLoading: txLoading } = useTransactions({ limit: 8 });
+  const { data: comparison, isLoading: comparisonLoading } = useStatsComparison(30);
+  const [refreshing, setRefreshing] = useState(false);
+  const [hideBalance, setHideBalance] = useState(false);
 
-	return (
-		<ScrollView
-			className="flex-1 bg-[var(--background)]"
-			contentContainerStyle={{ paddingBottom: 100 }}
-			showsVerticalScrollIndicator={false}
-		>
-			{/* Header */}
-			<View className="flex-row justify-between items-center p-6 pt-12">
-				<View>
-					<Text className="text-3xl font-bold text-[var(--foreground)]">
-						Hi, There
-					</Text>
-				</View>
-				<View className="flex-row gap-3">
-					<TouchableOpacity
-						onPress={toggleColorScheme}
-						className="p-2 rounded-full active:bg-[var(--muted)]"
-					>
-						{isDarkMode ? (
-							<Sun size={20} color="var(--foreground)" />
-						) : (
-							<Moon size={20} color="var(--foreground)" />
-						)}
-					</TouchableOpacity>
-					<TouchableOpacity className="p-2 relative bg-[var(--card)] rounded-full border border-[var(--border)]">
-						<Bell size={20} color="var(--foreground)" />
-						<View className="absolute top-1.5 right-2 w-2 h-2 bg-[var(--destructive)] rounded-full" />
-					</TouchableOpacity>
-				</View>
-			</View>
+  const loading = walletsLoading || totalLoading || txLoading || comparisonLoading;
+  const totalBalance = totalData?.total_balance ?? 0;
 
-			{/* Total Balance Card */}
-			<View className="px-6 mb-8">
-				<View className="bg-[#FFF6F1] dark:bg-[var(--card)] p-8 rounded-[2.5rem] shadow-sm border border-[#F5E6DE] dark:border-[var(--border)] relative overflow-hidden">
-					{/* Gradient Blobs */}
-					<View className="absolute -top-24 -right-24 w-64 h-64 bg-[#FADAC9] dark:bg-[var(--primary)]/10 rounded-full blur-3xl opacity-60" />
-					<View className="absolute -bottom-24 -left-24 w-64 h-64 bg-[#FADAC9] dark:bg-[var(--primary)]/10 rounded-full blur-3xl opacity-60" />
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['profile'] }),
+      queryClient.invalidateQueries({ queryKey: ['wallets'] }),
+      queryClient.invalidateQueries({ queryKey: ['transactions'] }),
+      queryClient.invalidateQueries({ queryKey: ['stats', 'comparison', 30] }),
+    ]);
+    setRefreshing(false);
+  }, [queryClient]);
 
-					<View className="relative z-10">
-						<View className="flex-row justify-between items-start mb-2">
-							<Text className="text-lg font-medium opacity-80 text-[#3E2E28] dark:text-[var(--foreground)]">
-								Total balance
-							</Text>
-							<TouchableOpacity className="opacity-60">
-								<EyeOff
-									size={24}
-									color={isDarkMode ? "var(--foreground)" : "#3E2E28"}
-								/>
-							</TouchableOpacity>
-						</View>
+  const displayName = useMemo(() => user?.name?.split(' ')[0] || 'there', [user?.name]);
 
-						<Text className="text-4xl font-bold mb-8 tracking-tight text-[#2D1F16] dark:text-[var(--foreground)]">
-							₹6,64,472.00
-						</Text>
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      contentContainerStyle={{ paddingBottom: 100 }}
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#8a79ab']} />}
+    >
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text variant="headlineMedium" style={styles.greeting}>Hi, {displayName} 👋</Text>
+          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+            {new Date().toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' })}
+          </Text>
+        </View>
+        <View style={styles.headerActions}>
+          <IconButton
+            icon={isDark ? 'white-balance-sunny' : 'weather-night'}
+            mode="contained-tonal"
+            size={20}
+            onPress={toggleColorScheme}
+          />
+          <IconButton
+            icon="bell-outline"
+            mode="outlined"
+            size={20}
+            onPress={() => {}}
+          />
+        </View>
+      </View>
 
-						<Text className="mb-6 text-lg font-semibold text-[#3E2E28] dark:text-[var(--foreground)]">
-							This month
-						</Text>
+      {/* Balance Card */}
+      <View style={styles.px}>
+        <Card style={[styles.balanceCard, { backgroundColor: isDark ? '#2d2840' : '#FFF6F1' }]} elevation={0}>
+          <Card.Content style={styles.balanceContent}>
+            <View style={styles.balanceHeader}>
+              <Text variant="titleMedium" style={{ color: isDark ? '#e0ddef' : '#3E2E28', opacity: 0.8 }}>
+                Total Balance
+              </Text>
+              <IconButton
+                icon={hideBalance ? 'eye-outline' : 'eye-off-outline'}
+                size={22}
+                iconColor={isDark ? '#e0ddef' : '#3E2E28'}
+                onPress={() => setHideBalance(!hideBalance)}
+                style={{ margin: 0 }}
+              />
+            </View>
 
-						<View className="flex-row gap-8">
-							{/* Income */}
-							<View className="flex-1">
-								<Text className="text-sm opacity-70 mb-1 text-[#3E2E28] dark:text-[var(--foreground)]">
-									Income
-								</Text>
-								<View className="flex-row items-center flex-wrap gap-2 mb-1">
-									<Text className="text-xl font-bold text-[#2D1F16] dark:text-[var(--foreground)]">
-										₹4,99,100
-									</Text>
-									<Text className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-										↑ 565.47%
-									</Text>
-								</View>
-								<Text className="text-xs opacity-60 leading-relaxed text-[#3E2E28] dark:text-[var(--foreground)]">
-									Compared to ₹75,000 last month
-								</Text>
-							</View>
+            {loading ? (
+              <ActivityIndicator style={{ marginVertical: 16 }} />
+            ) : (
+              <Text variant="displaySmall" style={[styles.balanceAmount, { color: isDark ? '#e0ddef' : '#2D1F16' }]}>
+                {hideBalance ? '••••••' : formatAmount(totalBalance ?? 0)}
+              </Text>
+            )}
 
-							{/* Expense */}
-							<View className="flex-1">
-								<Text className="text-sm opacity-70 mb-1 text-[#3E2E28] dark:text-[var(--foreground)]">
-									Expense
-								</Text>
-								<View className="flex-row items-center flex-wrap gap-2 mb-1">
-									<Text className="text-xl font-bold text-[#2D1F16] dark:text-[var(--foreground)]">
-										₹92,628
-									</Text>
-									<Text className="text-xs font-medium text-rose-600 dark:text-rose-400">
-										↑ 92.97%
-									</Text>
-								</View>
-								<Text className="text-xs opacity-60 leading-relaxed text-[#3E2E28] dark:text-[var(--foreground)]">
-									Compared to ₹48,000 last month
-								</Text>
-							</View>
-						</View>
-					</View>
-				</View>
-			</View>
+            <Text variant="titleSmall" style={{ color: isDark ? '#e0ddef' : '#3E2E28', fontWeight: '600', marginBottom: 12 }}>
+              This month
+            </Text>
 
-			{/* My Cards Section */}
-			<View className="pl-6 mb-8">
-				<View className="flex-row justify-between items-center mb-4 pr-6">
-					<Text className="text-xl font-bold text-[var(--foreground)]">
-						My Cards
-					</Text>
-					<TouchableOpacity
-						onPress={() => router.push("/wallets")}
-						className="bg-[var(--card)] border border-[var(--border)] px-3 py-1 rounded-lg shadow-sm"
-					>
-						<Text className="text-sm font-medium text-[var(--muted-foreground)]">
-							View All
-						</Text>
-					</TouchableOpacity>
-				</View>
+            {comparison && (
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <Text variant="bodySmall" style={{ color: isDark ? '#a09aad' : '#6B5748', marginBottom: 2 }}>Income</Text>
+                  <Text variant="titleMedium" style={{ fontWeight: '700', color: isDark ? '#e0ddef' : '#2D1F16' }}>
+                    {formatAmount(comparison.income.current)}
+                  </Text>
+                  {comparison.income.change_percent !== 0 && (
+                    <Text variant="labelSmall" style={{ color: comparison.income.change >= 0 ? '#16a34a' : '#dc2626' }}>
+                      {comparison.income.change >= 0 ? '↑' : '↓'} {Math.abs(comparison.income.change_percent).toFixed(1)}%
+                    </Text>
+                  )}
+                </View>
+                <View style={[styles.statDivider, { backgroundColor: isDark ? '#302c40' : '#F5E6DE' }]} />
+                <View style={styles.statItem}>
+                  <Text variant="bodySmall" style={{ color: isDark ? '#a09aad' : '#6B5748', marginBottom: 2 }}>Expense</Text>
+                  <Text variant="titleMedium" style={{ fontWeight: '700', color: isDark ? '#e0ddef' : '#2D1F16' }}>
+                    {formatAmount(comparison.expense.current)}
+                  </Text>
+                  {comparison.expense.change_percent !== 0 && (
+                    <Text variant="labelSmall" style={{ color: comparison.expense.change >= 0 ? '#dc2626' : '#16a34a' }}>
+                      {comparison.expense.change >= 0 ? '↑' : '↓'} {Math.abs(comparison.expense.change_percent).toFixed(1)}%
+                    </Text>
+                  )}
+                </View>
+              </View>
+            )}
+          </Card.Content>
+        </Card>
+      </View>
 
-				<ScrollView
-					horizontal
-					showsHorizontalScrollIndicator={false}
-					contentContainerStyle={{ paddingRight: 24 }}
-				>
-					<View className="w-80 mr-4">
-						<CreditCardComponent
-							type="VISA"
-							number="9038 4061 **** ****"
-							holder="Tashif"
-							exp="02/28"
-							gradient="from-[var(--chart-2)] to-[var(--chart-1)]"
-							icon={Wifi}
-						/>
-					</View>
-					<View className="w-80 mr-4">
-						<CreditCardComponent
-							type="Cash"
-							number="Physical"
-							holder="Tashif"
-							exp="--"
-							gradient="from-green-600 to-teal-700"
-							icon={Banknote}
-							isCash={true}
-						/>
-					</View>
-					<TouchableOpacity className="w-20 h-56 bg-[var(--muted)] rounded-[32px] items-center justify-center border-2 border-dashed border-[var(--border)] active:bg-[var(--muted)]/80">
-						<Plus size={24} color="var(--muted-foreground)" />
-					</TouchableOpacity>
-				</ScrollView>
-			</View>
+      {/* My Cards */}
+      <View style={styles.sectionHeader}>
+        <Text variant="titleLarge" style={styles.sectionTitle}>My Cards</Text>
+        <Button mode="text" compact onPress={() => router.push('/(tabs)/wallets')} labelStyle={styles.viewAllLabel}>
+          View All
+        </Button>
+      </View>
 
-			{/* Spending Analysis */}
-			<View className="px-6 pb-6">
-				<View className="flex-row justify-between items-center mb-4">
-					<Text className="text-xl font-bold text-[var(--foreground)]">
-						Spending Analysis
-					</Text>
-					<TouchableOpacity className="bg-[var(--card)] border border-[var(--border)] px-3 py-1 rounded-lg">
-						<Text className="text-sm font-medium text-[var(--muted-foreground)]">
-							See All
-						</Text>
-					</TouchableOpacity>
-				</View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cardsScroll}>
+        {loading ? (
+          <ActivityIndicator style={{ marginHorizontal: 24 }} />
+        ) : wallets.length === 0 ? (
+          <Text style={{ marginHorizontal: 24, opacity: 0.6 }}>No wallets yet</Text>
+        ) : (
+          wallets.slice(0, 3).map((wallet, i) => (
+            <View key={wallet.id} style={{ width: 300, marginRight: 16 }}>
+              <CreditCardComponent
+                type={wallet.type?.toUpperCase() || 'WALLET'}
+                number={wallet.name}
+                holder={user?.name || ''}
+                exp="--"
+                balance={hideBalance ? undefined : formatAmount(wallet.balance, wallet.currency)}
+                gradient={GRADIENTS[i % GRADIENTS.length]}
+              />
+            </View>
+          ))
+        )}
+        <View
+          style={[styles.addCardBtn, { backgroundColor: theme.colors.surfaceVariant, borderColor: theme.colors.outline }]}
+        >
+          <IconButton
+            icon="plus"
+            size={24}
+            iconColor={theme.colors.onSurfaceVariant}
+            onPress={() => router.push('/(tabs)/wallets')}
+          />
+        </View>
+      </ScrollView>
 
-				<View className="gap-1">
-					{transactions.map((t) => (
-						<TransactionItem
-							key={t.id}
-							icon={t.icon}
-							title={t.title}
-							subtitle={t.subtitle}
-							amount={t.amount}
-							percent={t.percent}
-						/>
-					))}
-				</View>
-			</View>
-		</ScrollView>
-	);
+      {/* Recent Transactions */}
+      <View style={styles.sectionHeader}>
+        <Text variant="titleLarge" style={styles.sectionTitle}>Recent Transactions</Text>
+        <Button mode="text" compact onPress={() => router.push('/all-transactions')} labelStyle={styles.viewAllLabel}>
+          See All
+        </Button>
+      </View>
+
+      <View style={styles.px}>
+        {loading ? (
+          <ActivityIndicator style={{ marginVertical: 20 }} />
+        ) : transactions.length === 0 ? (
+          <Card style={{ borderRadius: 24 }}>
+            <Card.Content style={{ alignItems: 'center', paddingVertical: 32 }}>
+              <Text variant="bodyLarge" style={{ opacity: 0.5 }}>No transactions yet</Text>
+              <Button mode="contained" style={{ marginTop: 16, borderRadius: 20 }} onPress={() => router.push('/add-expense')}>
+                Add First Expense
+              </Button>
+            </Card.Content>
+          </Card>
+        ) : (
+          <View style={{ gap: 8 }}>
+            {transactions.map((tx) => (
+              <Card 
+                key={tx.id} 
+                style={[styles.txCard, { backgroundColor: theme.colors.surface }]} 
+                elevation={0}
+                onPress={() => router.push(`/transaction/${tx.id}`)}
+              >
+                <Card.Content style={styles.txContent}>
+                  <View style={[styles.txIcon, { backgroundColor: tx.type === 'income' ? '#dcfce7' : '#fee2e2' }]}>
+                    <Text style={{ fontSize: 18 }}>
+                      {tx.type === 'income' ? '💰' : '💸'}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="titleSmall" style={{ fontWeight: '600' }}>
+                      {tx.note || (tx.type === 'income' ? 'Income' : 'Expense')}
+                    </Text>
+                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                      {formatDate(tx.date)}
+                    </Text>
+                  </View>
+                  <Text
+                    variant="titleSmall"
+                    style={{ fontWeight: '700', color: tx.type === 'income' ? '#16a34a' : '#dc2626' }}
+                  >
+                    {tx.type === 'income' ? '+' : '-'}{formatAmount(tx.amount, tx.currency)}
+                  </Text>
+                </Card.Content>
+              </Card>
+            ))}
+          </View>
+        )}
+      </View>
+    </ScrollView>
+  );
 }
+
+const styles = StyleSheet.create({
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 52, paddingBottom: 16 },
+  greeting: { fontWeight: '700' },
+  headerActions: { flexDirection: 'row', gap: 4 },
+  px: { paddingHorizontal: 20, marginBottom: 20 },
+  balanceCard: { borderRadius: 28 },
+  balanceContent: { padding: 24 },
+  balanceHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  balanceAmount: { fontWeight: '800', marginBottom: 16, letterSpacing: -1 },
+  statsRow: { flexDirection: 'row', alignItems: 'center' },
+  statItem: { flex: 1 },
+  statDivider: { width: 1, height: 40, marginHorizontal: 16 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 12 },
+  sectionTitle: { fontWeight: '700' },
+  viewAllLabel: { fontSize: 13 },
+  cardsScroll: { paddingLeft: 20, paddingRight: 20, marginBottom: 24 },
+  addCardBtn: { width: 72, height: 200, borderRadius: 24, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderStyle: 'dashed' },
+  txCard: { borderRadius: 20, marginBottom: 0 },
+  txContent: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  txIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+});
