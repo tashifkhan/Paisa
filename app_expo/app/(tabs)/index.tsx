@@ -8,7 +8,9 @@ import { useColorScheme } from 'nativewind';
 import React, { useCallback, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, IconButton, Text, useTheme } from 'react-native-paper';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { debtService } from '@/services/debtService';
 
 function formatAmount(amount: number, currency: string = 'INR') {
   const symbol = currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency;
@@ -40,11 +42,17 @@ export default function HomeScreen() {
   const { data: totalData, isLoading: totalLoading } = useWalletTotal();
   const { data: transactions = [], isLoading: txLoading } = useTransactions({ limit: 8 });
   const { data: comparison, isLoading: comparisonLoading } = useStatsComparison(30);
+  const { data: debtSummary } = useQuery({ queryKey: ['debts', 'summary'], queryFn: () => debtService.getSummary() });
   const [refreshing, setRefreshing] = useState(false);
   const [hideBalance, setHideBalance] = useState(false);
 
   const loading = walletsLoading || totalLoading || txLoading || comparisonLoading;
-  const totalBalance = totalData?.total_balance ?? 0;
+  const walletBalance = totalData?.total_balance ?? 0;
+  const netDebt = debtSummary?.net ?? 0; // positive = others owe you
+  const totalBalance = walletBalance + netDebt;
+
+  const incomeWithDebt = (comparison?.income.current ?? 0) + (debtSummary?.owed_to_me ?? 0);
+  const expenseWithDebt = (comparison?.expense.current ?? 0) + (debtSummary?.owed_by_me ?? 0);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -53,6 +61,7 @@ export default function HomeScreen() {
       queryClient.invalidateQueries({ queryKey: ['wallets'] }),
       queryClient.invalidateQueries({ queryKey: ['transactions'] }),
       queryClient.invalidateQueries({ queryKey: ['stats', 'comparison', 30] }),
+      queryClient.invalidateQueries({ queryKey: ['debts', 'summary'] }),
     ]);
     setRefreshing(false);
   }, [queryClient]);
@@ -69,7 +78,7 @@ export default function HomeScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text variant="headlineMedium" style={styles.greeting}>Hi, {displayName} 👋</Text>
+          <Text variant="headlineMedium" style={styles.greeting}>Hi, {displayName}</Text>
           <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', month: 'long', day: 'numeric' })}
           </Text>
@@ -110,9 +119,16 @@ export default function HomeScreen() {
             {loading ? (
               <ActivityIndicator style={{ marginVertical: 16 }} />
             ) : (
-              <Text variant="displaySmall" style={[styles.balanceAmount, { color: isDark ? '#e0ddef' : '#2D1F16' }]}>
-                {hideBalance ? '••••••' : formatAmount(totalBalance ?? 0)}
-              </Text>
+              <>
+                <Text variant="displaySmall" style={[styles.balanceAmount, { color: isDark ? '#e0ddef' : '#2D1F16' }]}>
+                  {hideBalance ? '••••••' : formatAmount(totalBalance)}
+                </Text>
+                {netDebt !== 0 && !hideBalance && (
+                  <Text variant="labelSmall" style={{ color: isDark ? '#a09aad' : '#6B5748', marginTop: -4, marginBottom: 4 }}>
+                    Includes {netDebt >= 0 ? '+' : ''}{formatAmount(netDebt)} net debt
+                  </Text>
+                )}
+              </>
             )}
 
             <Text variant="titleSmall" style={{ color: isDark ? '#e0ddef' : '#3E2E28', fontWeight: '600', marginBottom: 12 }}>
@@ -122,9 +138,9 @@ export default function HomeScreen() {
             {comparison && (
               <View style={styles.statsRow}>
                 <View style={styles.statItem}>
-                  <Text variant="bodySmall" style={{ color: isDark ? '#a09aad' : '#6B5748', marginBottom: 2 }}>Income</Text>
+                  <Text variant="bodySmall" style={{ color: isDark ? '#a09aad' : '#6B5748', marginBottom: 2 }}>Income + Owed</Text>
                   <Text variant="titleMedium" style={{ fontWeight: '700', color: isDark ? '#e0ddef' : '#2D1F16' }}>
-                    {formatAmount(comparison.income.current)}
+                    {hideBalance ? '••••••' : formatAmount(incomeWithDebt)}
                   </Text>
                   {comparison.income.change_percent !== 0 && (
                     <Text variant="labelSmall" style={{ color: comparison.income.change >= 0 ? '#16a34a' : '#dc2626' }}>
@@ -134,9 +150,9 @@ export default function HomeScreen() {
                 </View>
                 <View style={[styles.statDivider, { backgroundColor: isDark ? '#302c40' : '#F5E6DE' }]} />
                 <View style={styles.statItem}>
-                  <Text variant="bodySmall" style={{ color: isDark ? '#a09aad' : '#6B5748', marginBottom: 2 }}>Expense</Text>
+                  <Text variant="bodySmall" style={{ color: isDark ? '#a09aad' : '#6B5748', marginBottom: 2 }}>Expense + Owe</Text>
                   <Text variant="titleMedium" style={{ fontWeight: '700', color: isDark ? '#e0ddef' : '#2D1F16' }}>
-                    {formatAmount(comparison.expense.current)}
+                    {hideBalance ? '••••••' : formatAmount(expenseWithDebt)}
                   </Text>
                   {comparison.expense.change_percent !== 0 && (
                     <Text variant="labelSmall" style={{ color: comparison.expense.change >= 0 ? '#dc2626' : '#16a34a' }}>
@@ -220,9 +236,11 @@ export default function HomeScreen() {
               >
                 <Card.Content style={styles.txContent}>
                   <View style={[styles.txIcon, { backgroundColor: tx.type === 'income' ? '#dcfce7' : '#fee2e2' }]}>
-                    <Text style={{ fontSize: 18 }}>
-                      {tx.type === 'income' ? '💰' : '💸'}
-                    </Text>
+                    <MaterialCommunityIcons 
+                      name={tx.type === 'income' ? 'arrow-down' : 'arrow-up'} 
+                      size={20} 
+                      color={tx.type === 'income' ? '#16a34a' : '#dc2626'} 
+                    />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text variant="titleSmall" style={{ fontWeight: '600' }}>

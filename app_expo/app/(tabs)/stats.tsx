@@ -1,4 +1,6 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { debtService } from '@/services/debtService';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   Dimensions,
@@ -584,6 +586,8 @@ export default function StatsScreen() {
   const [showFilters, setShowFilters] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  const { data: debtSummary } = useQuery({ queryKey: ['debts', 'summary'], queryFn: () => debtService.getSummary() });
+
   const { data: stats } = useStatsFull(period.days);
   const { data: expenseCatData } = useStatsCategory(period.days, 'expense');
   const { data: incomeCatData } = useStatsCategory(period.days, 'income');
@@ -638,7 +642,10 @@ export default function StatsScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await queryClient.invalidateQueries({ queryKey: ['stats'] });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['stats'] }),
+      queryClient.invalidateQueries({ queryKey: ['debts', 'summary'] }),
+    ]);
     setRefreshing(false);
   }, [queryClient]);
 
@@ -793,9 +800,9 @@ export default function StatsScreen() {
               </Text>
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 {[
-                  { label: 'Income', value: stats.total_income, color: '#4CAF50' },
-                  { label: 'Expense', value: stats.total_expense, color: '#E74C3C' },
-                  { label: 'Net', value: stats.net, color: '#a995c9' },
+                  { label: 'Income + Owed', value: stats.total_income + (debtSummary?.owed_to_me ?? 0), color: '#4CAF50' },
+                  { label: 'Expense + Owe', value: stats.total_expense + (debtSummary?.owed_by_me ?? 0), color: '#E74C3C' },
+                  { label: 'Net', value: stats.net + (debtSummary?.net ?? 0), color: '#a995c9' },
                 ].map(item => (
                   <View
                     key={item.label}
@@ -825,9 +832,13 @@ export default function StatsScreen() {
                     style={[styles.merchantRow, { backgroundColor: theme.colors.surface }]}
                   >
                     <View style={[styles.merchantIcon, { backgroundColor: `${CAT_COLORS[i % CAT_COLORS.length]}22` }]}>
-                      <Text style={{ fontSize: 18 }}>
-                        {['🛍️', '🏦', '🍔', '📱', '🎬', '🛒', '✈️', '💊'][i] ?? '💳'}
-                      </Text>
+                      <MaterialCommunityIcons 
+                        name={(
+                          ['shopping', 'bank', 'food', 'cellphone', 'movie', 'cart', 'airplane', 'pill'] as const
+                        )[i] ?? 'credit-card'} 
+                        size={20} 
+                        color={CAT_COLORS[i % CAT_COLORS.length]} 
+                      />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.onSurface }}>
