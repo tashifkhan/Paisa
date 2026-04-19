@@ -104,13 +104,38 @@ async def verify_otp(payload: schemas.OTPVerify):
     if not otp or not otp.is_valid():
         raise HTTPException(status_code=400, detail="Invalid or expired OTP")
 
-    # create user if password and name provided
+    # Existing user: either reject signup attempt or reset password
     existing = await models.User.find_one(models.User.email == payload.email)
     if existing:
+        if payload.name:
+            otp.used = True
+            await otp.save()
+            raise HTTPException(status_code=400, detail="Email already registered")
+
+        if not payload.password:
+            raise HTTPException(
+                status_code=400,
+                detail="password required for password reset",
+            )
+
+        existing.password_hash = get_password_hash(payload.password)
+        await existing.save()
         otp.used = True
         await otp.save()
-        raise HTTPException(status_code=400, detail="Email already registered")
 
+        token = create_access_token({"sub": str(existing.id)})
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "user_id": str(existing.id),
+        }
+
+    if payload.password and not payload.name:
+        otp.used = True
+        await otp.save()
+        raise HTTPException(status_code=400, detail="Email not registered")
+
+    # Signup flow for new users
     if not payload.password or not payload.name:
         raise HTTPException(
             status_code=400, detail="name and password required to create account"

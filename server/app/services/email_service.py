@@ -15,8 +15,23 @@ class EmailService:
     """Async email service using aiosmtplib."""
 
     @staticmethod
+    def _smtp_ready() -> bool:
+        return bool(
+            settings.SMTP_HOST
+            and settings.SMTP_PORT
+            and settings.SMTP_USER
+            and settings.SMTP_PASS
+        )
+
+    @staticmethod
     async def send_email(to_email: str, subject: str, html_content: str) -> bool:
         """Send an email using SMTP settings from config."""
+        if not EmailService._smtp_ready():
+            logger.warning(
+                "SMTP not configured: set SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS"
+            )
+            return False
+
         try:
             # Create message
             message = MIMEMultipart("alternative")

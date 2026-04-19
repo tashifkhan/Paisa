@@ -36,6 +36,12 @@ Key variables:
 - `MONGODB_URL` (default: `mongodb://localhost:27017/paisa`)
 - `SECRET_KEY`
 
+SMTP notes (for OTP emails):
+
+- Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and optional `SMTP_FROM`.
+- Use an app password (not your account password) for providers like iCloud/Gmail.
+- Start the server from the `server/` directory (or use Docker), so it picks up `server/.env`.
+
 ### 3. Run the Development Server
 
 ```bash
