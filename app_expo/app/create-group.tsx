@@ -1,114 +1,205 @@
-import { useRouter } from "expo-router";
-import { ArrowLeft, Camera, Check, Search } from "lucide-react-native";
-import React, { useState } from "react";
-import {
-	ScrollView,
-	Text,
-	TextInput,
-	TouchableOpacity,
-	View,
-} from "react-native";
+import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Button, Card, Chip, Snackbar, Text, TextInput, useTheme } from 'react-native-paper';
+import { groupService } from '../services/groupService';
+import { userService } from '../services/userService';
+import type { BackendUser } from '../services/types';
+
+const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP'];
 
 export default function CreateGroupScreen() {
-	const router = useRouter();
-	const [groupName, setGroupName] = useState("");
+  const router = useRouter();
+  const theme = useTheme();
 
-	const friends = [
-		{ id: 1, name: "Rahul Sharma", selected: false },
-		{ id: 2, name: "Anita Roy", selected: false },
-		{ id: 3, name: "John Doe", selected: false },
-		{ id: 4, name: "Priya Singh", selected: false },
-	];
+  const [groupName, setGroupName] = useState('');
+  const [currency, setCurrency] = useState('INR');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<BackendUser[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<BackendUser[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [snack, setSnack] = useState('');
 
-	return (
-		<View className="flex-1 bg-[var(--background)]">
-			<View className="flex-row justify-between items-center p-6 pt-12">
-				<TouchableOpacity
-					onPress={() => router.back()}
-					className="p-2 bg-[var(--card)] border border-[var(--border)] rounded-full shadow-sm"
-				>
-					<ArrowLeft size={20} color="var(--foreground)" />
-				</TouchableOpacity>
-				<Text className="text-xl font-bold text-[var(--foreground)]">
-					Create Group
-				</Text>
-				<TouchableOpacity
-					onPress={() => router.back()}
-					className={`p-2 rounded-full ${
-						groupName ? "bg-[var(--primary)]" : "bg-[var(--muted)]"
-					}`}
-					disabled={!groupName}
-				>
-					<Check
-						size={20}
-						color={groupName ? "white" : "var(--muted-foreground)"}
-					/>
-				</TouchableOpacity>
-			</View>
+  const searchUsers = useCallback(async (q: string) => {
+    if (!q.trim()) { setSearchResults([]); return; }
+    setSearching(true);
+    try {
+      const results = await userService.searchUsers(q);
+      setSearchResults(results);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }, []);
 
-			<ScrollView className="flex-1 px-6">
-				<View className="items-center mb-8">
-					<TouchableOpacity className="w-24 h-24 rounded-full bg-[var(--muted)] items-center justify-center mb-4 border-2 border-dashed border-[var(--muted-foreground)]">
-						<Camera size={32} color="var(--muted-foreground)" />
-					</TouchableOpacity>
-					<Text className="text-[var(--primary)] font-medium">
-						Add Group Icon
-					</Text>
-				</View>
+  useEffect(() => {
+    const t = setTimeout(() => searchUsers(searchQuery), 400);
+    return () => clearTimeout(t);
+  }, [searchQuery, searchUsers]);
 
-				<View className="mb-8">
-					<Text className="text-sm font-semibold text-[var(--muted-foreground)] uppercase tracking-wider mb-2 ml-1">
-						Group Name
-					</Text>
-					<TextInput
-						className="w-full p-4 bg-[var(--card)] border border-[var(--border)] rounded-2xl text-[var(--foreground)] text-lg"
-						placeholder="e.g. Goa Trip"
-						placeholderTextColor="var(--muted-foreground)"
-						value={groupName}
-						onChangeText={setGroupName}
-					/>
-				</View>
+  const toggleUser = (u: BackendUser) => {
+    setSelectedUsers((prev) =>
+      prev.find((x) => x.id === u.id) ? prev.filter((x) => x.id !== u.id) : [...prev, u]
+    );
+  };
 
-				<View>
-					<Text className="text-sm font-semibold text-[var(--muted-foreground)] uppercase tracking-wider mb-4 ml-1">
-						Add Members
-					</Text>
+  const handleCreate = async () => {
+    if (!groupName.trim()) {
+      setSnack('Please enter a group name');
+      return;
+    }
+    setSaving(true);
+    try {
+      const result = await groupService.createGroup({ name: groupName, base_currency: currency });
+      // Add selected members
+      for (const u of selectedUsers) {
+        try {
+          await groupService.addMember(result.id, { user_id: u.id });
+        } catch {
+          // ignore individual member add failures
+        }
+      }
+      router.replace({ pathname: '/group-detail', params: { groupId: result.id } });
+    } catch (e: any) {
+      setSnack(e?.response?.data?.detail || 'Failed to create group');
+    } finally {
+      setSaving(false);
+    }
+  };
 
-					<View className="flex-row items-center bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 mb-4">
-						<Search
-							size={20}
-							color="var(--muted-foreground)"
-							className="mr-2"
-						/>
-						<TextInput
-							className="flex-1 text-[var(--foreground)]"
-							placeholder="Search friends"
-							placeholderTextColor="var(--muted-foreground)"
-						/>
-					</View>
+  return (
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Button mode="text" icon="close" onPress={() => router.back()} compact>Close</Button>
+        <Text variant="titleMedium" style={styles.headerTitle}>Create Group</Text>
+        <Button
+          mode="contained"
+          onPress={handleCreate}
+          loading={saving}
+          disabled={saving || !groupName.trim()}
+          style={styles.createBtn}
+          compact
+        >
+          Create
+        </Button>
+      </View>
 
-					<View className="gap-2">
-						{friends.map((friend) => (
-							<TouchableOpacity
-								key={friend.id}
-								className="flex-row items-center justify-between p-4 bg-[var(--card)] border border-[var(--border)] rounded-2xl"
-							>
-								<View className="flex-row items-center gap-3">
-									<View className="w-10 h-10 rounded-full bg-[var(--primary)]/10 items-center justify-center">
-										<Text className="font-bold text-[var(--primary)]">
-											{friend.name.charAt(0)}
-										</Text>
-									</View>
-									<Text className="font-bold text-[var(--foreground)]">
-										{friend.name}
-									</Text>
-								</View>
-								<View className="w-6 h-6 rounded-full border-2 border-[var(--muted-foreground)]" />
-							</TouchableOpacity>
-						))}
-					</View>
-				</View>
-			</ScrollView>
-		</View>
-	);
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        {/* Group Name */}
+        <TextInput
+          mode="outlined"
+          label="Group Name"
+          value={groupName}
+          onChangeText={setGroupName}
+          placeholder="e.g. Goa Trip"
+          left={<TextInput.Icon icon="account-group-outline" />}
+          style={styles.input}
+        />
+
+        {/* Currency */}
+        <View style={styles.field}>
+          <Text variant="labelLarge" style={[styles.fieldLabel, { color: theme.colors.onSurfaceVariant }]}>
+            Base Currency
+          </Text>
+          <View style={styles.chipsRow}>
+            {CURRENCIES.map((c) => (
+              <Chip
+                key={c}
+                selected={currency === c}
+                onPress={() => setCurrency(c)}
+                style={currency === c ? { backgroundColor: theme.colors.primaryContainer } : { backgroundColor: theme.colors.surfaceVariant }}
+                textStyle={currency === c ? { color: theme.colors.primary, fontWeight: '700' } : {}}
+              >
+                {c}
+              </Chip>
+            ))}
+          </View>
+        </View>
+
+        {/* Member Search */}
+        <View style={styles.field}>
+          <Text variant="labelLarge" style={[styles.fieldLabel, { color: theme.colors.onSurfaceVariant }]}>
+            Add Members
+          </Text>
+          <TextInput
+            mode="outlined"
+            label="Search by name or email"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            left={<TextInput.Icon icon="magnify" />}
+            right={searching ? <TextInput.Icon icon="loading" /> : undefined}
+            style={styles.input}
+          />
+
+          {/* Search Results */}
+          {searchResults.length > 0 && (
+            <Card style={{ borderRadius: 16, marginBottom: 12 }} elevation={1}>
+              {searchResults.map((u) => (
+                <Card.Content key={u.id} style={styles.userRow}>
+                  <View style={[styles.userAvatar, { backgroundColor: theme.colors.primaryContainer }]}>
+                    <Text style={{ fontWeight: '700', color: theme.colors.primary }}>
+                      {(u.name || u.email).charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="titleSmall" style={{ fontWeight: '600' }}>{u.name || 'User'}</Text>
+                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>{u.email}</Text>
+                  </View>
+                  <Button
+                    mode={selectedUsers.find((x) => x.id === u.id) ? 'contained' : 'outlined'}
+                    compact
+                    onPress={() => toggleUser(u)}
+                    style={{ borderRadius: 12 }}
+                  >
+                    {selectedUsers.find((x) => x.id === u.id) ? 'Added' : 'Add'}
+                  </Button>
+                </Card.Content>
+              ))}
+            </Card>
+          )}
+
+          {/* Selected Members */}
+          {selectedUsers.length > 0 && (
+            <View>
+              <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>
+                Selected ({selectedUsers.length})
+              </Text>
+              <View style={styles.selectedChips}>
+                {selectedUsers.map((u) => (
+                  <Chip
+                    key={u.id}
+                    onClose={() => toggleUser(u)}
+                    style={{ backgroundColor: theme.colors.primaryContainer }}
+                    textStyle={{ color: theme.colors.primary }}
+                  >
+                    {u.name || u.email}
+                  </Chip>
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      <Snackbar visible={!!snack} onDismiss={() => setSnack('')} duration={3000}>{snack}</Snackbar>
+    </View>
+  );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 52, paddingBottom: 12 },
+  headerTitle: { fontWeight: '700' },
+  createBtn: { borderRadius: 20 },
+  scroll: { padding: 20, paddingBottom: 40 },
+  input: { borderRadius: 16, marginBottom: 16 },
+  field: { marginBottom: 20 },
+  fieldLabel: { marginBottom: 8, fontWeight: '600' },
+  chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  userRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
+  userAvatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  selectedChips: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+});
