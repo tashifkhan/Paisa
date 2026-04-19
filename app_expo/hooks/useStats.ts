@@ -22,3 +22,10 @@ export function useStatsComparison(days: number = 30) {
     queryFn: () => statsService.getComparison(days),
   });
 }
+
+export function useStatsTrends(months: number = 12) {
+  return useQuery({
+    queryKey: ['stats', 'trends', months] as const,
+    queryFn: () => statsService.getTrends(months),
+  });
+}
