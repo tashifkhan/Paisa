@@ -1,7 +1,8 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, TextInput as RNTextInput, View } from 'react-native';
-import { ActivityIndicator, Button, Snackbar, Text, TextInput as PaperTextInput } from 'react-native-paper';
+import { ActivityIndicator, Button, Snackbar, Text, TextInput as PaperTextInput, useTheme } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 
 const TextInput = PaperTextInput as unknown as React.ComponentType<any> & { Icon: typeof PaperTextInput.Icon; Affix: typeof PaperTextInput.Affix };
@@ -9,6 +10,7 @@ const TextInput = PaperTextInput as unknown as React.ComponentType<any> & { Icon
 export default function OTPScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ email: string; flow?: 'signup' | 'password-reset' }>();
+  const theme = useTheme();
   const { verifyOtp, requestOtp, pendingSignup } = useAuth();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [newPassword, setNewPassword] = useState('');
@@ -105,7 +107,7 @@ export default function OTPScreen() {
 
       <View style={styles.header}>
         <View style={styles.iconBox}>
-          <Text style={styles.iconText}>{isPasswordReset ? '🔒' : '✉'}</Text>
+          <MaterialCommunityIcons name={isPasswordReset ? 'lock' : 'email'} size={32} color={theme.colors.primary} />
         </View>
         <Text variant="headlineMedium" style={styles.title}>{isPasswordReset ? 'Reset Password' : 'Verify Email'}</Text>
         <Text variant="bodyMedium" style={styles.subtitle}>

@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Button, Snackbar, Text, TextInput as PaperTextInput } from 'react-native-paper';
+import { ActivityIndicator, Button, Snackbar, Text, TextInput as PaperTextInput, useTheme } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 
 const TextInput = PaperTextInput as unknown as React.ComponentType<any> & { Icon: typeof PaperTextInput.Icon; Affix: typeof PaperTextInput.Affix };
@@ -9,6 +10,7 @@ const TextInput = PaperTextInput as unknown as React.ComponentType<any> & { Icon
 export default function ForgotPasswordScreen() {
   const router = useRouter();
   const { requestOtp } = useAuth();
+  const theme = useTheme();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -34,7 +36,7 @@ export default function ForgotPasswordScreen() {
 
       <View style={styles.header}>
         <View style={styles.iconBox}>
-          <Text style={styles.iconText}>🔒</Text>
+          <MaterialCommunityIcons name="lock" size={48} color={theme.colors.primary} style={{ marginBottom: 16 }} />
         </View>
         <Text variant="headlineMedium" style={styles.title}>Forgot Password</Text>
         <Text variant="bodyMedium" style={styles.subtitle}>
