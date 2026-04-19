@@ -52,7 +52,8 @@ function RootLayoutNav() {
         <Stack.Screen name="user-detail" options={{ headerShown: false }} />
         <Stack.Screen name="group-detail" options={{ headerShown: false }} />
         <Stack.Screen name="add-wallet" options={{ headerShown: false, presentation: 'modal' }} />
-        <Stack.Screen name="transaction/[id]" options={{ headerShown: false, presentation: 'modal' }} />
+        <Stack.Screen name="add-debt" options={{ headerShown: false, presentation: 'modal' }} />
+        <Stack.Screen name="transaction/[id]" options={{ headerShown: false, presentation: 'transparentModal', animation: 'fade' }} />
         <Stack.Screen name="all-transactions" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style={isDark ? 'light' : 'dark'} />

@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Chip, Dialog, FAB, Portal, Snackbar, Text, TextInput as PaperTextInput, useTheme } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { CustomSegmentedTabs } from '../../components/CustomSegmentedTabs';
 import { debtService } from '../../services/debtService';
 import { groupService } from '../../services/groupService';
@@ -36,13 +37,6 @@ export default function SocialScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [snack, setSnack] = useState('');
-
-  // Add debt dialog
-  const [showAddDebt, setShowAddDebt] = useState(false);
-  const [debtName, setDebtName] = useState('');
-  const [debtAmount, setDebtAmount] = useState('');
-  const [debtType, setDebtType] = useState<'owed_to_me' | 'owed_by_me'>('owed_to_me');
-  const [savingDebt, setSavingDebt] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -79,27 +73,6 @@ export default function SocialScreen() {
     }
   };
 
-  const handleAddDebt = async () => {
-    if (!debtName || !debtAmount) return;
-    setSavingDebt(true);
-    try {
-      await debtService.addDebt({
-        counterparty_name: debtName,
-        amount: parseFloat(debtAmount),
-        type: debtType,
-      });
-      setSnack('Debt added!');
-      setShowAddDebt(false);
-      setDebtName('');
-      setDebtAmount('');
-      await loadData();
-    } catch {
-      setSnack('Failed to add debt');
-    } finally {
-      setSavingDebt(false);
-    }
-  };
-
   const netBalance = debtSummary ? debtSummary.net : 0;
   const isCredit = netBalance >= 0;
 
@@ -133,42 +106,47 @@ export default function SocialScreen() {
         ) : activeTab === 'debts' ? (
           <>
             {/* Net Balance Card */}
-            <Card
-              style={[styles.netCard, { backgroundColor: isCredit ? '#166534' : '#991b1b' }]}
-              elevation={0}
-            >
-              <Card.Content style={{ padding: 20 }}>
-                <Text variant="bodyMedium" style={{ color: 'rgba(255,255,255,0.8)', marginBottom: 4 }}>Net Balance</Text>
-                <Text variant="displaySmall" style={{ fontWeight: '800', color: '#fff', marginBottom: 8 }}>
-                  {isCredit ? '+' : '-'}{formatAmount(netBalance)}
-                </Text>
-                <View style={styles.netRow}>
-                  <View>
-                    <Text variant="labelSmall" style={{ color: 'rgba(255,255,255,0.6)' }}>Owed to you</Text>
-                    <Text variant="titleMedium" style={{ color: '#fff', fontWeight: '700' }}>
-                      +{formatAmount(debtSummary?.owed_to_me || 0)}
-                    </Text>
+            <View style={{ marginBottom: 16 }}>
+              <Card
+                style={[styles.netCard, { backgroundColor: isCredit ? '#14532d' : '#7f1d1d' }]}
+                elevation={0}
+              >
+                <Card.Content style={{ padding: 24 }}>
+                  <Text variant="titleSmall" style={{ color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Net Balance</Text>
+                  <Text variant="displayMedium" style={{ fontWeight: '800', color: isCredit ? '#4ade80' : '#f87171', marginBottom: 16, letterSpacing: -1 }}>
+                    {isCredit ? '+' : '-'}{formatAmount(netBalance)}
+                  </Text>
+                  
+                  <View style={[styles.netRow, { backgroundColor: isCredit ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.15)', padding: 16, borderRadius: 16 }]}>
+                    <View style={{ flex: 1, borderRightWidth: 1, borderColor: 'rgba(255,255,255,0.1)', paddingRight: 12 }}>
+                      <Text variant="labelMedium" style={{ color: 'rgba(255,255,255,0.6)', marginBottom: 2 }}>Owed to you</Text>
+                      <Text variant="titleLarge" style={{ color: '#fff', fontWeight: '700' }}>
+                        +{formatAmount(debtSummary?.owed_to_me || 0)}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1, paddingLeft: 16 }}>
+                      <Text variant="labelMedium" style={{ color: 'rgba(255,255,255,0.6)', marginBottom: 2 }}>You owe</Text>
+                      <Text variant="titleLarge" style={{ color: '#fff', fontWeight: '700' }}>
+                        -{formatAmount(debtSummary?.owed_by_me || 0)}
+                      </Text>
+                    </View>
                   </View>
-                  <View>
-                    <Text variant="labelSmall" style={{ color: 'rgba(255,255,255,0.6)' }}>You owe</Text>
-                    <Text variant="titleMedium" style={{ color: '#fff', fontWeight: '700' }}>
-                      -{formatAmount(debtSummary?.owed_by_me || 0)}
-                    </Text>
-                  </View>
-                </View>
-              </Card.Content>
-            </Card>
+                </Card.Content>
+              </Card>
+            </View>
 
             {/* Debts List */}
             {debts.length === 0 ? (
-              <Card style={{ borderRadius: 24 }}>
-                <Card.Content style={{ alignItems: 'center', paddingVertical: 32 }}>
-                  <Text variant="bodyLarge" style={{ opacity: 0.5, marginBottom: 16 }}>No debts recorded</Text>
-                  <Button mode="contained" onPress={() => setShowAddDebt(true)} style={{ borderRadius: 20 }}>
-                    Add First Debt
-                  </Button>
-                </Card.Content>
-              </Card>
+              <View style={{ alignItems: 'center', paddingTop: 60 }}>
+                <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: theme.colors.surfaceVariant, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                   <MaterialCommunityIcons name="account-group" size={40} color={theme.colors.onSurfaceVariant} />
+                </View>
+                <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 4 }}>You're all settled up!</Text>
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center', marginHorizontal: 32, marginBottom: 24 }}>Keep track of who owes you and who you owe directly from here.</Text>
+                <Button mode="contained" onPress={() => router.push('/add-debt')} style={{ borderRadius: 24 }} contentStyle={{ paddingHorizontal: 16, height: 48 }}>
+                  Add First Debt
+                </Button>
+              </View>
             ) : (
               debts.map((debt) => (
                 <Card
@@ -211,14 +189,16 @@ export default function SocialScreen() {
           <>
             {/* Groups List */}
             {groups.length === 0 ? (
-              <Card style={{ borderRadius: 24 }}>
-                <Card.Content style={{ alignItems: 'center', paddingVertical: 32 }}>
-                  <Text variant="bodyLarge" style={{ opacity: 0.5, marginBottom: 16 }}>No groups yet</Text>
-                  <Button mode="contained" onPress={() => router.push('/create-group')} style={{ borderRadius: 20 }}>
-                    Create First Group
-                  </Button>
-                </Card.Content>
-              </Card>
+              <View style={{ alignItems: 'center', paddingTop: 60 }}>
+                <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: theme.colors.surfaceVariant, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                   <MaterialCommunityIcons name="account-group" size={40} color={theme.colors.onSurfaceVariant} />
+                </View>
+                <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 4 }}>No groups yet</Text>
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center', marginHorizontal: 32, marginBottom: 24 }}>Share expenses natively with roommates, trips, and partners.</Text>
+                <Button mode="contained" onPress={() => router.push('/create-group')} style={{ borderRadius: 24 }} contentStyle={{ paddingHorizontal: 16, height: 48 }}>
+                  Create First Group
+                </Button>
+              </View>
             ) : (
               groups.map((group) => (
                 <Card
@@ -229,7 +209,7 @@ export default function SocialScreen() {
                 >
                   <Card.Content style={styles.groupContent}>
                     <View style={[styles.groupIcon, { backgroundColor: group.color || '#8a79ab' }]}>
-                      <Text style={{ fontSize: 20 }}>{group.icon || '👥'}</Text>
+                      {group.icon ? <Text style={{ fontSize: 20 }}>{group.icon}</Text> : <MaterialCommunityIcons name="account-multiple" size={20} color="#fff" />}
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text variant="titleSmall" style={{ fontWeight: '700' }}>{group.name}</Text>
@@ -244,69 +224,9 @@ export default function SocialScreen() {
                 </Card>
               ))
             )}
-            <Button
-              mode="contained"
-              icon="plus"
-              onPress={() => router.push('/create-group')}
-              style={[styles.createGroupBtn, { backgroundColor: theme.colors.primary }]}
-              contentStyle={{ height: 52 }}
-              labelStyle={{ fontWeight: '700', fontSize: 15 }}
-            >
-              Create New Group
-            </Button>
           </>
         )}
       </ScrollView>
-
-      {/* FAB for adding debt */}
-      {activeTab === 'debts' && (
-        <FAB
-          icon="plus"
-          style={[styles.fab, { backgroundColor: theme.colors.primary }]}
-          color={theme.colors.onPrimary}
-          onPress={() => setShowAddDebt(true)}
-        />
-      )}
-
-      {/* Add Debt Dialog */}
-      <Portal>
-        <Dialog visible={showAddDebt} onDismiss={() => setShowAddDebt(false)} style={{ borderRadius: 24 }}>
-          <Dialog.Title>Add Debt</Dialog.Title>
-          <Dialog.Content style={{ gap: 12 }}>
-            <TextInput
-              mode="outlined"
-              label="Person's Name"
-              value={debtName}
-              onChangeText={setDebtName}
-            />
-            <TextInput
-              mode="outlined"
-              label="Amount"
-              value={debtAmount}
-              onChangeText={setDebtAmount}
-              keyboardType="numeric"
-              left={<TextInput.Affix text="₹" />}
-            />
-            <View style={{ gap: 6 }}>
-              <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>Type</Text>
-              <CustomSegmentedTabs
-                value={debtType}
-                onValueChange={(value) => setDebtType(value as 'owed_to_me' | 'owed_by_me')}
-                tabs={[
-                  { value: 'owed_to_me', label: 'They owe me' },
-                  { value: 'owed_by_me', label: 'I owe them' },
-                ]}
-              />
-            </View>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setShowAddDebt(false)}>Cancel</Button>
-            <Button mode="contained" onPress={handleAddDebt} loading={savingDebt} disabled={savingDebt}>
-              Add
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
 
       <Snackbar visible={!!snack} onDismiss={() => setSnack('')} duration={2500}>{snack}</Snackbar>
     </View>

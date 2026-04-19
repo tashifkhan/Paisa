@@ -97,7 +97,10 @@ export default function TabLayout() {
 	const insets = useSafeAreaInsets();
 	const segments = useSegments();
 
-	const isWallets = segments[segments.length - 1] === "wallets";
+	const currentSegment = segments[segments.length - 1];
+	const isWallets = currentSegment === "wallets";
+	const isSocial = currentSegment === "social";
+	const isProfile = currentSegment === "profile";
 
 	return (
 		<View style={{ flex: 1 }}>
@@ -122,27 +125,29 @@ export default function TabLayout() {
 			</Tabs>
 
 			{/* M3 FAB — floating above the navigation bar, bottom-right */}
-			<Pressable
-				onPress={() => router.push(isWallets ? "/add-wallet" : "/add-expense")}
-				android_ripple={{
-					color: theme.colors.onPrimary + "30",
-					borderless: true,
-				}}
-				style={[
-					styles.fab,
-					{
-						backgroundColor: theme.colors.primaryContainer,
-						bottom: NAV_BAR_H + (insets.bottom || 0),
-						shadowColor: theme.colors.shadow,
-					},
-				]}
-			>
-				<Plus
-					size={26}
-					color={theme.colors.onPrimaryContainer}
-					strokeWidth={2.5}
-				/>
-			</Pressable>
+			{!isProfile && (
+				<Pressable
+					onPress={() => router.push(isSocial ? "/add-debt" : isWallets ? "/add-wallet" : "/add-expense")}
+					android_ripple={{
+						color: theme.colors.onPrimary + "30",
+						borderless: true,
+					}}
+					style={[
+						styles.fab,
+						{
+							backgroundColor: theme.colors.primaryContainer,
+							bottom: NAV_BAR_H + (insets.bottom || 0),
+							shadowColor: theme.colors.shadow,
+						},
+					]}
+				>
+					<Plus
+						size={26}
+						color={theme.colors.onPrimaryContainer}
+						strokeWidth={2.5}
+					/>
+				</Pressable>
+			)}
 		</View>
 	);
 }
