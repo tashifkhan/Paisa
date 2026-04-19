@@ -1,11 +1,62 @@
 import { GoogleLogin } from "@react-oauth/google";
 import { ArrowLeft, ArrowRight, Lock, Mail, Timer, User } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Component, type ReactNode, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { authService } from "../../services/authService";
 import { InputField } from "../shared/InputField";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+
+interface GoogleLoginBoundaryProps {
+	children: ReactNode;
+	onError?: () => void;
+}
+
+interface GoogleLoginBoundaryState {
+	hasError: boolean;
+}
+
+class GoogleLoginBoundary extends Component<
+	GoogleLoginBoundaryProps,
+	GoogleLoginBoundaryState
+> {
+	state: GoogleLoginBoundaryState = { hasError: false };
+
+	static getDerivedStateFromError() {
+		return { hasError: true };
+	}
+
+	componentDidCatch() {
+		this.props.onError?.();
+	}
+
+	render() {
+		if (this.state.hasError) return null;
+		return this.props.children;
+	}
+}
+
+const SafeGoogleLogin = ({
+	onProviderError,
+	onError,
+	...props
+}: {
+	onProviderError: () => void;
+	onError?: () => void;
+} & React.ComponentProps<typeof GoogleLogin>) => {
+	if (!GOOGLE_CLIENT_ID) return null;
+
+	const handleError = () => {
+		onProviderError();
+		onError?.();
+	};
+
+	return (
+		<GoogleLoginBoundary onError={onProviderError}>
+			<GoogleLogin {...props} onError={handleError} />
+		</GoogleLoginBoundary>
+	);
+};
 
 interface AuthViewProps {
 	setCurrentView: (view: string) => void;
@@ -273,7 +324,8 @@ export const SignInView = ({ setCurrentView, isDarkMode }: AuthViewProps) => {
 
 							{/* Google Sign-In Button */}
 							<div className="flex justify-center">
-								<GoogleLogin
+								<SafeGoogleLogin
+									onProviderError={() => setShowGoogleLogin(false)}
 									onSuccess={async (response) => {
 										if (!response.credential) return;
 										setLoading(true);
@@ -324,6 +376,9 @@ export const SignUpView = ({ setCurrentView }: AuthViewProps) => {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [loading, setLoading] = useState(false);
+	const [showGoogleLogin, setShowGoogleLogin] = useState(
+		Boolean(GOOGLE_CLIENT_ID),
+	);
 
 	const handleSignUp = async () => {
 		if (!name || !email || !password) return alert("Please fill all fields");
@@ -392,44 +447,49 @@ export const SignUpView = ({ setCurrentView }: AuthViewProps) => {
 						{!loading && <ArrowRight size={20} />}
 					</button>
 
-					{/* Google Sign-Up Divider */}
-					<div className="relative my-6">
-						<div className="absolute inset-0 flex items-center">
-							<div className="w-full border-t border-(--border)"></div>
-						</div>
-						<div className="relative flex justify-center text-sm">
-							<span className="px-4 bg-(--background) text-(--muted-foreground)">
-								Or sign up with
-							</span>
-						</div>
-					</div>
+					{showGoogleLogin && (
+						<>
+							{/* Google Sign-Up Divider */}
+							<div className="relative my-6">
+								<div className="absolute inset-0 flex items-center">
+									<div className="w-full border-t border-(--border)"></div>
+								</div>
+								<div className="relative flex justify-center text-sm">
+									<span className="px-4 bg-(--background) text-(--muted-foreground)">
+										Or sign up with
+									</span>
+								</div>
+							</div>
 
-					{/* Google Sign-Up Button */}
-					<div className="flex justify-center">
-						<GoogleLogin
-							onSuccess={async (response) => {
-								if (!response.credential) return;
-								setLoading(true);
-								try {
-									await authService.googleLogin(response.credential);
-									navigate("/");
-								} catch (error) {
-									alert("Google sign up failed. Please try again.");
-									console.error(error);
-								} finally {
-									setLoading(false);
-								}
-							}}
-							onError={() => {
-								alert("Google sign up failed. Please try again.");
-							}}
-							theme="outline"
-							size="large"
-							text="signup_with"
-							shape="pill"
-							width="300"
-						/>
-					</div>
+							{/* Google Sign-Up Button */}
+							<div className="flex justify-center">
+								<SafeGoogleLogin
+									onProviderError={() => setShowGoogleLogin(false)}
+									onSuccess={async (response) => {
+										if (!response.credential) return;
+										setLoading(true);
+										try {
+											await authService.googleLogin(response.credential);
+											navigate("/");
+										} catch (error) {
+											alert("Google sign up failed. Please try again.");
+											console.error(error);
+										} finally {
+											setLoading(false);
+										}
+									}}
+									onError={() => {
+										setShowGoogleLogin(false);
+									}}
+									theme="outline"
+									size="large"
+									text="signup_with"
+									shape="pill"
+									width="300"
+								/>
+							</div>
+						</>
+					)}
 				</div>
 			</div>
 

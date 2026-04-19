@@ -1,15 +1,14 @@
 import { ArrowUpRight, Calendar, TrendingDown, TrendingUp } from "lucide-react";
-import { useEffect, useState } from "react";
-import { categoryService } from "../../services/categoryService";
-import { debtService } from "../../services/debtService";
-import { expenseService } from "../../services/expenseService";
-import { statsService } from "../../services/statsService";
+import { useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useCategories } from "@/hooks/useCategories";
+import { useDebtSummary, useDebts } from "@/hooks/useDebts";
+import { useStatsComparison, useStatsFull } from "@/hooks/useStats";
+import { useTransactions } from "@/hooks/useTransactions";
+import { useWallets } from "@/hooks/useWallets";
 import type {
-	BackendCategory,
 	BackendTransaction,
-	BackendWallet,
 } from "../../services/types";
-import { walletService } from "../../services/walletService";
 import { CircularProgress } from "../shared/CircularProgress";
 import { EditExpenseModal } from "../shared/EditExpenseModal";
 import { ExpenseChart } from "../shared/ExpenseChart";
@@ -32,100 +31,48 @@ interface CategoryStat {
 }
 
 export const StatsView = () => {
+	const queryClient = useQueryClient();
 	const [activeTab, setActiveTab] = useState("Overview");
 	const [period, setPeriod] = useState("30");
-	const [loading, setLoading] = useState(true);
-
-	// Stats data
-	const [totalExpense, setTotalExpense] = useState(0);
-	const [totalIncome, setTotalIncome] = useState(0);
-	const [categories, setCategories] = useState<CategoryStat[]>([]);
-	const [comparison, setComparison] = useState<{
-		income: { change_percent: number };
-		expense: { change_percent: number };
-	} | null>(null);
-	const [debtSummary, setDebtSummary] = useState<{
-		owed_to_me: number;
-		owed_by_me: number;
-	} | null>(null);
-	const [upcomingDues, setUpcomingDues] = useState<
-		Array<{
-			id: string;
-			counterparty_name: string;
-			amount: number;
-			due_date?: string;
-		}>
-	>([]);
+	const days = useMemo(() => parseInt(period), [period]);
+	const { data: fullStats, isLoading: fullLoading } = useStatsFull(days);
+	const { data: comparison, isLoading: comparisonLoading } = useStatsComparison(days);
+	const { data: debtSummary, isLoading: debtSummaryLoading } = useDebtSummary();
+	const { data: allDebts = [], isLoading: debtsLoading } = useDebts();
+	const { data: transactions = [], isLoading: txLoading } = useTransactions({
+		limit: 100,
+	});
+	const { data: allCategories = [], isLoading: categoriesLoading } = useCategories();
+	const { data: allWallets = [], isLoading: walletsLoading } = useWallets();
+	const loading =
+		fullLoading ||
+		comparisonLoading ||
+		debtSummaryLoading ||
+		debtsLoading ||
+		txLoading ||
+		categoriesLoading ||
+		walletsLoading;
+	const totalExpense = fullStats?.total_expense ?? 0;
+	const totalIncome = fullStats?.total_income ?? 0;
+	const categories: CategoryStat[] = fullStats?.by_category ?? [];
+	const upcomingDues = useMemo(() => {
+		const now = new Date();
+		return allDebts
+			.filter((d) => d.due_date && new Date(d.due_date) >= now)
+			.sort(
+				(a, b) =>
+					new Date(a.due_date || "").getTime() -
+					new Date(b.due_date || "").getTime(),
+			)
+			.slice(0, 5);
+	}, [allDebts]);
 
 	// Transaction list state
-	const [transactions, setTransactions] = useState<BackendTransaction[]>([]);
-	const [allCategories, setAllCategories] = useState<BackendCategory[]>([]);
-	const [allWallets, setAllWallets] = useState<BackendWallet[]>([]);
 	const [editingTransaction, setEditingTransaction] =
 		useState<BackendTransaction | null>(null);
 	const [transactionTypeFilter, setTransactionTypeFilter] = useState<
 		"all" | "expense" | "income"
 	>("all");
-
-	useEffect(() => {
-		const fetchStats = async () => {
-			setLoading(true);
-			try {
-				const days = parseInt(period);
-
-				// Fetch full stats
-				const fullStats = await statsService.getFullStats(days);
-				setTotalExpense(fullStats.total_expense);
-				setTotalIncome(fullStats.total_income);
-				setCategories(fullStats.by_category);
-
-				// Fetch comparison
-				const comparisonData = await statsService.getComparison(days);
-				setComparison(comparisonData);
-
-				// Fetch debt summary
-				const debts = await debtService.getSummary();
-				setDebtSummary(debts);
-
-				// Fetch upcoming dues (debts with future due dates)
-				const allDebts = await debtService.getDebts();
-				const now = new Date();
-				const upcoming = allDebts
-					.filter((d) => d.due_date && new Date(d.due_date) >= now)
-					.sort(
-						(a, b) =>
-							new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime(),
-					)
-					.slice(0, 5);
-				setUpcomingDues(upcoming);
-
-				// Fetch transactions and related data for the Transactions tab
-				const [txns, cats, wallets] = await Promise.all([
-					expenseService.getTransactions({ limit: 100 }),
-					categoryService.getCategories(),
-					walletService.getWallets(),
-				]);
-				setTransactions(txns);
-				setAllCategories(cats);
-				setAllWallets(wallets);
-			} catch (error) {
-				console.error("Failed to fetch stats:", error);
-			} finally {
-				setLoading(false);
-			}
-		};
-
-		fetchStats();
-	}, [period]);
-
-	const refreshTransactions = async () => {
-		try {
-			const txns = await expenseService.getTransactions({ limit: 100 });
-			setTransactions(txns);
-		} catch (error) {
-			console.error("Failed to refresh transactions:", error);
-		}
-	};
 
 	const getCategoryById = (id?: string) => {
 		if (!id) return null;
@@ -625,11 +572,27 @@ export const StatsView = () => {
 					onClose={() => setEditingTransaction(null)}
 					onSave={() => {
 						setEditingTransaction(null);
-						refreshTransactions();
+						queryClient.invalidateQueries({ queryKey: ["transactions"] });
+						queryClient.invalidateQueries({ queryKey: ["wallets"] });
+						queryClient.invalidateQueries({ queryKey: ["categories"] });
+						queryClient.invalidateQueries({
+							queryKey: ["stats", "full", days],
+						});
+						queryClient.invalidateQueries({
+							queryKey: ["stats", "comparison", days],
+						});
 					}}
 					onDelete={() => {
 						setEditingTransaction(null);
-						refreshTransactions();
+						queryClient.invalidateQueries({ queryKey: ["transactions"] });
+						queryClient.invalidateQueries({ queryKey: ["wallets"] });
+						queryClient.invalidateQueries({ queryKey: ["categories"] });
+						queryClient.invalidateQueries({
+							queryKey: ["stats", "full", days],
+						});
+						queryClient.invalidateQueries({
+							queryKey: ["stats", "comparison", days],
+						});
 					}}
 				/>
 			)}

@@ -6,10 +6,8 @@ import {
 	Plus,
 	Wifi,
 } from "lucide-react";
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import type { BackendWallet } from "../../services/types";
-import { walletService } from "../../services/walletService";
+import { useWalletTotal, useWallets } from "@/hooks/useWallets";
 import { CreditCardComponent } from "../shared/CreditCardComponent";
 
 interface WalletsViewProps {
@@ -48,29 +46,10 @@ export const WalletsView = ({
 	setActiveWalletTab,
 }: WalletsViewProps) => {
 	const navigate = useNavigate();
-	const [wallets, setWallets] = useState<BackendWallet[]>([]);
-	const [totalBalance, setTotalBalance] = useState<number>(0);
-	const [loading, setLoading] = useState(true);
-
-	useEffect(() => {
-		const fetchWallets = async () => {
-			setLoading(true);
-			try {
-				const [walletsData, balanceData] = await Promise.all([
-					walletService.getWallets(),
-					walletService.getTotalBalance("INR"),
-				]);
-				setWallets(walletsData);
-				setTotalBalance(balanceData.total_balance);
-			} catch (error) {
-				console.error("Failed to fetch wallets:", error);
-			} finally {
-				setLoading(false);
-			}
-		};
-
-		fetchWallets();
-	}, []);
+	const { data: wallets = [], isLoading: walletsLoading } = useWallets();
+	const { data: totalData, isLoading: totalLoading } = useWalletTotal("INR");
+	const loading = walletsLoading || totalLoading;
+	const totalBalance = totalData?.total_balance ?? 0;
 
 	const formatCurrency = (amount: number) => {
 		return new Intl.NumberFormat("en-IN", {

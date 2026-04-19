@@ -14,26 +14,21 @@ import {
 	Wifi,
 	Zap,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { categoryService } from "../../services/categoryService";
-import { statsService } from "../../services/statsService";
-import type {
-	BackendCategory,
-	BackendComparison,
-	BackendTransaction,
-	BackendWallet,
-} from "../../services/types";
-import { userService } from "../../services/userService";
-import { walletService } from "../../services/walletService";
+import { useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useCategories } from "@/hooks/useCategories";
+import { useProfile } from "@/hooks/useProfile";
+import { useStatsComparison } from "@/hooks/useStats";
+import { useTransactions } from "@/hooks/useTransactions";
+import { useWalletTotal, useWallets } from "@/hooks/useWallets";
+import type { BackendTransaction } from "../../services/types";
 import { CreditCardComponent } from "../shared/CreditCardComponent";
 import { EditExpenseModal } from "../shared/EditExpenseModal";
 import { TransactionItem } from "../shared/TransactionItem";
 
 interface HomeViewProps {
-	transactions: BackendTransaction[];
 	isDarkMode: boolean;
 	toggleTheme: () => void;
-	onRefresh?: () => void;
 }
 
 // Map category names to icons
@@ -48,62 +43,30 @@ const getCategoryIcon = (categoryName: string) => {
 };
 
 export const HomeView = ({
-	transactions,
 	isDarkMode,
 	toggleTheme,
-	onRefresh,
 }: HomeViewProps) => {
+	const queryClient = useQueryClient();
 	const [showBalance, setShowBalance] = useState(true);
-	const [loading, setLoading] = useState(true);
-	const [userName, setUserName] = useState("There");
-	const [totalBalance, setTotalBalance] = useState(0);
-	const [wallets, setWallets] = useState<BackendWallet[]>([]);
-	const [comparison, setComparison] = useState<BackendComparison | null>(null);
-	const [monthlyIncome, setMonthlyIncome] = useState(0);
-	const [monthlyExpense, setMonthlyExpense] = useState(0);
 	const [editingTransaction, setEditingTransaction] =
 		useState<BackendTransaction | null>(null);
-	const [allCategories, setAllCategories] = useState<BackendCategory[]>([]);
+	const { data: profile } = useProfile();
+	const { data: allCategories = [] } = useCategories();
+	const { data: wallets = [], isLoading: walletsLoading } = useWallets();
+	const { data: totalData, isLoading: totalLoading } = useWalletTotal("INR");
+	const { data: transactions = [], isLoading: txLoading } = useTransactions({
+		limit: 50,
+	});
+	const { data: comparison } = useStatsComparison(30);
 
-	useEffect(() => {
-		const fetchData = async () => {
-			setLoading(true);
-			try {
-				// Fetch user info
-				const user = await userService.getCurrentUser();
-				if (user.name) {
-					setUserName(user.name.split(" ")[0]);
-				}
-
-				// Fetch categories for edit modal
-				const cats = await categoryService.getCategories();
-				setAllCategories(cats);
-
-				// Fetch wallets
-				const walletsData = await walletService.getWallets();
-				setWallets(walletsData.slice(0, 3)); // Show max 3 cards
-
-				// Fetch total balance
-				const balanceData = await walletService.getTotalBalance("INR");
-				setTotalBalance(balanceData.total_balance);
-
-				// Fetch monthly stats
-				const stats = await statsService.getSummary(30);
-				setMonthlyIncome(stats.totals.income || 0);
-				setMonthlyExpense(stats.totals.expense || 0);
-
-				// Fetch comparison
-				const comp = await statsService.getComparison(30);
-				setComparison(comp);
-			} catch (error) {
-				console.error("Failed to fetch home data:", error);
-			} finally {
-				setLoading(false);
-			}
-		};
-
-		fetchData();
-	}, []);
+	const loading = walletsLoading || totalLoading || txLoading;
+	const totalBalance = totalData?.total_balance ?? 0;
+	const monthlyIncome = comparison?.income.current ?? 0;
+	const monthlyExpense = comparison?.expense.current ?? 0;
+	const userName = useMemo(
+		() => profile?.name?.split(" ")[0] ?? "There",
+		[profile?.name],
+	);
 
 	const formatCurrency = (amount: number, compact: boolean = false) => {
 		if (compact && amount >= 100000) {
@@ -282,7 +245,7 @@ export const HomeView = ({
 									</div>
 								) : wallets.length > 0 ? (
 									<>
-										{wallets.map((wallet, index) => (
+									{wallets.slice(0, 3).map((wallet, index) => (
 											<div
 												key={wallet.id}
 												className="mr-4 md:mr-0 flex-shrink-0"
@@ -382,11 +345,21 @@ export const HomeView = ({
 					onClose={() => setEditingTransaction(null)}
 					onSave={() => {
 						setEditingTransaction(null);
-						if (onRefresh) onRefresh();
+						queryClient.invalidateQueries({ queryKey: ["transactions"] });
+						queryClient.invalidateQueries({ queryKey: ["wallets"] });
+						queryClient.invalidateQueries({ queryKey: ["wallets", "total"] });
+						queryClient.invalidateQueries({
+							queryKey: ["stats", "comparison", 30],
+						});
 					}}
 					onDelete={() => {
 						setEditingTransaction(null);
-						if (onRefresh) onRefresh();
+						queryClient.invalidateQueries({ queryKey: ["transactions"] });
+						queryClient.invalidateQueries({ queryKey: ["wallets"] });
+						queryClient.invalidateQueries({ queryKey: ["wallets", "total"] });
+						queryClient.invalidateQueries({
+							queryKey: ["stats", "comparison", 30],
+						});
 					}}
 				/>
 			)}
