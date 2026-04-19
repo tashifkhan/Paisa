@@ -1,6 +1,8 @@
 // @ts-nocheck
+import { useQueryClient } from "@tanstack/react-query";
 import { Plane } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import {
 	Route,
 	BrowserRouter as Router,
@@ -29,7 +31,8 @@ import { SocialView } from "./components/views/SocialView";
 import { StatsView } from "./components/views/StatsView";
 import { UserDetailView } from "./components/views/UserDetailView";
 import { WalletsView } from "./components/views/WalletsView";
-import type { BackendTransaction } from "./services/types";
+import { useDebts } from "./hooks/useDebts";
+import { useGroups } from "./hooks/useGroups";
 import { themeStyles } from "./styles/theme";
 
 // --- App Shell (with global state and Router) ---
@@ -47,6 +50,7 @@ export default function App() {
 function AppContent() {
 	const navigate = useNavigate();
 	const location = useLocation();
+	const queryClient = useQueryClient();
 	const [amount, setAmount] = useState("25.00");
 	const [isDarkMode, setIsDarkMode] = useState(() => {
 		const savedTheme = localStorage.getItem("theme");
@@ -75,15 +79,37 @@ function AppContent() {
 	const [userName, setUserName] = useState<string | undefined>();
 	const [userEmail, setUserEmail] = useState<string>("");
 
-	// --- API State ---
-	const [transactions, setTransactions] = useState<BackendTransaction[]>([]);
-
-	const [groups, setGroups] = useState<any[]>([]);
-	const [debts, setDebts] = useState<any[]>([]);
-	const [groupExpenses, setGroupExpenses] = useState<any[]>([]);
+	// --- View State ---
+	const { data: groupsData = [] } = useGroups();
+	const { data: debtsData = [] } = useDebts();
+	const groups = useMemo(
+		() =>
+			groupsData.map((g: any) => ({
+				id: g.id,
+				name: g.name,
+				members: 1,
+				balance: 0,
+				type: "owe",
+				icon: Plane,
+				color: "bg-blue-500",
+			})),
+		[groupsData],
+	);
+	const debts = useMemo(
+		() =>
+			debtsData.map((d: any) => ({
+				id: d.id,
+				name: d.counterparty_name,
+				amount: d.amount,
+				type: d.type,
+				date: d.due_date || "No due date",
+			})),
+		[debtsData],
+	);
+	const [groupExpenses] = useState<any[]>([]);
 
 	useEffect(() => {
-		const checkAuthAndFetch = async () => {
+		const checkAuthOnly = async () => {
 			const { authService } = await import("./services/authService");
 
 			// Check Authentication
@@ -98,51 +124,13 @@ function AppContent() {
 			}
 
 			try {
-				const { expenseService } = await import("./services/expenseService");
-				const { groupService } = await import("./services/groupService");
-				const { debtService } = await import("./services/debtService");
 				const { userService } = await import("./services/userService");
-
-				// Fetch User Data
-				try {
-					const userData = await userService.getCurrentUser();
-					setUserName(userData.name);
-					setUserEmail(userData.email);
-					if (userData.currency) setCurrency(userData.currency);
-					if (userData.language)
-						setLanguage(userData.language === "en" ? "English" : "Hindi");
-				} catch (err) {
-					console.error("Failed to fetch user data", err);
-				}
-
-				// Fetch Transactions
-				const txnsData = await expenseService.getTransactions();
-				setTransactions(txnsData);
-
-				// Fetch Groups
-				const groupsData = await groupService.getGroups();
-				const mappedGroups = groupsData.map((g: any) => ({
-					id: g.id,
-					name: g.name,
-					members: 1,
-					balance: 0,
-					type: "owe",
-					icon: Plane,
-					color: "bg-blue-500",
-				}));
-				setGroups(mappedGroups);
-
-				// Fetch Debts
-				const debtsData = await debtService.getDebts();
-				setDebts(
-					debtsData.map((d: any) => ({
-						id: d.id,
-						name: d.counterparty_name,
-						amount: d.amount,
-						type: d.type,
-						date: d.due_date || "No due date",
-					})),
-				);
+				const userData = await userService.getCurrentUser();
+				setUserName(userData.name);
+				setUserEmail(userData.email);
+				if (userData.currency) setCurrency(userData.currency);
+				if (userData.language)
+					setLanguage(userData.language === "en" ? "English" : "Hindi");
 			} catch (error) {
 				console.error("Failed to fetch data", error);
 				if ((error as any)?.response?.status === 401) {
@@ -152,18 +140,8 @@ function AppContent() {
 			}
 		};
 
-		checkAuthAndFetch();
+		checkAuthOnly();
 	}, [navigate, location.pathname]);
-
-	const refreshTransactions = async () => {
-		try {
-			const { expenseService } = await import("./services/expenseService");
-			const txnsData = await expenseService.getTransactions();
-			setTransactions(txnsData);
-		} catch (error) {
-			console.error("Failed to refresh transactions:", error);
-		}
-	};
 
 	const [socialTab, setSocialTab] = useState("debts");
 	const [groupDetailTab, setGroupDetailTab] = useState("expenses");
@@ -210,17 +188,6 @@ function AppContent() {
 		if (key === "backspace") {
 			setAmount((prev) => (prev.length > 1 ? prev.slice(0, -1) : "0"));
 		} else if (key === "check") {
-			const newTransaction: BackendTransaction = {
-				id: Date.now().toString(),
-				user_id: "current_user", // Placeholder
-				amount: parseFloat(amount),
-				currency: currency,
-				type: "expense",
-				date: new Date().toISOString(),
-				note: "New Expense",
-			};
-			setTransactions([newTransaction, ...transactions]);
-
 			setAmount("0");
 			navigate("/stats");
 		} else {
@@ -301,10 +268,8 @@ function AppContent() {
 							path="/"
 							element={
 								<HomeView
-									transactions={transactions}
 									isDarkMode={isDarkMode}
 									toggleTheme={toggleTheme}
-									onRefresh={refreshTransactions}
 								/>
 							}
 						/>
@@ -340,8 +305,8 @@ function AppContent() {
 							path="/debts"
 							element={
 								<SocialView
-									debts={debts}
-									groups={groups}
+									debts={[]}
+									groups={[]}
 									socialTab={socialTab}
 									setSocialTab={setSocialTab}
 									setCurrentView={(view) => navigate(view)}
@@ -367,19 +332,9 @@ function AppContent() {
 										navigate(path, options);
 									}}
 									onDebtDeleted={async () => {
-										// Refetch debts after deletion
-										const { debtService } =
-											await import("./services/debtService");
-										const debtsData = await debtService.getDebts();
-										setDebts(
-											debtsData.map((d: any) => ({
-												id: d.id,
-												name: d.counterparty_name,
-												amount: d.amount,
-												type: d.type,
-												date: d.due_date || "No due date",
-											})),
-										);
+										await queryClient.invalidateQueries({
+											queryKey: ["debts"],
+										});
 									}}
 								/>
 							}
