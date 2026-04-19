@@ -1,121 +1,172 @@
-import CircularProgress from "@/components/CircularProgress";
-import ExpenseChart from "@/components/ExpenseChart";
-import StatsCard from "@/components/StatsCard";
-import TransactionItem from "@/components/TransactionItem";
-import {
-	ArrowUpRight,
-	ChevronDown,
-	Home,
-	Smartphone,
-} from "lucide-react-native";
-import React from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useQueryClient } from '@tanstack/react-query';
+import React, { useCallback, useState } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Button, Card, List, Text, useTheme } from 'react-native-paper';
+import { CustomSegmentedTabs } from '../../components/CustomSegmentedTabs';
+import { useStatsFull } from '@/hooks/useStats';
+import type { BackendFullStats } from '../../services/types';
+
+function formatAmount(amount: number) {
+  return `₹${Math.abs(amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+}
 
 export default function StatsScreen() {
-	return (
-		<ScrollView
-			className="flex-1 bg-[var(--background)]"
-			contentContainerStyle={{ paddingBottom: 100 }}
-		>
-			<View className="flex-row justify-between items-start p-6 pt-12">
-				<View>
-					<Text className="text-2xl font-bold text-[var(--foreground)]">
-						Analysis
-					</Text>
-					<Text className="text-sm text-[var(--muted-foreground)]">
-						Detailed Breakdown
-					</Text>
-				</View>
-				<TouchableOpacity className="flex-row items-center gap-1 px-4 py-2 bg-[var(--card)] rounded-full border border-[var(--border)] shadow-sm">
-					<Text className="text-sm font-medium text-[var(--foreground)]">
-						June
-					</Text>
-					<ChevronDown size={14} color="var(--foreground)" />
-				</TouchableOpacity>
-			</View>
+  const theme = useTheme();
+  const queryClient = useQueryClient();
+  const [period, setPeriod] = useState(30);
+  const [tab, setTab] = useState<'overview' | 'expenses' | 'income' | 'transactions'>('overview');
+  const [refreshing, setRefreshing] = useState(false);
 
-			{/* Chart Section */}
-			<View className="px-6 mx-6 p-4 bg-[var(--card)] rounded-[2.5rem] shadow-sm border border-[var(--border)] mb-6">
-				<ExpenseChart />
-			</View>
+  const { data: stats } = useStatsFull(period);
+  const loading = !stats;
 
-			{/* Stats Cards */}
-			<View className="px-6 mb-8 flex-row justify-between gap-3">
-				<StatsCard title="Day" amount="52" />
-				<StatsCard title="Week" amount="403" />
-				<StatsCard title="Month" amount="1,612" />
-			</View>
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await queryClient.invalidateQueries({ queryKey: ['stats', 'full', period] });
+    setRefreshing(false);
+  }, [period, queryClient]);
 
-			{/* Bills / Due Section */}
-			<View className="px-6">
-				<Text className="text-xl font-bold text-[var(--foreground)] mb-4">
-					Bills & Payments
-				</Text>
+  const tabs = ['Overview', 'Expenses', 'Income', 'Transactions'];
 
-				{/* Insight Card */}
-				<View className="bg-[var(--card)] p-4 rounded-[2rem] shadow-sm flex-row items-center justify-between border border-[var(--border)] mb-6">
-					<View className="flex-row items-center gap-4">
-						<View className="w-12 h-12 rounded-full bg-[var(--muted)] items-center justify-center">
-							<ArrowUpRight size={20} color="var(--primary)" />
-						</View>
-						<View>
-							<Text className="text-sm text-[var(--muted-foreground)]">
-								You paid{" "}
-								<Text className="font-bold text-[var(--foreground)]">
-									₹50 more
-								</Text>{" "}
-								on{"\n"}your cell phone bill
-							</Text>
-						</View>
-					</View>
-					<TouchableOpacity className="px-3 py-1.5 bg-[var(--muted)] rounded-lg">
-						<Text className="text-[var(--muted-foreground)] text-xs font-bold">
-							Check
-						</Text>
-					</TouchableOpacity>
-				</View>
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      contentContainerStyle={{ paddingBottom: 120 }}
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />}
+    >
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text variant="headlineMedium" style={styles.title}>Analysis</Text>
+          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 2 }}>Detailed Breakdown</Text>
+        </View>
+        <Button
+          mode="contained-tonal"
+          buttonColor={theme.colors.surface}
+          textColor={theme.colors.onSurface}
+          icon="chevron-down"
+          contentStyle={{ flexDirection: 'row-reverse' }}
+          style={{ borderRadius: 20 }}
+          labelStyle={{ fontWeight: '600', fontSize: 13 }}
+          compact
+        >
+          {period} days
+        </Button>
+      </View>
 
-				{/* Amount Paid Circle */}
-				<View className="bg-[var(--card)] p-6 rounded-[2.5rem] shadow-sm border border-[var(--border)] flex-row items-center gap-6 mb-6">
-					<CircularProgress
-						value={75}
-						max={100}
-						size={80}
-						color="stroke-[var(--chart-4)]"
-						strokeWidth={8}
-					/>
-					<View>
-						<Text className="text-[var(--muted-foreground)] text-sm mb-1">
-							Total Paid
-						</Text>
-						<Text className="text-2xl font-bold text-[var(--foreground)]">
-							₹883
-						</Text>
-						<Text className="text-[var(--muted-foreground)] text-xs mt-1">
-							of ₹2,340 bills
-						</Text>
-					</View>
-				</View>
+      {/* Empty Chart placeholder */}
+      <View style={{ paddingHorizontal: 16, marginBottom: 24 }}>
+        <View style={{ 
+          height: 220, 
+          backgroundColor: theme.colors.surface, 
+          borderRadius: 24, 
+          alignItems: 'center', 
+          justifyContent: 'center' 
+        }}>
+          <Text style={{ color: theme.colors.onSurfaceVariant }}>No expense data for this period</Text>
+        </View>
+      </View>
 
-				{/* Upcoming Dues */}
-				<Text className="text-sm font-semibold text-[var(--muted-foreground)] uppercase tracking-wider mb-2 ml-2">
-					Upcoming Dues
-				</Text>
-				<View className="gap-1">
-					<TransactionItem
-						icon={Home}
-						title="Home Rent"
-						subtitle="Due date: Mar 25"
-						amount="339.30"
-					/>
-					<TransactionItem
-						icon={Smartphone}
-						title="Mobile Bill"
-						subtitle="Due date: Mar 28"
-						amount="55.00"
-					/>
-				</View>
-			</View>
-		</ScrollView>
-	);
+      <CustomSegmentedTabs
+        tabs={[
+          { value: 'overview', label: 'Overview' },
+          { value: 'expenses', label: 'Expenses' },
+          { value: 'income', label: 'Income' },
+          { value: 'transactions', label: 'Transactions' },
+        ]}
+        value={tab}
+        onValueChange={(v) => setTab(v as any)}
+        containerStyle={{ paddingHorizontal: 16, marginBottom: 24 }}
+      />
+
+      {/* Content */}
+      {loading ? (
+        <ActivityIndicator style={{ marginTop: 40 }} size="large" />
+      ) : tab === 'overview' ? (
+        <OverviewTab stats={stats} theme={theme} />
+      ) : (
+        <View style={{ alignItems: 'center', marginTop: 40 }}>
+          <Text style={{ color: theme.colors.onSurfaceVariant }}>Coming soon</Text>
+        </View>
+      )}
+    </ScrollView>
+  );
 }
+
+function OverviewTab({ stats, theme }: { stats: BackendFullStats; theme: any }) {
+  const showSaved = stats.total_income > 0;
+  const savingsRate = showSaved ? ((stats.net / stats.total_income) * 100).toFixed(0) : '0';
+
+  return (
+    <View style={{ paddingHorizontal: 16, gap: 24 }}>
+      {/* 3 Stats Row */}
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        <Card style={[{ flex: 1, backgroundColor: theme.colors.surface }]} elevation={0}>
+          <Card.Content style={{ paddingVertical: 16, alignItems: 'center' }}>
+            <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, fontWeight: '700' }}>Income</Text>
+            <Text variant="titleMedium" style={{ fontWeight: '800' }}>{formatAmount(stats.total_income)}</Text>
+          </Card.Content>
+        </Card>
+        <Card style={[{ flex: 1, backgroundColor: theme.colors.surface }]} elevation={0}>
+          <Card.Content style={{ paddingVertical: 16, alignItems: 'center' }}>
+            <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, fontWeight: '700' }}>Expense</Text>
+            <Text variant="titleMedium" style={{ fontWeight: '800' }}>{formatAmount(stats.total_expense)}</Text>
+          </Card.Content>
+        </Card>
+        <Card style={[{ flex: 1, backgroundColor: theme.colors.surface }]} elevation={0}>
+          <Card.Content style={{ paddingVertical: 16, alignItems: 'center' }}>
+            <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8, fontWeight: '700' }}>Net</Text>
+            <Text variant="titleMedium" style={{ fontWeight: '800' }}>{formatAmount(stats.net)}</Text>
+          </Card.Content>
+        </Card>
+      </View>
+
+      {/* Debts Overview */}
+      <View style={{ gap: 16 }}>
+        <Text variant="titleMedium" style={{ fontWeight: '700' }}>Debts Overview</Text>
+        
+        <Card style={{ backgroundColor: theme.colors.surface, borderRadius: 24 }} elevation={0}>
+          <Card.Content style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 24 }}>
+            <View style={[styles.circlePlaceholder, { backgroundColor: theme.colors.surfaceVariant }]} />
+            <View style={{ flexDirection: 'row', flex: 1, justifyContent: 'flex-start', gap: 32 }}>
+              <View>
+                <Text variant="labelSmall" style={styles.debtLabel}>OWED TO YOU</Text>
+                <Text variant="titleLarge" style={{ fontWeight: '800', color: '#4ade80' }}>₹0</Text>
+              </View>
+              <View>
+                <Text variant="labelSmall" style={styles.debtLabel}>YOU OWE</Text>
+                <Text variant="titleLarge" style={{ fontWeight: '800', color: theme.colors.onSurface }}>₹0</Text>
+              </View>
+            </View>
+          </Card.Content>
+        </Card>
+
+        {/* Savings Compare */}
+        <Card style={{ backgroundColor: theme.colors.surface, borderRadius: 24 }} elevation={0}>
+          <Card.Content style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 20 }}>
+            <List.Icon icon="arrow-top-right" color={theme.colors.onSurfaceVariant} style={{ margin: 0, marginRight: 16 }} />
+            <Text style={{ color: theme.colors.onSurfaceVariant, flex: 1, lineHeight: 20, fontSize: 13 }}>
+              You saved <Text style={{ fontWeight: '800', color: theme.colors.onSurface }}>{savingsRate}%</Text> compared to last period
+            </Text>
+          </Card.Content>
+        </Card>
+      </View>
+
+      <View style={{ gap: 16, marginTop: 8 }}>
+        <Text variant="labelSmall" style={styles.sectionHeader}>UPCOMING DUES</Text>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  header: {
+    paddingHorizontal: 16, paddingTop: 52, paddingBottom: 24,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  },
+  title: { fontWeight: '700' },
+  circlePlaceholder: { width: 64, height: 64, borderRadius: 32, marginRight: 24 },
+  debtLabel: { fontWeight: '800', letterSpacing: 1, color: '#a09aad', marginBottom: 8, fontSize: 10 },
+  sectionHeader: { fontWeight: '800', letterSpacing: 1, color: '#a09aad', fontSize: 11 },
+});
