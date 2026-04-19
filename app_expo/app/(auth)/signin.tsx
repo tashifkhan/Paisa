@@ -1,81 +1,144 @@
-import { useRouter } from "expo-router";
-import { ArrowRight, Lock, Mail } from "lucide-react-native";
-import React, { useState } from "react";
-import { Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Button, Snackbar, Text, TextInput as PaperTextInput } from 'react-native-paper';
+import { useAuth } from '../../context/AuthContext';
+
+// Paper TextInput passes through all RN TextInput props but types are incomplete
+const TextInput = PaperTextInput as unknown as React.ComponentType<any> & { Icon: typeof PaperTextInput.Icon; Affix: typeof PaperTextInput.Affix };
 
 export default function SignInScreen() {
-	const router = useRouter();
-	const [email, setEmail] = useState("");
-	const [password, setPassword] = useState("");
+  const router = useRouter();
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-	const handleSignIn = () => {
-		// Implement sign in logic here
-		router.replace("/(tabs)");
-	};
+  const handleSignIn = async () => {
+    if (!email || !password) {
+      setError('Please enter your email and password');
+      return;
+    }
+    setLoading(true);
+    try {
+      await login(email, password);
+      router.replace('/(tabs)');
+    } catch (e: any) {
+      setError(e?.response?.data?.detail || 'Sign in failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-	return (
-		<View className="flex-1 bg-[var(--background)] p-6 justify-center">
-			<View className="items-center mb-10">
-				<View className="w-20 h-20 bg-[var(--primary)] rounded-3xl items-center justify-center mb-4 shadow-lg rotate-3">
-					<Text className="text-4xl font-bold text-white">P</Text>
-				</View>
-				<Text className="text-3xl font-bold text-[var(--foreground)]">
-					Welcome Back
-				</Text>
-				<Text className="text-[var(--muted-foreground)] text-center mt-2">
-					Sign in to continue managing your finances
-				</Text>
-			</View>
+  return (
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        {/* Logo */}
+        <View style={styles.logoWrap}>
+          <View style={styles.logoBox}>
+            <Text style={styles.logoText}>P</Text>
+          </View>
+          <Text variant="headlineMedium" style={styles.title}>Welcome Back</Text>
+          <Text variant="bodyMedium" style={styles.subtitle}>Sign in to continue managing your finances</Text>
+        </View>
 
-			<View className="gap-4 mb-6">
-				<View className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 flex-row items-center gap-3">
-					<Mail size={20} color="var(--muted-foreground)" />
-					<TextInput
-						className="flex-1 text-[var(--foreground)] text-base"
-						placeholder="Email Address"
-						placeholderTextColor="var(--muted-foreground)"
-						value={email}
-						onChangeText={setEmail}
-						autoCapitalize="none"
-						keyboardType="email-address"
-					/>
-				</View>
+        {/* Inputs */}
+        <View style={styles.inputs}>
+          <TextInput
+            mode="outlined"
+            label="Email Address"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            left={<TextInput.Icon icon="email-outline" />}
+            style={styles.input}
+          />
+          <TextInput
+            mode="outlined"
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            left={<TextInput.Icon icon="lock-outline" />}
+            right={
+              <TextInput.Icon
+                icon={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                onPress={() => setShowPassword(!showPassword)}
+              />
+            }
+            style={styles.input}
+          />
+          <Button
+            mode="text"
+            onPress={() => router.push('/(auth)/forgot-password')}
+            style={styles.forgotBtn}
+            labelStyle={styles.forgotLabel}
+          >
+            Forgot Password?
+          </Button>
+        </View>
 
-				<View className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 flex-row items-center gap-3">
-					<Lock size={20} color="var(--muted-foreground)" />
-					<TextInput
-						className="flex-1 text-[var(--foreground)] text-base"
-						placeholder="Password"
-						placeholderTextColor="var(--muted-foreground)"
-						value={password}
-						onChangeText={setPassword}
-						secureTextEntry
-					/>
-				</View>
+        {/* Sign In Button */}
+        <Button
+          mode="contained"
+          onPress={handleSignIn}
+          disabled={loading}
+          style={styles.primaryBtn}
+          contentStyle={styles.primaryBtnContent}
+          labelStyle={styles.primaryBtnLabel}
+          icon={loading ? undefined : 'arrow-right'}
+        >
+          {loading ? <ActivityIndicator color="#f8f7fa" size={20} /> : 'Sign In'}
+        </Button>
 
-				<TouchableOpacity onPress={() => router.push("/forgot-password")}>
-					<Text className="text-[var(--primary)] text-right font-medium">
-						Forgot Password?
-					</Text>
-				</TouchableOpacity>
-			</View>
+        {/* Sign Up Link */}
+        <View style={styles.footerRow}>
+          <Text variant="bodyMedium" style={styles.footerText}>Don't have an account? </Text>
+          <Button mode="text" onPress={() => router.push('/(auth)/signup')} compact labelStyle={styles.linkLabel}>
+            Sign Up
+          </Button>
+        </View>
+      </ScrollView>
 
-			<TouchableOpacity
-				onPress={handleSignIn}
-				className="w-full bg-[var(--primary)] py-4 rounded-[24px] flex-row items-center justify-center gap-2 shadow-lg mb-6"
-			>
-				<Text className="text-white font-bold text-lg">Sign In</Text>
-				<ArrowRight size={20} color="white" />
-			</TouchableOpacity>
-
-			<View className="flex-row justify-center gap-1">
-				<Text className="text-[var(--muted-foreground)]">
-					Don't have an account?
-				</Text>
-				<TouchableOpacity onPress={() => router.push("/signup")}>
-					<Text className="text-[var(--primary)] font-bold">Sign Up</Text>
-				</TouchableOpacity>
-			</View>
-		</View>
-	);
+      <Snackbar visible={!!error} onDismiss={() => setError('')} duration={3000}>
+        {error}
+      </Snackbar>
+    </KeyboardAvoidingView>
+  );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
+  logoWrap: { alignItems: 'center', marginBottom: 40 },
+  logoBox: {
+    width: 80, height: 80,
+    backgroundColor: '#8a79ab',
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    transform: [{ rotate: '3deg' }],
+    shadowColor: '#8a79ab',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  logoText: { fontSize: 36, fontWeight: '800', color: '#fff' },
+  title: { fontWeight: '700', textAlign: 'center', marginBottom: 8 },
+  subtitle: { textAlign: 'center', opacity: 0.7 },
+  inputs: { gap: 12, marginBottom: 8 },
+  input: { borderRadius: 16 },
+  forgotBtn: { alignSelf: 'flex-end' },
+  forgotLabel: { fontSize: 13 },
+  primaryBtn: { borderRadius: 28, marginTop: 16, marginBottom: 24 },
+  primaryBtnContent: { height: 52 },
+  primaryBtnLabel: { fontSize: 16, fontWeight: '700', letterSpacing: 0.5 },
+  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  footerText: { opacity: 0.7 },
+  linkLabel: { fontWeight: '700', fontSize: 14 },
+});
