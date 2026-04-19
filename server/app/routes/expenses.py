@@ -15,6 +15,18 @@ from ..services.wallet_service import WalletService
 router = APIRouter(prefix="/expenses", tags=["expenses"])
 
 
+def _reverse_wallet_effect(wallet: models.Wallet, amount: float, txn_type: str) -> None:
+    is_credit = WalletService._is_credit_wallet(wallet.type)
+    if txn_type == "income":
+        wallet.balance = (
+            wallet.balance + amount if is_credit else wallet.balance - amount
+        )
+    elif txn_type == "expense":
+        wallet.balance = (
+            wallet.balance - amount if is_credit else wallet.balance + amount
+        )
+
+
 @router.post("/upload-bill")
 async def upload_bill(
     file: UploadFile = File(...), current_user=Depends(get_current_user)
@@ -37,6 +49,7 @@ async def add_expense(
 ):
     # Parse optional UUIDs
     wallet_uuid = None
+    to_wallet_uuid = None
     group_uuid = None
     category_uuid = None
 
@@ -58,6 +71,43 @@ async def add_expense(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid category_id UUID")
 
+    if payload.to_wallet_id:
+        try:
+            to_wallet_uuid = UUID(payload.to_wallet_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid to_wallet_id UUID")
+
+    if payload.type == "transfer":
+        if not wallet_uuid or not to_wallet_uuid:
+            raise HTTPException(
+                status_code=400,
+                detail="transfer requires wallet_id and to_wallet_id",
+            )
+        if wallet_uuid == to_wallet_uuid:
+            raise HTTPException(
+                status_code=400,
+                detail="transfer source and destination cannot be the same",
+            )
+
+    # Build embedded splits
+    embedded_splits = []
+    if payload.splits:
+        for s in payload.splits:
+            try:
+                split_user_uuid = UUID(s.user_id)
+            except ValueError:
+                raise HTTPException(
+                    status_code=400, detail=f"Invalid user_id UUID in split: {s.user_id}"
+                )
+            embedded_splits.append(
+                models.TransactionSplit(
+                    user_id=split_user_uuid,
+                    amount_owed=s.amount_owed or 0.0,
+                    percentage=s.percentage,
+                    shares=s.shares,
+                )
+            )
+
     txn = models.Transaction(
         user_id=current_user.id,
         amount=payload.amount,
@@ -65,19 +115,51 @@ async def add_expense(
         type=payload.type,
         date=payload.date or datetime.utcnow(),
         note=payload.note,
+        title=payload.title,
+        description=payload.description,
         split_strategy=payload.split_strategy,
+        bill_image_url=payload.bill_image_url,
         wallet_id=wallet_uuid,
+        to_wallet_id=to_wallet_uuid,
         group_id=group_uuid,
         category_id=category_uuid,
+        splits=embedded_splits,
     )
 
-    await txn.create()
-
-    # Update wallet balance if wallet is specified
+    # Validate wallets exist and belong to user
+    source_wallet = None
+    destination_wallet = None
     if wallet_uuid:
-        wallet = await WalletService.get_wallet(wallet_uuid, current_user.id)
-        if wallet:
-            await WalletService.update_balance(wallet, payload.amount, payload.type)
+        source_wallet = await WalletService.get_wallet(wallet_uuid, current_user.id)
+        if not source_wallet:
+            raise HTTPException(status_code=400, detail="source wallet not found")
+
+    if to_wallet_uuid:
+        destination_wallet = await WalletService.get_wallet(
+            to_wallet_uuid, current_user.id
+        )
+        if not destination_wallet:
+            raise HTTPException(status_code=400, detail="destination wallet not found")
+
+    # Apply wallet effects first, persist txn only if valid
+    try:
+        if payload.type == "transfer":
+            if source_wallet:
+                await WalletService.update_balance(
+                    source_wallet, payload.amount, "expense"
+                )
+            if destination_wallet:
+                await WalletService.update_balance(
+                    destination_wallet, payload.amount, "income"
+                )
+        elif source_wallet:
+            await WalletService.update_balance(
+                source_wallet, payload.amount, payload.type
+            )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    await txn.create()
 
     return {"status": "created", "id": str(txn.id)}
 
@@ -219,6 +301,7 @@ async def update_transaction(
     old_amount = t.amount
     old_type = t.type
     old_wallet_id = t.wallet_id
+    old_to_wallet_id = t.to_wallet_id
 
     # Update fields
     data = payload.model_dump(exclude_unset=True)
@@ -236,36 +319,133 @@ async def update_transaction(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid category_id UUID")
 
+    if "to_wallet_id" in data and data["to_wallet_id"]:
+        try:
+            data["to_wallet_id"] = UUID(data["to_wallet_id"])
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid to_wallet_id UUID")
+
+    final_type = data.get("type", t.type)
+    final_wallet_id = data.get("wallet_id", t.wallet_id)
+    final_to_wallet_id = data.get("to_wallet_id", t.to_wallet_id)
+    final_amount = data.get("amount", t.amount)
+
+    if final_type == "transfer":
+        if not final_wallet_id or not final_to_wallet_id:
+            raise HTTPException(
+                status_code=400,
+                detail="transfer requires wallet_id and to_wallet_id",
+            )
+        if final_wallet_id == final_to_wallet_id:
+            raise HTTPException(
+                status_code=400,
+                detail="transfer source and destination cannot be the same",
+            )
+
     if data:
+        # Validate target wallets exist before any balance mutation
+        new_source_wallet = None
+        new_destination_wallet = None
+        if final_wallet_id:
+            new_source_wallet = await WalletService.get_wallet(
+                final_wallet_id, current_user.id
+            )
+            if not new_source_wallet:
+                raise HTTPException(status_code=400, detail="source wallet not found")
+        if final_to_wallet_id:
+            new_destination_wallet = await WalletService.get_wallet(
+                final_to_wallet_id, current_user.id
+            )
+            if not new_destination_wallet:
+                raise HTTPException(
+                    status_code=400, detail="destination wallet not found"
+                )
+
+        # Reverse previous wallet effects
+        old_source_wallet = None
+        old_destination_wallet = None
+        if old_wallet_id:
+            old_source_wallet = await WalletService.get_wallet(
+                old_wallet_id, current_user.id
+            )
+        if old_to_wallet_id:
+            old_destination_wallet = await WalletService.get_wallet(
+                old_to_wallet_id, current_user.id
+            )
+
+        if old_type == "transfer":
+            if old_source_wallet:
+                _reverse_wallet_effect(old_source_wallet, old_amount, "expense")
+                await old_source_wallet.save()
+            if old_destination_wallet:
+                _reverse_wallet_effect(old_destination_wallet, old_amount, "income")
+                await old_destination_wallet.save()
+        else:
+            if old_source_wallet:
+                _reverse_wallet_effect(old_source_wallet, old_amount, old_type)
+                await old_source_wallet.save()
+
+        try:
+            if final_type == "transfer":
+                if new_source_wallet:
+                    await WalletService.update_balance(
+                        new_source_wallet, final_amount, "expense"
+                    )
+                if new_destination_wallet:
+                    await WalletService.update_balance(
+                        new_destination_wallet, final_amount, "income"
+                    )
+            elif new_source_wallet:
+                await WalletService.update_balance(
+                    new_source_wallet, final_amount, final_type
+                )
+        except ValueError as exc:
+            # Roll back reversal to preserve previous state
+            try:
+                if old_type == "transfer":
+                    if old_source_wallet:
+                        await WalletService.update_balance(
+                            old_source_wallet, old_amount, "expense"
+                        )
+                    if old_destination_wallet:
+                        await WalletService.update_balance(
+                            old_destination_wallet, old_amount, "income"
+                        )
+                elif old_source_wallet:
+                    await WalletService.update_balance(
+                        old_source_wallet, old_amount, old_type
+                    )
+            except Exception:
+                pass
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        # Convert splits from schema objects to embedded models before applying
+        if "splits" in data and data["splits"] is not None:
+            embedded_splits = []
+            for s in data["splits"]:
+                try:
+                    split_user_uuid = UUID(s.user_id if hasattr(s, 'user_id') else s['user_id'])
+                except (ValueError, KeyError):
+                    raise HTTPException(
+                        status_code=400, detail="Invalid user_id UUID in split"
+                    )
+                amount_owed = s.amount_owed if hasattr(s, 'amount_owed') else s.get('amount_owed', 0.0)
+                percentage = s.percentage if hasattr(s, 'percentage') else s.get('percentage')
+                shares = s.shares if hasattr(s, 'shares') else s.get('shares')
+                embedded_splits.append(
+                    models.TransactionSplit(
+                        user_id=split_user_uuid,
+                        amount_owed=amount_owed or 0.0,
+                        percentage=percentage,
+                        shares=shares,
+                    )
+                )
+            data["splits"] = embedded_splits
+
         for k, v in data.items():
             setattr(t, k, v)
         t.updated_at = datetime.utcnow()
         await t.save()
-
-        new_amount = t.amount
-        new_type = t.type
-        new_wallet_id = t.wallet_id
-
-        # Adjust wallet balances if amount, type, or wallet changed
-        if old_wallet_id and (
-            old_amount != new_amount
-            or old_type != new_type
-            or old_wallet_id != new_wallet_id
-        ):
-            # Reverse old transaction effect
-            old_wallet = await WalletService.get_wallet(old_wallet_id, current_user.id)
-            if old_wallet:
-                if old_type == "income":
-                    old_wallet.balance -= old_amount
-                elif old_type == "expense":
-                    old_wallet.balance += old_amount
-                await old_wallet.save()
-
-        if new_wallet_id:
-            # Apply new transaction effect
-            new_wallet = await WalletService.get_wallet(new_wallet_id, current_user.id)
-            if new_wallet:
-                await WalletService.update_balance(new_wallet, new_amount, new_type)
 
     return {"status": "updated"}
 
@@ -285,13 +465,23 @@ async def delete_transaction(txn_id: str, current_user=Depends(get_current_user)
         raise HTTPException(status_code=404, detail="Transaction not found")
 
     # Reverse wallet balance if applicable
-    if t.wallet_id:
+    if t.type == "transfer":
+        if t.wallet_id:
+            source_wallet = await WalletService.get_wallet(t.wallet_id, current_user.id)
+            if source_wallet:
+                _reverse_wallet_effect(source_wallet, t.amount, "expense")
+                await source_wallet.save()
+        if t.to_wallet_id:
+            destination_wallet = await WalletService.get_wallet(
+                t.to_wallet_id, current_user.id
+            )
+            if destination_wallet:
+                _reverse_wallet_effect(destination_wallet, t.amount, "income")
+                await destination_wallet.save()
+    elif t.wallet_id:
         wallet = await WalletService.get_wallet(t.wallet_id, current_user.id)
         if wallet:
-            if t.type == "income":
-                wallet.balance -= t.amount
-            elif t.type == "expense":
-                wallet.balance += t.amount
+            _reverse_wallet_effect(wallet, t.amount, t.type)
             await wallet.save()
 
     t.deleted = True

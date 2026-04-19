@@ -54,6 +54,9 @@ class Wallet(Document):
     type: str
     balance: float = 0.0
     currency: str = "INR"
+    credit_limit: Optional[float] = None
+    statement_day: Optional[int] = None
+    due_day: Optional[int] = None
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     last_synced_at: Optional[datetime] = None
     deleted: bool = False
@@ -95,6 +98,7 @@ class Transaction(Document):
     id: UUID = Field(default_factory=uuid4)
     user_id: UUID
     wallet_id: Optional[UUID] = None
+    to_wallet_id: Optional[UUID] = None
     group_id: Optional[UUID] = None
     category_id: Optional[UUID] = None
 
@@ -108,6 +112,8 @@ class Transaction(Document):
     split_strategy: str = "equal"
 
     bill_image_url: Optional[str] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
 
     is_recurring: bool = False
     recurrence_rule: Optional[str] = None

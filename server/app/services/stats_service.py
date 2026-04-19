@@ -9,6 +9,7 @@ from typing import Dict, List, Optional
 from uuid import UUID
 
 from ..models import db_models as models
+from .wallet_service import WalletService
 
 
 class StatsService:
@@ -110,19 +111,33 @@ class StatsService:
         result = []
         for wallet_id, data in by_wallet.items():
             wallet_name = "No Wallet"
+            wallet_type = None
+            credit_limit = None
+            available_credit = None
+            utilization_percent = None
             if wallet_id:
                 wallet = await models.Wallet.get(wallet_id)
                 if wallet:
                     wallet_name = wallet.name
+                    wallet_type = wallet.type
+                    credit_limit = wallet.credit_limit
+                    available_credit = WalletService.compute_available_credit(wallet)
+                    utilization_percent = WalletService.compute_utilization_percent(
+                        wallet
+                    )
 
             result.append(
                 {
                     "wallet_id": str(wallet_id) if wallet_id else None,
                     "wallet_name": wallet_name,
+                    "wallet_type": wallet_type,
                     "income": data["income"],
                     "expense": data["expense"],
                     "net": data["income"] - data["expense"],
                     "count": data["count"],
+                    "credit_limit": credit_limit,
+                    "available_credit": available_credit,
+                    "utilization_percent": utilization_percent,
                 }
             )
 

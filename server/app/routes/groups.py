@@ -270,11 +270,25 @@ async def add_group_expense(
 
     # Parse optional category UUID
     category_uuid = None
+    wallet_uuid = None
+    to_wallet_uuid = None
     if payload.category_id:
         try:
             category_uuid = UUID(payload.category_id)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid category_id UUID")
+
+    if payload.wallet_id:
+        try:
+            wallet_uuid = UUID(payload.wallet_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid wallet_id UUID")
+
+    if payload.to_wallet_id:
+        try:
+            to_wallet_uuid = UUID(payload.to_wallet_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid to_wallet_id UUID")
 
     from datetime import datetime
 
@@ -286,7 +300,12 @@ async def add_group_expense(
         type=payload.type or "expense",
         date=payload.date or datetime.utcnow(),
         note=payload.note,
+        title=payload.title,
+        description=payload.description,
         split_strategy=payload.split_strategy,
+        bill_image_url=payload.bill_image_url,
+        wallet_id=wallet_uuid,
+        to_wallet_id=to_wallet_uuid,
         category_id=category_uuid,
     )
 

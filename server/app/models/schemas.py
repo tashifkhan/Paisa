@@ -4,6 +4,21 @@ from datetime import datetime
 from uuid import UUID
 
 
+# Split Schemas (embedded in transactions)
+class SplitCreate(BaseModel):
+    user_id: str
+    amount_owed: Optional[float] = None
+    percentage: Optional[float] = None
+    shares: Optional[float] = None
+
+
+class SplitOut(BaseModel):
+    user_id: str
+    amount_owed: float
+    percentage: Optional[float] = None
+    shares: Optional[float] = None
+
+
 def convert_uuid_to_str(v: Any) -> Any:
     """Convert UUID to string."""
     if isinstance(v, UUID):
@@ -105,19 +120,25 @@ class CategoryOut(BaseOutModel):
 class TransactionCreate(BaseModel):
     amount: float
     currency: Optional[str] = "INR"
-    type: str
+    type: Optional[Literal["expense", "income", "transfer"]] = "expense"
     date: Optional[datetime] = None
     note: Optional[str] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
     split_strategy: Optional[str] = "equal"
     wallet_id: Optional[str] = None
+    to_wallet_id: Optional[str] = None
     group_id: Optional[str] = None
     category_id: Optional[str] = None
+    bill_image_url: Optional[str] = None
+    splits: Optional[List[SplitCreate]] = None
 
 
 class TransactionOut(BaseOutModel):
     id: str
     user_id: str
     wallet_id: Optional[str]
+    to_wallet_id: Optional[str]
     group_id: Optional[str]
     category_id: Optional[str]
     amount: float
@@ -125,17 +146,27 @@ class TransactionOut(BaseOutModel):
     type: str
     date: Optional[datetime]
     note: Optional[str]
+    title: Optional[str]
+    description: Optional[str]
+    bill_image_url: Optional[str]
+    split_strategy: Optional[str]
+    splits: List[SplitOut] = []
 
 
 class TransactionUpdate(BaseModel):
     amount: Optional[float] = None
     currency: Optional[str] = None
-    type: Optional[str] = None
+    type: Optional[Literal["expense", "income", "transfer"]] = None
     date: Optional[datetime] = None
     note: Optional[str] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
     split_strategy: Optional[str] = None
     wallet_id: Optional[str] = None
+    to_wallet_id: Optional[str] = None
     category_id: Optional[str] = None
+    bill_image_url: Optional[str] = None
+    splits: Optional[List[SplitCreate]] = None
 
 
 # Wallet Schemas
@@ -143,12 +174,18 @@ class WalletCreate(BaseModel):
     name: str
     type: Optional[str] = "personal"
     currency: Optional[str] = "INR"
+    credit_limit: Optional[float] = None
+    statement_day: Optional[int] = None
+    due_day: Optional[int] = None
 
 
 class WalletUpdate(BaseModel):
     name: Optional[str] = None
     type: Optional[str] = None
     currency: Optional[str] = None
+    credit_limit: Optional[float] = None
+    statement_day: Optional[int] = None
+    due_day: Optional[int] = None
 
 
 class WalletOut(BaseOutModel):
@@ -157,6 +194,11 @@ class WalletOut(BaseOutModel):
     type: Optional[str]
     balance: float
     currency: str
+    credit_limit: Optional[float] = None
+    available_credit: Optional[float] = None
+    utilization_percent: Optional[float] = None
+    statement_day: Optional[int] = None
+    due_day: Optional[int] = None
 
 
 # Group Schemas

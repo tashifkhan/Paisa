@@ -11,11 +11,26 @@ from ..services.wallet_service import WalletService
 router = APIRouter(prefix="/wallets", tags=["wallets"])
 
 
+def _wallet_to_out(wallet: models.Wallet) -> schemas.WalletOut:
+    return schemas.WalletOut(
+        id=str(wallet.id),
+        name=wallet.name,
+        type=wallet.type,
+        balance=wallet.balance,
+        currency=wallet.currency,
+        credit_limit=wallet.credit_limit,
+        available_credit=WalletService.compute_available_credit(wallet),
+        utilization_percent=WalletService.compute_utilization_percent(wallet),
+        statement_day=wallet.statement_day,
+        due_day=wallet.due_day,
+    )
+
+
 @router.get("/", response_model=List[schemas.WalletOut])
 async def list_wallets(current_user=Depends(get_current_user)):
     """List all wallets for the current user."""
     wallets = await WalletService.get_wallets(current_user.id)
-    return wallets
+    return [_wallet_to_out(w) for w in wallets]
 
 
 @router.get("/total")
@@ -25,9 +40,17 @@ async def get_total_balance(
 ):
     """Get total balance across all wallets in a specific currency."""
     total = await WalletService.get_total_balance(current_user.id, currency)
+    total_credit_used = await WalletService.get_total_credit_used(
+        current_user.id, currency
+    )
+    total_available_credit = await WalletService.get_total_available_credit(
+        current_user.id, currency
+    )
     return {
         "currency": currency,
         "total_balance": total,
+        "total_credit_used": total_credit_used,
+        "total_available_credit": total_available_credit,
     }
 
 
@@ -37,12 +60,19 @@ async def create_wallet(
     current_user=Depends(get_current_user),
 ):
     """Create a new wallet."""
-    w = await WalletService.create_wallet(
-        user_id=current_user.id,
-        name=payload.name,
-        wallet_type=payload.type,
-        currency=payload.currency,
-    )
+    try:
+        w = await WalletService.create_wallet(
+            user_id=current_user.id,
+            name=payload.name,
+            wallet_type=payload.type,
+            currency=payload.currency,
+            credit_limit=payload.credit_limit,
+            statement_day=payload.statement_day,
+            due_day=payload.due_day,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     return {
         "status": "created",
         "id": str(w.id),
@@ -61,7 +91,7 @@ async def get_wallet(wallet_id: str, current_user=Depends(get_current_user)):
     if not w:
         raise HTTPException(status_code=404, detail="Wallet not found")
 
-    return w
+    return _wallet_to_out(w)
 
 
 @router.put("/{wallet_id}", response_model=schemas.WalletOut)
@@ -80,13 +110,20 @@ async def update_wallet(
     if not w:
         raise HTTPException(status_code=404, detail="Wallet not found")
 
-    w = await WalletService.update_wallet(
-        w,
-        name=payload.name,
-        wallet_type=payload.type,
-        currency=payload.currency,
-    )
-    return w
+    try:
+        w = await WalletService.update_wallet(
+            w,
+            name=payload.name,
+            wallet_type=payload.type,
+            currency=payload.currency,
+            credit_limit=payload.credit_limit,
+            statement_day=payload.statement_day,
+            due_day=payload.due_day,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return _wallet_to_out(w)
 
 
 @router.delete("/{wallet_id}", response_model=dict)
@@ -155,7 +192,10 @@ async def adjust_wallet_balance(
         raise HTTPException(status_code=404, detail="Wallet not found")
 
     old_balance = w.balance
-    await WalletService.adjust_balance(w, amount)
+    try:
+        await WalletService.adjust_balance(w, amount)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return {
         "status": "adjusted",
