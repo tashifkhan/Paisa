@@ -187,9 +187,11 @@ export default function WalletsScreen() {
                   >
                     <Card.Content style={styles.txContent}>
                       <View style={[styles.txIcon, { backgroundColor: tx.type === 'income' ? '#dcfce7' : '#fee2e2' }]}>
-                        <Text style={{ fontSize: 18 }}>
-                          {tx.type === 'income' ? '💰' : '💸'}
-                        </Text>
+                        <MaterialCommunityIcons 
+                          name={tx.type === 'income' ? 'arrow-down' : 'arrow-up'} 
+                          size={20} 
+                          color={tx.type === 'income' ? '#16a34a' : '#dc2626'} 
+                        />
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text variant="titleSmall" style={{ fontWeight: '600' }}>

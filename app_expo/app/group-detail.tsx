@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Dialog, Divider, IconButton, Portal, Snackbar, Text, TextInput as PaperTextInput, useTheme } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { CustomSegmentedTabs } from '../components/CustomSegmentedTabs';
 import { groupService } from '../services/groupService';
 import type { BackendGroup, BackendGroupBalanceSummary, BackendSimplifyDebtsResponse, BackendTransaction } from '../services/types';
@@ -131,7 +132,7 @@ export default function GroupDetailScreen() {
             <Card.Content style={{ padding: 20 }}>
               <View style={styles.summaryHeader}>
                 <View style={[styles.groupIcon, { backgroundColor: group.color || theme.colors.primaryContainer }]}>
-                  <Text style={{ fontSize: 24 }}>{group.icon || '👥'}</Text>
+                  {group.icon ? <Text style={{ fontSize: 24 }}>{group.icon}</Text> : <MaterialCommunityIcons name="account-multiple" size={32} color="#fff" />}
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text variant="titleLarge" style={styles.groupName}>{group.name}</Text>
@@ -197,7 +198,7 @@ export default function GroupDetailScreen() {
                 <Card key={exp.id} style={[styles.expenseCard, { backgroundColor: theme.colors.surface }]} elevation={0}>
                   <Card.Content style={styles.expenseContent}>
                     <View style={[styles.expenseIcon, { backgroundColor: theme.colors.surfaceVariant }]}>
-                      <Text style={{ fontSize: 18 }}>💸</Text>
+                      <MaterialCommunityIcons name="arrow-up" size={18} color="#dc2626" />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text variant="titleSmall" style={{ fontWeight: '600' }}>

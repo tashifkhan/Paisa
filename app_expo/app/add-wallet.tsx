@@ -7,6 +7,27 @@ import { CustomSegmentedTabs } from '../components/CustomSegmentedTabs';
 import { MD3Switch } from '../components/MD3Switch';
 import { useCreateWallet } from '../hooks/useWallets';
 
+const InputField = ({ placeholder, value, onChangeText, leftIcon, style, keyboardType, theme, selectedColor }: any) => (
+  <View style={[styles.inputContainer, { backgroundColor: theme.colors.surfaceVariant }, style]}>
+    {leftIcon && (
+      <View style={styles.leftIconWrapper}>
+        <MaterialCommunityIcons name={leftIcon} size={20} color={selectedColor || theme.colors.primary} />
+      </View>
+    )}
+    <TextInput
+      mode="outlined"
+      placeholder={placeholder}
+      value={value}
+      onChangeText={onChangeText}
+      keyboardType={keyboardType}
+      outlineColor="transparent"
+      activeOutlineColor="transparent"
+      style={[{ backgroundColor: 'transparent', flex: 1 }]}
+      textColor={theme.colors.onSurface}
+    />
+  </View>
+);
+
 export default function AddWalletScreen() {
   const router = useRouter();
   const theme = useTheme();
@@ -41,27 +62,6 @@ export default function AddWalletScreen() {
     }
   };
 
-  const InputField = ({ placeholder, value, onChangeText, leftIcon, style, keyboardType }: any) => (
-    <View style={[styles.inputContainer, { backgroundColor: theme.colors.surfaceVariant }, style]}>
-      {leftIcon && (
-        <View style={styles.leftIconWrapper}>
-          <MaterialCommunityIcons name={leftIcon} size={20} color={selectedColor} />
-        </View>
-      )}
-      <TextInput
-        mode="outlined"
-        placeholder={placeholder}
-        value={value}
-        onChangeText={onChangeText}
-        keyboardType={keyboardType}
-        outlineColor="transparent"
-        activeOutlineColor="transparent"
-        style={[{ backgroundColor: 'transparent', flex: 1 }]}
-        textColor={theme.colors.onSurface}
-      />
-    </View>
-  );
-
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
@@ -92,12 +92,8 @@ export default function AddWalletScreen() {
           value={walletName} 
           onChangeText={setWalletName} 
           leftIcon="credit-card-outline"
-        />
-        
-        <InputField 
-          placeholder="Enter name" 
-          value={walletName} // Visually mapping to mock input
-          onChangeText={setWalletName} 
+          theme={theme}
+          selectedColor={selectedColor}
         />
 
         <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -107,6 +103,8 @@ export default function AddWalletScreen() {
             onChangeText={setInitialAmount}
             keyboardType="decimal-pad"
             style={{ flex: 1 }}
+            theme={theme}
+            selectedColor={selectedColor}
           />
           <InputField 
             placeholder="Account number" 
@@ -114,6 +112,8 @@ export default function AddWalletScreen() {
             onChangeText={setAccountNumber}
             keyboardType="number-pad"
             style={{ flex: 1 }}
+            theme={theme}
+            selectedColor={selectedColor}
           />
         </View>
 

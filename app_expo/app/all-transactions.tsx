@@ -72,9 +72,11 @@ export default function AllTransactionsScreen() {
     >
       <Card.Content style={styles.txContent}>
         <View style={[styles.txIcon, { backgroundColor: tx.type === 'income' ? '#dcfce7' : tx.type === 'transfer' ? '#e0e7ff' : '#fee2e2' }]}>
-          <Text style={{ fontSize: 18 }}>
-            {tx.type === 'income' ? '💰' : tx.type === 'transfer' ? '🔄' : '💸'}
-          </Text>
+          <MaterialCommunityIcons 
+            name={tx.type === 'income' ? 'arrow-down' : tx.type === 'transfer' ? 'swap-horizontal' : 'arrow-up'} 
+            size={20} 
+            color={tx.type === 'income' ? '#16a34a' : tx.type === 'transfer' ? '#6366f1' : '#dc2626'} 
+          />
         </View>
         <View style={{ flex: 1 }}>
           <Text variant="titleSmall" style={{ fontWeight: '600' }}>
