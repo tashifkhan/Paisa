@@ -1,91 +1,132 @@
-import { useRouter } from "expo-router";
-import { ArrowLeft, ArrowRight, Lock, Mail, User } from "lucide-react-native";
-import React, { useState } from "react";
-import { Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Button, Snackbar, Text, TextInput as PaperTextInput } from 'react-native-paper';
+import { useAuth } from '../../context/AuthContext';
+
+const TextInput = PaperTextInput as unknown as React.ComponentType<any> & { Icon: typeof PaperTextInput.Icon; Affix: typeof PaperTextInput.Affix };
 
 export default function SignUpScreen() {
-	const router = useRouter();
-	const [name, setName] = useState("");
-	const [email, setEmail] = useState("");
-	const [password, setPassword] = useState("");
+  const router = useRouter();
+  const { requestOtp, setPendingSignup } = useAuth();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-	const handleSignUp = () => {
-		// Implement sign up logic here
-		router.push("/otp");
-	};
+  const handleSignUp = async () => {
+    if (!name || !email || !password) {
+      setError('Please fill in all fields');
+      return;
+    }
+    setLoading(true);
+    try {
+      await requestOtp(email);
+      setPendingSignup({ email, name, password });
+      router.push({ pathname: '/(auth)/otp', params: { email, flow: 'signup' } });
+    } catch (e: any) {
+      setError(e?.response?.data?.detail || 'Failed to send verification code.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-	return (
-		<View className="flex-1 bg-[var(--background)] p-6 justify-center">
-			<TouchableOpacity
-				onPress={() => router.back()}
-				className="absolute top-12 left-6 p-2 bg-[var(--card)] border border-[var(--border)] rounded-full shadow-sm"
-			>
-				<ArrowLeft size={20} color="var(--foreground)" />
-			</TouchableOpacity>
+  return (
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <Button
+          mode="text"
+          icon="arrow-left"
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          compact
+        >
+          Back
+        </Button>
 
-			<View className="items-center mb-10 mt-10">
-				<Text className="text-3xl font-bold text-[var(--foreground)]">
-					Create Account
-				</Text>
-				<Text className="text-[var(--muted-foreground)] text-center mt-2">
-					Start your journey to financial freedom
-				</Text>
-			</View>
+        <View style={styles.header}>
+          <Text variant="headlineMedium" style={styles.title}>Create Account</Text>
+          <Text variant="bodyMedium" style={styles.subtitle}>Start your journey to financial freedom</Text>
+        </View>
 
-			<View className="gap-4 mb-6">
-				<View className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 flex-row items-center gap-3">
-					<User size={20} color="var(--muted-foreground)" />
-					<TextInput
-						className="flex-1 text-[var(--foreground)] text-base"
-						placeholder="Full Name"
-						placeholderTextColor="var(--muted-foreground)"
-						value={name}
-						onChangeText={setName}
-					/>
-				</View>
+        <View style={styles.inputs}>
+          <TextInput
+            mode="outlined"
+            label="Full Name"
+            value={name}
+            onChangeText={setName}
+            left={<TextInput.Icon icon="account-outline" />}
+            style={styles.input}
+          />
+          <TextInput
+            mode="outlined"
+            label="Email Address"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            left={<TextInput.Icon icon="email-outline" />}
+            style={styles.input}
+          />
+          <TextInput
+            mode="outlined"
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            left={<TextInput.Icon icon="lock-outline" />}
+            right={
+              <TextInput.Icon
+                icon={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                onPress={() => setShowPassword(!showPassword)}
+              />
+            }
+            style={styles.input}
+          />
+        </View>
 
-				<View className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 flex-row items-center gap-3">
-					<Mail size={20} color="var(--muted-foreground)" />
-					<TextInput
-						className="flex-1 text-[var(--foreground)] text-base"
-						placeholder="Email Address"
-						placeholderTextColor="var(--muted-foreground)"
-						value={email}
-						onChangeText={setEmail}
-						autoCapitalize="none"
-						keyboardType="email-address"
-					/>
-				</View>
+        <Button
+          mode="contained"
+          onPress={handleSignUp}
+          disabled={loading}
+          style={styles.primaryBtn}
+          contentStyle={styles.primaryBtnContent}
+          labelStyle={styles.primaryBtnLabel}
+          icon={loading ? undefined : 'arrow-right'}
+        >
+          {loading ? <ActivityIndicator color="#f8f7fa" size={20} /> : 'Continue'}
+        </Button>
 
-				<View className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 flex-row items-center gap-3">
-					<Lock size={20} color="var(--muted-foreground)" />
-					<TextInput
-						className="flex-1 text-[var(--foreground)] text-base"
-						placeholder="Password"
-						placeholderTextColor="var(--muted-foreground)"
-						value={password}
-						onChangeText={setPassword}
-						secureTextEntry
-					/>
-				</View>
-			</View>
+        <View style={styles.footerRow}>
+          <Text variant="bodyMedium" style={styles.footerText}>Already have an account? </Text>
+          <Button mode="text" onPress={() => router.push('/(auth)/signin')} compact labelStyle={styles.linkLabel}>
+            Sign In
+          </Button>
+        </View>
+      </ScrollView>
 
-			<TouchableOpacity
-				onPress={handleSignUp}
-				className="w-full bg-[var(--primary)] py-4 rounded-[24px] flex-row items-center justify-center gap-2 shadow-lg mb-6"
-			>
-				<Text className="text-white font-bold text-lg">Sign Up</Text>
-				<ArrowRight size={20} color="white" />
-			</TouchableOpacity>
-
-			<View className="flex-row justify-center gap-1">
-				<Text className="text-[var(--muted-foreground)]">
-					Already have an account?
-				</Text>
-				<TouchableOpacity onPress={() => router.push("/signin")}>
-					<Text className="text-[var(--primary)] font-bold">Sign In</Text>
-				</TouchableOpacity>
-			</View>
-		</View>
-	);
+      <Snackbar visible={!!error} onDismiss={() => setError('')} duration={3000}>
+        {error}
+      </Snackbar>
+    </KeyboardAvoidingView>
+  );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  scroll: { flexGrow: 1, padding: 24, paddingTop: 48 },
+  backBtn: { alignSelf: 'flex-start', marginBottom: 24 },
+  header: { alignItems: 'center', marginBottom: 36 },
+  title: { fontWeight: '700', textAlign: 'center', marginBottom: 8 },
+  subtitle: { textAlign: 'center', opacity: 0.7 },
+  inputs: { gap: 12, marginBottom: 24 },
+  input: { borderRadius: 16 },
+  primaryBtn: { borderRadius: 28, marginBottom: 24 },
+  primaryBtnContent: { height: 52 },
+  primaryBtnLabel: { fontSize: 16, fontWeight: '700', letterSpacing: 0.5 },
+  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  footerText: { opacity: 0.7 },
+  linkLabel: { fontWeight: '700', fontSize: 14 },
+});
