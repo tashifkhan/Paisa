@@ -1,267 +1,329 @@
-import { useRouter } from "expo-router";
-import { MoreHorizontal, Plus, User, Users } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
-import React, { useState } from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Button, Card, Chip, Dialog, FAB, Portal, Snackbar, Text, TextInput as PaperTextInput, useTheme } from 'react-native-paper';
+import { CustomSegmentedTabs } from '../../components/CustomSegmentedTabs';
+import { debtService } from '../../services/debtService';
+import { groupService } from '../../services/groupService';
+import type { BackendDebt, BackendDebtSummary, BackendGroup } from '../../services/types';
 
-const DEBTS = [
-	{
-		id: 1,
-		name: "Rahul Sharma",
-		amount: 500,
-		type: "owed_to_me",
-		date: "Due in 3 days",
-	},
-	{
-		id: 2,
-		name: "Anita Roy",
-		amount: 1200,
-		type: "owed_by_me",
-		date: "Due tomorrow",
-	},
-	{
-		id: 3,
-		name: "John Doe",
-		amount: 250,
-		type: "owed_to_me",
-		date: "Due in 1 week",
-	},
-];
+const TextInput = PaperTextInput as unknown as React.ComponentType<any> & { Icon: typeof PaperTextInput.Icon; Affix: typeof PaperTextInput.Affix };
 
-const GROUPS = [
-	{
-		id: 1,
-		name: "Goa Trip",
-		members: 5,
-		balance: -2000,
-		type: "owe",
-		icon: "Plane",
-		color: "bg-orange-500",
-	},
-	{
-		id: 2,
-		name: "Flat 302 Rent",
-		members: 3,
-		balance: 5000,
-		type: "owed",
-		icon: "Home",
-		color: "bg-indigo-500",
-	},
-];
+type Tab = 'debts' | 'groups';
+
+function formatAmount(amount: number) {
+  return `₹${Math.abs(amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+}
+
+function formatDueDate(dateStr?: string) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diff = Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (diff < 0) return 'Overdue';
+  if (diff === 0) return 'Due today';
+  if (diff === 1) return 'Due tomorrow';
+  return `Due in ${diff} days`;
+}
 
 export default function SocialScreen() {
-	const router = useRouter();
-	const { colorScheme } = useColorScheme();
-	const isDarkMode = colorScheme === "dark";
-	const [activeTab, setActiveTab] = useState("debts");
+  const router = useRouter();
+  const theme = useTheme();
+  const [activeTab, setActiveTab] = useState<Tab>('debts');
+  const [debts, setDebts] = useState<BackendDebt[]>([]);
+  const [debtSummary, setDebtSummary] = useState<BackendDebtSummary | null>(null);
+  const [groups, setGroups] = useState<BackendGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [snack, setSnack] = useState('');
 
-	const netBalance = DEBTS.reduce(
-		(acc, curr) =>
-			curr.type === "owed_to_me" ? acc + curr.amount : acc - curr.amount,
-		0
-	);
+  // Add debt dialog
+  const [showAddDebt, setShowAddDebt] = useState(false);
+  const [debtName, setDebtName] = useState('');
+  const [debtAmount, setDebtAmount] = useState('');
+  const [debtType, setDebtType] = useState<'owed_to_me' | 'owed_by_me'>('owed_to_me');
+  const [savingDebt, setSavingDebt] = useState(false);
 
-	return (
-		<View className="flex-1 bg-[var(--background)] pt-12">
-			<View className="px-6 flex-row justify-between items-center mb-6">
-				<View>
-					<Text className="text-3xl font-bold text-[var(--foreground)]">
-						Social
-					</Text>
-					<Text className="text-[var(--muted-foreground)] text-sm">
-						Friends & Shared Expenses
-					</Text>
-				</View>
-				<TouchableOpacity className="p-2 bg-[var(--card)] border border-[var(--border)] rounded-full shadow-sm">
-					<MoreHorizontal size={24} color="var(--foreground)" />
-				</TouchableOpacity>
-			</View>
+  const loadData = useCallback(async () => {
+    try {
+      const [debtsData, summaryData, groupsData] = await Promise.all([
+        debtService.getDebts(),
+        debtService.getSummary(),
+        groupService.getGroups(),
+      ]);
+      setDebts(debtsData);
+      setDebtSummary(summaryData);
+      setGroups(groupsData);
+    } catch {
+      // silently fail
+    }
+  }, []);
 
-			{/* Tabs */}
-			<View className="px-6 mb-6">
-				<View className="flex-row bg-[var(--muted)] rounded-full p-1">
-					<TouchableOpacity
-						onPress={() => setActiveTab("debts")}
-						className={`flex-1 py-3 rounded-full items-center ${
-							activeTab === "debts" ? "bg-[var(--primary)] shadow-md" : ""
-						}`}
-					>
-						<Text
-							className={`font-medium ${
-								activeTab === "debts"
-									? "text-[var(--primary-foreground)]"
-									: "text-[var(--muted-foreground)]"
-							}`}
-						>
-							Friends
-						</Text>
-					</TouchableOpacity>
-					<TouchableOpacity
-						onPress={() => setActiveTab("groups")}
-						className={`flex-1 py-3 rounded-full items-center ${
-							activeTab === "groups" ? "bg-[var(--primary)] shadow-md" : ""
-						}`}
-					>
-						<Text
-							className={`font-medium ${
-								activeTab === "groups"
-									? "text-[var(--primary-foreground)]"
-									: "text-[var(--muted-foreground)]"
-							}`}
-						>
-							Groups
-						</Text>
-					</TouchableOpacity>
-				</View>
-			</View>
+  useEffect(() => {
+    loadData().finally(() => setLoading(false));
+  }, [loadData]);
 
-			<ScrollView
-				className="flex-1 px-6"
-				contentContainerStyle={{ paddingBottom: 100 }}
-				showsVerticalScrollIndicator={false}
-			>
-				{activeTab === "debts" ? (
-					<>
-						{/* Net Balance Card */}
-						<View
-							className={`p-6 rounded-[32px] shadow-lg mb-6 overflow-hidden ${
-								netBalance >= 0 ? "bg-[var(--chart-4)]" : "bg-[var(--chart-2)]"
-							}`}
-						>
-							<View>
-								<Text className="text-white/90 font-medium mb-1">
-									Net Balance
-								</Text>
-								<Text className="text-4xl font-bold text-white mb-2">
-									{netBalance >= 0 ? "+" : "-"}₹{Math.abs(netBalance)}
-								</Text>
-								<Text className="text-white/80 text-xs">
-									{netBalance >= 0
-										? "You are overall in credit"
-										: "You are overall in debt"}
-								</Text>
-							</View>
-						</View>
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, [loadData]);
 
-						{/* Debts List */}
-						<View className="gap-3">
-							{DEBTS.map((debt) => (
-								<TouchableOpacity
-									key={debt.id}
-									onPress={() => router.push("/user-detail")}
-									className="flex-row items-center justify-between p-4 bg-[var(--card)] border border-[var(--border)] rounded-[24px]"
-								>
-									<View className="flex-row items-center gap-4">
-										<View
-											className={`w-12 h-12 rounded-full items-center justify-center ${
-												debt.type === "owed_to_me"
-													? "bg-green-100 dark:bg-green-900/30"
-													: "bg-red-100 dark:bg-red-900/30"
-											}`}
-										>
-											<User
-												size={20}
-												color={
-													debt.type === "owed_to_me" ? "#16a34a" : "#dc2626"
-												}
-											/>
-										</View>
-										<View>
-											<Text className="font-bold text-[var(--foreground)] text-lg">
-												{debt.name}
-											</Text>
-											<Text className="text-xs text-[var(--muted-foreground)]">
-												{debt.date}
-											</Text>
-										</View>
-									</View>
-									<View className="items-end">
-										<Text
-											className={`font-bold text-lg ${
-												debt.type === "owed_to_me"
-													? "text-green-500"
-													: "text-red-500"
-											}`}
-										>
-											{debt.type === "owed_to_me" ? "+" : "-"}₹{debt.amount}
-										</Text>
-										<Text className="text-xs text-[var(--muted-foreground)]">
-											{debt.type === "owed_to_me" ? "Credit" : "Debt"}
-										</Text>
-									</View>
-								</TouchableOpacity>
-							))}
+  const handleSettle = async (id: string) => {
+    try {
+      await debtService.settleDebt(id);
+      setSnack('Debt settled!');
+      await loadData();
+    } catch {
+      setSnack('Failed to settle debt');
+    }
+  };
 
-							<TouchableOpacity className="w-full py-4 border-2 border-dashed border-[var(--border)] rounded-[32px] flex-row items-center justify-center gap-2 mt-4 active:bg-[var(--muted)]">
-								<View className="w-6 h-6 rounded-full bg-[var(--primary)] items-center justify-center">
-									<Plus size={16} color="white" />
-								</View>
-								<Text className="text-[var(--muted-foreground)] font-medium">
-									Add New Contact
-								</Text>
-							</TouchableOpacity>
-						</View>
-					</>
-				) : (
-					/* Groups Tab */
-					<View className="gap-4">
-						{GROUPS.map((group) => (
-							<TouchableOpacity
-								key={group.id}
-								onPress={() => router.push("/group-detail")}
-								className="bg-[var(--card)] border border-[var(--border)] rounded-[32px] p-5"
-							>
-								<View className="flex-row justify-between items-start mb-4">
-									<View className="flex-row items-center gap-4">
-										<View
-											className={`w-12 h-12 rounded-full ${group.color} items-center justify-center shadow-md`}
-										>
-											<Users size={20} color="white" />
-										</View>
-										<View>
-											<Text className="font-bold text-[var(--foreground)] text-lg">
-												{group.name}
-											</Text>
-											<View className="flex-row items-center gap-1">
-												<Users size={12} color="var(--muted-foreground)" />
-												<Text className="text-[var(--muted-foreground)] text-xs">
-													{group.members} Members
-												</Text>
-											</View>
-										</View>
-									</View>
-									<TouchableOpacity>
-										<MoreHorizontal size={20} color="var(--muted-foreground)" />
-									</TouchableOpacity>
-								</View>
-								<View className="flex-row justify-between items-center p-3 bg-[var(--muted)] rounded-2xl">
-									<Text className="text-sm text-[var(--muted-foreground)]">
-										Your share
-									</Text>
-									<Text
-										className={`font-bold ${
-											group.type === "owed" ? "text-green-500" : "text-red-500"
-										}`}
-									>
-										{group.type === "owed" ? "+" : "-"}₹
-										{Math.abs(group.balance)}
-									</Text>
-								</View>
-							</TouchableOpacity>
-						))}
+  const handleAddDebt = async () => {
+    if (!debtName || !debtAmount) return;
+    setSavingDebt(true);
+    try {
+      await debtService.addDebt({
+        counterparty_name: debtName,
+        amount: parseFloat(debtAmount),
+        type: debtType,
+      });
+      setSnack('Debt added!');
+      setShowAddDebt(false);
+      setDebtName('');
+      setDebtAmount('');
+      await loadData();
+    } catch {
+      setSnack('Failed to add debt');
+    } finally {
+      setSavingDebt(false);
+    }
+  };
 
-						<TouchableOpacity
-							onPress={() => router.push("/create-group")}
-							className="w-full py-4 bg-[var(--primary)] rounded-[32px] shadow-lg flex-row items-center justify-center gap-2 mt-4"
-						>
-							<Users size={20} color="white" />
-							<Text className="text-white font-bold text-lg">
-								Create New Group
-							</Text>
-						</TouchableOpacity>
-					</View>
-				)}
-			</ScrollView>
-		</View>
-	);
+  const netBalance = debtSummary ? debtSummary.net : 0;
+  const isCredit = netBalance >= 0;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text variant="headlineMedium" style={styles.title}>Social</Text>
+          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>Friends & Shared Expenses</Text>
+        </View>
+      </View>
+
+      <CustomSegmentedTabs
+        tabs={[
+          { value: 'debts', label: 'Friends' },
+          { value: 'groups', label: 'Groups' },
+        ]}
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as Tab)}
+        containerStyle={{ paddingHorizontal: 20, marginBottom: 16 }}
+      />
+
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100, gap: 12 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#8a79ab']} />}
+      >
+        {loading ? (
+          <ActivityIndicator style={{ marginTop: 60 }} size="large" />
+        ) : activeTab === 'debts' ? (
+          <>
+            {/* Net Balance Card */}
+            <Card
+              style={[styles.netCard, { backgroundColor: isCredit ? '#166534' : '#991b1b' }]}
+              elevation={0}
+            >
+              <Card.Content style={{ padding: 20 }}>
+                <Text variant="bodyMedium" style={{ color: 'rgba(255,255,255,0.8)', marginBottom: 4 }}>Net Balance</Text>
+                <Text variant="displaySmall" style={{ fontWeight: '800', color: '#fff', marginBottom: 8 }}>
+                  {isCredit ? '+' : '-'}{formatAmount(netBalance)}
+                </Text>
+                <View style={styles.netRow}>
+                  <View>
+                    <Text variant="labelSmall" style={{ color: 'rgba(255,255,255,0.6)' }}>Owed to you</Text>
+                    <Text variant="titleMedium" style={{ color: '#fff', fontWeight: '700' }}>
+                      +{formatAmount(debtSummary?.owed_to_me || 0)}
+                    </Text>
+                  </View>
+                  <View>
+                    <Text variant="labelSmall" style={{ color: 'rgba(255,255,255,0.6)' }}>You owe</Text>
+                    <Text variant="titleMedium" style={{ color: '#fff', fontWeight: '700' }}>
+                      -{formatAmount(debtSummary?.owed_by_me || 0)}
+                    </Text>
+                  </View>
+                </View>
+              </Card.Content>
+            </Card>
+
+            {/* Debts List */}
+            {debts.length === 0 ? (
+              <Card style={{ borderRadius: 24 }}>
+                <Card.Content style={{ alignItems: 'center', paddingVertical: 32 }}>
+                  <Text variant="bodyLarge" style={{ opacity: 0.5, marginBottom: 16 }}>No debts recorded</Text>
+                  <Button mode="contained" onPress={() => setShowAddDebt(true)} style={{ borderRadius: 20 }}>
+                    Add First Debt
+                  </Button>
+                </Card.Content>
+              </Card>
+            ) : (
+              debts.map((debt) => (
+                <Card
+                  key={debt.id}
+                  style={[styles.debtCard, { backgroundColor: theme.colors.surface }]}
+                  elevation={0}
+                  onPress={() => router.push({ pathname: '/user-detail', params: { debtId: debt.id } })}
+                >
+                  <Card.Content style={styles.debtContent}>
+                    <View style={[styles.avatar, { backgroundColor: debt.type === 'owed_to_me' ? '#dcfce7' : '#fee2e2' }]}>
+                      <Text style={{ fontSize: 18, fontWeight: '700', color: debt.type === 'owed_to_me' ? '#166534' : '#991b1b' }}>
+                        {debt.counterparty_name.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text variant="titleSmall" style={{ fontWeight: '700' }}>{debt.counterparty_name}</Text>
+                      <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                        {formatDueDate(debt.due_date) || (debt.type === 'owed_to_me' ? 'Owes you' : 'You owe')}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                      <Text variant="titleSmall" style={{ fontWeight: '700', color: debt.type === 'owed_to_me' ? '#16a34a' : '#dc2626' }}>
+                        {debt.type === 'owed_to_me' ? '+' : '-'}{formatAmount(debt.amount)}
+                      </Text>
+                      <Button
+                        mode="text"
+                        compact
+                        onPress={() => handleSettle(debt.id)}
+                        labelStyle={{ fontSize: 11 }}
+                      >
+                        Settle
+                      </Button>
+                    </View>
+                  </Card.Content>
+                </Card>
+              ))
+            )}
+          </>
+        ) : (
+          <>
+            {/* Groups List */}
+            {groups.length === 0 ? (
+              <Card style={{ borderRadius: 24 }}>
+                <Card.Content style={{ alignItems: 'center', paddingVertical: 32 }}>
+                  <Text variant="bodyLarge" style={{ opacity: 0.5, marginBottom: 16 }}>No groups yet</Text>
+                  <Button mode="contained" onPress={() => router.push('/create-group')} style={{ borderRadius: 20 }}>
+                    Create First Group
+                  </Button>
+                </Card.Content>
+              </Card>
+            ) : (
+              groups.map((group) => (
+                <Card
+                  key={group.id}
+                  style={[styles.groupCard, { backgroundColor: theme.colors.surface }]}
+                  elevation={0}
+                  onPress={() => router.push({ pathname: '/group-detail', params: { groupId: group.id } })}
+                >
+                  <Card.Content style={styles.groupContent}>
+                    <View style={[styles.groupIcon, { backgroundColor: group.color || '#8a79ab' }]}>
+                      <Text style={{ fontSize: 20 }}>{group.icon || '👥'}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text variant="titleSmall" style={{ fontWeight: '700' }}>{group.name}</Text>
+                      <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                        {group.base_currency || 'INR'}
+                      </Text>
+                    </View>
+                    <Button mode="text" compact icon="chevron-right" onPress={() => router.push({ pathname: '/group-detail', params: { groupId: group.id } })}>
+                      View
+                    </Button>
+                  </Card.Content>
+                </Card>
+              ))
+            )}
+            <Button
+              mode="contained"
+              icon="plus"
+              onPress={() => router.push('/create-group')}
+              style={[styles.createGroupBtn, { backgroundColor: theme.colors.primary }]}
+              contentStyle={{ height: 52 }}
+              labelStyle={{ fontWeight: '700', fontSize: 15 }}
+            >
+              Create New Group
+            </Button>
+          </>
+        )}
+      </ScrollView>
+
+      {/* FAB for adding debt */}
+      {activeTab === 'debts' && (
+        <FAB
+          icon="plus"
+          style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+          color={theme.colors.onPrimary}
+          onPress={() => setShowAddDebt(true)}
+        />
+      )}
+
+      {/* Add Debt Dialog */}
+      <Portal>
+        <Dialog visible={showAddDebt} onDismiss={() => setShowAddDebt(false)} style={{ borderRadius: 24 }}>
+          <Dialog.Title>Add Debt</Dialog.Title>
+          <Dialog.Content style={{ gap: 12 }}>
+            <TextInput
+              mode="outlined"
+              label="Person's Name"
+              value={debtName}
+              onChangeText={setDebtName}
+            />
+            <TextInput
+              mode="outlined"
+              label="Amount"
+              value={debtAmount}
+              onChangeText={setDebtAmount}
+              keyboardType="numeric"
+              left={<TextInput.Affix text="₹" />}
+            />
+            <View style={{ gap: 6 }}>
+              <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>Type</Text>
+              <CustomSegmentedTabs
+                value={debtType}
+                onValueChange={(value) => setDebtType(value as 'owed_to_me' | 'owed_by_me')}
+                tabs={[
+                  { value: 'owed_to_me', label: 'They owe me' },
+                  { value: 'owed_by_me', label: 'I owe them' },
+                ]}
+              />
+            </View>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowAddDebt(false)}>Cancel</Button>
+            <Button mode="contained" onPress={handleAddDebt} loading={savingDebt} disabled={savingDebt}>
+              Add
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
+      <Snackbar visible={!!snack} onDismiss={() => setSnack('')} duration={2500}>{snack}</Snackbar>
+    </View>
+  );
 }
+
+const styles = StyleSheet.create({
+  header: { paddingHorizontal: 20, paddingTop: 52, paddingBottom: 8 },
+  title: { fontWeight: '700' },
+  netCard: { borderRadius: 28, marginBottom: 4 },
+  netRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  debtCard: { borderRadius: 20 },
+  debtContent: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  avatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  groupCard: { borderRadius: 20 },
+  groupContent: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  groupIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  createGroupBtn: { borderRadius: 28, marginTop: 8 },
+  fab: { position: 'absolute', right: 20, bottom: 100, borderRadius: 20 },
+});
