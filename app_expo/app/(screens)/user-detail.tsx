@@ -2,8 +2,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Dialog, Portal, Snackbar, Text, useTheme } from 'react-native-paper';
-import { debtService } from '../services/debtService';
-import type { BackendDebt } from '../services/types';
+import { debtService } from '../../services/debtService';
+import type { BackendDebt } from '../../services/types';
 
 function formatAmount(amount: number) {
   return `₹${Math.abs(amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;

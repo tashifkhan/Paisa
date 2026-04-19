@@ -3,8 +3,8 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Keyboard, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Text, TextInput, useTheme } from 'react-native-paper';
-import { CustomSegmentedTabs } from '../components/CustomSegmentedTabs';
-import { debtService } from '../services/debtService';
+import { CustomSegmentedTabs } from '../../components/CustomSegmentedTabs';
+import { debtService } from '../../services/debtService';
 import { useQueryClient } from '@tanstack/react-query';
 
 const InputField = ({ placeholder, value, onChangeText, leftIcon, style, keyboardType, prefix, theme }: any) => (

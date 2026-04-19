@@ -3,9 +3,9 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Keyboard, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Surface, Text, TextInput, TouchableRipple, useTheme } from 'react-native-paper';
-import { CustomSegmentedTabs } from '../components/CustomSegmentedTabs';
-import { MD3Switch } from '../components/MD3Switch';
-import { useCreateWallet } from '../hooks/useWallets';
+import { CustomSegmentedTabs } from '../../components/CustomSegmentedTabs';
+import { MD3Switch } from '../../components/MD3Switch';
+import { useCreateWallet } from '../../hooks/useWallets';
 
 const InputField = ({ placeholder, value, onChangeText, leftIcon, style, keyboardType, theme, selectedColor }: any) => (
   <View style={[styles.inputContainer, { backgroundColor: theme.colors.surfaceVariant }, style]}>

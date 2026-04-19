@@ -2,9 +2,9 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Chip, Snackbar, Text, TextInput, useTheme } from 'react-native-paper';
-import { groupService } from '../services/groupService';
-import { userService } from '../services/userService';
-import type { BackendUser } from '../services/types';
+import { groupService } from '../../services/groupService';
+import { userService } from '../../services/userService';
+import type { BackendUser } from '../../services/types';
 
 const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP'];
 

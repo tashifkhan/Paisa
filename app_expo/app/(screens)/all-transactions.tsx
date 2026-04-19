@@ -4,10 +4,10 @@ import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Chip, FAB, Modal, Portal, Text, TextInput, useTheme } from 'react-native-paper';
-import { CustomSegmentedTabs } from '../components/CustomSegmentedTabs';
-import { useTransactions } from '../hooks/useTransactions';
-import { useWallets } from '../hooks/useWallets';
-import { categoryService } from '../services/categoryService';
+import { CustomSegmentedTabs } from '../../components/CustomSegmentedTabs';
+import { useTransactions } from '../../hooks/useTransactions';
+import { useWallets } from '../../hooks/useWallets';
+import { categoryService } from '../../services/categoryService';
 
 function formatAmount(amount: number, currency: string = 'INR') {
   const symbol = currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency;

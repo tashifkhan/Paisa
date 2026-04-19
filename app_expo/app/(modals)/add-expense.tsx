@@ -3,11 +3,11 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Keyboard, Pressable, ScrollView, StyleSheet, View, Dimensions } from 'react-native';
 import { ActivityIndicator, Button, Portal, Snackbar, Surface, Text, TextInput, TouchableRipple, useTheme } from 'react-native-paper';
-import { CustomSegmentedTabs } from '../components/CustomSegmentedTabs';
-import { categoryService } from '../services/categoryService';
-import { expenseService } from '../services/expenseService';
-import type { BackendCategory, BackendWallet } from '../services/types';
-import { walletService } from '../services/walletService';
+import { CustomSegmentedTabs } from '../../components/CustomSegmentedTabs';
+import { categoryService } from '../../services/categoryService';
+import { expenseService } from '../../services/expenseService';
+import type { BackendCategory, BackendWallet } from '../../services/types';
+import { walletService } from '../../services/walletService';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 

@@ -3,9 +3,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Dialog, Divider, IconButton, Portal, Snackbar, Text, TextInput as PaperTextInput, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { CustomSegmentedTabs } from '../components/CustomSegmentedTabs';
-import { groupService } from '../services/groupService';
-import type { BackendGroup, BackendGroupBalanceSummary, BackendSimplifyDebtsResponse, BackendTransaction } from '../services/types';
+import { CustomSegmentedTabs } from '../../components/CustomSegmentedTabs';
+import { groupService } from '../../services/groupService';
+import type { BackendGroup, BackendGroupBalanceSummary, BackendSimplifyDebtsResponse, BackendTransaction } from '../../services/types';
 
 const TextInput = PaperTextInput as unknown as React.ComponentType<any> & { Icon: typeof PaperTextInput.Icon; Affix: typeof PaperTextInput.Affix };
 
