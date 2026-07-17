@@ -12,6 +12,7 @@ import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Payments
+import androidx.compose.material.icons.rounded.Sms
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -26,9 +27,14 @@ import com.paisa.app.ui.components.PaisaTopBar
 import com.paisa.app.ui.theme.spacing
 
 @Composable
-fun MoreScreen(viewModel: PaisaViewModel) {
+fun MoreScreen(
+    viewModel: PaisaViewModel,
+    onOpenSmsSetup: () -> Unit = {}
+) {
     val settings by viewModel.settings.collectAsState()
     val categories by viewModel.categories.collectAsState()
+    val scan by viewModel.smsScanProgress.collectAsState()
+    val unrecognizedCount by viewModel.unrecognizedSmsCount.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize()) {
         PaisaTopBar(title = "More")
@@ -39,6 +45,25 @@ fun MoreScreen(viewModel: PaisaViewModel) {
                 .verticalScroll(rememberScrollState())
                 .padding(vertical = MaterialTheme.spacing.smaller)
         ) {
+            ListItem(
+                headlineContent = { Text("SMS import") },
+                supportingContent = {
+                    Text(
+                        when {
+                            scan.isRunning -> "Scanning… ${scan.processed}/${scan.total}"
+                            unrecognizedCount > 0 -> "$unrecognizedCount unrecognized · tap to manage"
+                            else -> "Import bank transactions from SMS"
+                        }
+                    )
+                },
+                leadingContent = {
+                    Icon(Icons.Rounded.Sms, contentDescription = null)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onOpenSmsSetup)
+            )
+            HorizontalDivider()
             ListItem(
                 headlineContent = { Text("Categories") },
                 supportingContent = { Text("${categories.size} categories") },
@@ -83,7 +108,7 @@ fun MoreScreen(viewModel: PaisaViewModel) {
             HorizontalDivider()
             ListItem(
                 headlineContent = { Text("About Paisa") },
-                supportingContent = { Text("Offline-first personal finance") },
+                supportingContent = { Text("Offline-first personal finance · SMS parsers from PennyWise") },
                 leadingContent = {
                     Icon(Icons.Rounded.Info, contentDescription = null)
                 }

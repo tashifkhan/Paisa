@@ -57,6 +57,7 @@ import com.paisa.app.ui.screens.AnalysisScreen
 import com.paisa.app.ui.screens.BudgetsScreen
 import com.paisa.app.ui.screens.MoreScreen
 import com.paisa.app.ui.screens.RecordsScreen
+import com.paisa.app.ui.screens.SmsSetupScreen
 import com.paisa.app.ui.theme.PaisaTheme
 
 class MainActivity : FragmentActivity() {
@@ -88,7 +89,16 @@ fun MainAppContent(viewModel: PaisaViewModel) {
     val currentTab by viewModel.currentTab.collectAsState()
     val isScrolling by viewModel.isScrolling.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
+    var showSmsSetup by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+
+    if (showSmsSetup) {
+        SmsSetupScreen(
+            viewModel = viewModel,
+            onBack = { showSmsSetup = false }
+        )
+        return
+    }
 
     LaunchedEffect(Unit) {
         viewModel.snackbarEvent.collect { event ->
@@ -211,7 +221,10 @@ fun MainAppContent(viewModel: PaisaViewModel) {
                         1 -> AnalysisScreen(viewModel)
                         2 -> BudgetsScreen(viewModel)
                         3 -> AccountsScreen(viewModel)
-                        else -> MoreScreen(viewModel)
+                        else -> MoreScreen(
+                            viewModel = viewModel,
+                            onOpenSmsSetup = { showSmsSetup = true }
+                        )
                     }
                 }
             }

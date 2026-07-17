@@ -3,6 +3,9 @@ package com.paisa.app.data
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import com.paisa.app.sms.SmsReaderWorker
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -10,6 +13,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -29,10 +33,20 @@ data class HomeSummary(
     val currency: String = "₹"
 )
 
+data class SmsScanProgress(
+    val isRunning: Boolean = false,
+    val total: Int = 0,
+    val processed: Int = 0,
+    val saved: Int = 0,
+    val duplicates: Int = 0,
+    val unrecognized: Int = 0
+)
+
 class PaisaViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getDatabase(application)
     private val repository = Repository(db)
+    private val workManager = WorkManager.getInstance(application)
 
     // --- NAVIGATION ---
     private val _currentTab = MutableStateFlow(0)
@@ -82,6 +96,32 @@ class PaisaViewModel(application: Application) : AndroidViewModel(application) {
 
     val settings: StateFlow<Settings?> = repository.appSettings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val unrecognizedSmsCount: StateFlow<Int> = repository.pendingUnrecognizedCount
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    val unrecognizedSms: StateFlow<List<UnrecognizedSms>> = repository.pendingUnrecognizedSms
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val smsScanProgress: StateFlow<SmsScanProgress> = workManager
+        .getWorkInfosForUniqueWorkFlow(SmsReaderWorker.WORK_NAME)
+        .map { infos ->
+            val info = infos.firstOrNull()
+            val running = info?.state == WorkInfo.State.RUNNING ||
+                info?.state == WorkInfo.State.ENQUEUED
+            val progress = info?.progress
+            val output = info?.outputData
+            val data = if (info?.state == WorkInfo.State.SUCCEEDED) output else progress
+            SmsScanProgress(
+                isRunning = running,
+                total = data?.getInt(SmsReaderWorker.PROGRESS_TOTAL, 0) ?: 0,
+                processed = data?.getInt(SmsReaderWorker.PROGRESS_PROCESSED, 0) ?: 0,
+                saved = data?.getInt(SmsReaderWorker.PROGRESS_SAVED, 0) ?: 0,
+                duplicates = data?.getInt(SmsReaderWorker.PROGRESS_DUPLICATES, 0) ?: 0,
+                unrecognized = data?.getInt(SmsReaderWorker.PROGRESS_UNRECOGNIZED, 0) ?: 0
+            )
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SmsScanProgress())
 
     val homeSummary: StateFlow<HomeSummary> = combine(
         accounts,
@@ -158,6 +198,29 @@ class PaisaViewModel(application: Application) : AndroidViewModel(application) {
     fun updateSettings(settings: Settings) {
         viewModelScope.launch {
             repository.updateSettings(settings)
+        }
+    }
+
+    // --- SMS ---
+    fun startSmsScan(forceFull: Boolean = false) {
+        SmsReaderWorker.enqueue(getApplication(), forceFull = forceFull)
+        showSnackbar(if (forceFull) "Full SMS scan started" else "SMS scan started")
+    }
+
+    fun cancelSmsScan() {
+        SmsReaderWorker.cancel(getApplication())
+        showSnackbar("SMS scan cancelled")
+    }
+
+    fun markUnrecognizedReviewed(id: Int) {
+        viewModelScope.launch {
+            repository.markUnrecognizedReviewed(id)
+        }
+    }
+
+    fun deleteUnrecognized(id: Int) {
+        viewModelScope.launch {
+            repository.deleteUnrecognized(id)
         }
     }
 

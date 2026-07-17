@@ -184,14 +184,16 @@ private fun TransactionRow(tx: TransactionWithDetails, currency: String) {
             Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = tx.categoryName,
+                    text = tx.merchantName?.takeIf { it.isNotBlank() } ?: tx.categoryName,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
                     text = listOfNotNull(
+                        tx.categoryName,
                         tx.accountName,
-                        tx.note.takeIf { it.isNotBlank() }
+                        tx.bankName?.takeIf { tx.source == "sms" },
+                        if (tx.source == "sms") "SMS" else null
                     ).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
