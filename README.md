@@ -9,8 +9,10 @@ Structure is intentionally close to [Expenso](https://github.com/darkvortex144/E
 | Layer | Choice |
 | --- | --- |
 | UI | Jetpack Compose, Material 3 |
-| Architecture | single-module `:app`, ViewModel + Repository |
+| Architecture | `:app` + `:parser-core`, ViewModel + Repository |
 | Storage | Room (SQLite), offline-first |
+| SMS | READ/RECEIVE_SMS, bulk scan via WorkManager, live `SmsBroadcastReceiver` |
+| Parsers | Vendored PennyWise `parser-core` (~140 banks, on-device only) |
 | Language | Kotlin |
 | Min SDK | 24 |
 | Target SDK | 35 |
@@ -19,18 +21,24 @@ Structure is intentionally close to [Expenso](https://github.com/darkvortex144/E
 
 ```
 app/src/main/java/com/paisa/app/
-├── MainActivity.kt          # edge-to-edge host + bottom nav shell
-├── data/
-│   ├── Entities.kt          # Account, Category, Transaction, Budget, …
-│   ├── Daos.kt
-│   ├── AppDatabase.kt       # seeds default accounts/categories/settings
-│   ├── Repository.kt        # balance-safe transaction mutations
-│   └── PaisaViewModel.kt
+├── MainActivity.kt
+├── data/                    # Room entities/DAOs/repo/ViewModel
+├── sms/
+│   ├── SmsTransactionProcessor.kt  # parse + store + dedup
+│   ├── SmsReaderWorker.kt          # bulk inbox scan
+│   ├── SmsBroadcastReceiver.kt     # real-time SMS
+│   └── CategoryMapping.kt          # merchant → category
 └── ui/
-    ├── theme/               # colors, typography, spacing
-    ├── components/          # EmptyState, TopBar
-    └── screens/             # Home, Analytics, Budgets, Accounts, More, Add sheet
+parser-core/                 # bank SMS parsers (AGPL, from PennyWise)
 ```
+
+### SMS pipeline
+
+1. User grants `READ_SMS` / `RECEIVE_SMS` (More → SMS import)
+2. **Bulk scan** (`SmsReaderWorker`) reads inbox, runs `BankParserFactory`, inserts with hash dedup
+3. **Live** (`SmsBroadcastReceiver`) handles new bank alerts as they arrive
+4. Unknown financial-looking SMS land in `unrecognized_sms` for review
+5. Soft-delete preserves hash so rescans never re-import removed txs
 
 ## Tabs (Expenso-aligned)
 
