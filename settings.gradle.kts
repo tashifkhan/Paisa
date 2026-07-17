@@ -26,3 +26,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Paisa"
 include(":app")
+include(":parser-core")
