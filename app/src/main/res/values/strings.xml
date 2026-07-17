@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Paisa</string>
+    <string name="tab_home">Home</string>
+    <string name="tab_analytics">Analytics</string>
+    <string name="tab_budgets">Budgets</string>
+    <string name="tab_accounts">Accounts</string>
+    <string name="tab_more">More</string>
+    <string name="add_transaction">Add transaction</string>
+    <string name="empty_transactions">No transactions yet</string>
+    <string name="empty_transactions_hint">Tap + to record your first expense or income</string>
+    <string name="total_balance">Total balance</string>
+    <string name="income">Income</string>
+    <string name="expense">Expense</string>
+</resources>
