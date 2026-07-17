@@ -20,6 +20,17 @@ data class TransactionWithDetails(
     val updatedAt: String,
     val attachmentPath: String?,
     val tags: String,
+    val merchantName: String?,
+    val bankName: String?,
+    val smsBody: String?,
+    val smsSender: String?,
+    val accountNumber: String?,
+    val balanceAfter: Double?,
+    val transactionHash: String?,
+    val source: String,
+    val currency: String,
+    val reference: String?,
+    val isDeleted: Boolean,
     val categoryName: String,
     val categoryIcon: String,
     val categoryColor: String,
@@ -38,6 +49,14 @@ interface AccountDao {
 
     @Query("SELECT * FROM accounts WHERE name = :name LIMIT 1")
     suspend fun getAccountByName(name: String): Account?
+
+    @Query(
+        "SELECT * FROM accounts WHERE bankName = :bankName AND accountLast4 = :accountLast4 LIMIT 1"
+    )
+    suspend fun getAccountByBankAndLast4(bankName: String, accountLast4: String): Account?
+
+    @Query("SELECT * FROM accounts WHERE bankName = :bankName LIMIT 1")
+    suspend fun getAccountByBankName(bankName: String): Account?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAccount(account: Account): Long
@@ -91,6 +110,7 @@ interface TransactionDao {
         FROM transactions t
         INNER JOIN categories c ON t.categoryId = c.id
         INNER JOIN accounts a ON t.accountId = a.id
+        WHERE t.isDeleted = 0
         ORDER BY t.transactionDate DESC
         """
     )
@@ -103,7 +123,7 @@ interface TransactionDao {
         FROM transactions t
         INNER JOIN categories c ON t.categoryId = c.id
         INNER JOIN accounts a ON t.accountId = a.id
-        WHERE t.accountId = :accountId
+        WHERE t.accountId = :accountId AND t.isDeleted = 0
         ORDER BY t.transactionDate DESC
         """
     )
@@ -124,13 +144,16 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE id = :id")
     suspend fun getRawTransactionById(id: Int): Transaction?
 
-    @Query("SELECT COUNT(*) FROM transactions WHERE categoryId = :categoryId")
+    @Query("SELECT * FROM transactions WHERE transactionHash = :hash LIMIT 1")
+    suspend fun getTransactionByHash(hash: String): Transaction?
+
+    @Query("SELECT COUNT(*) FROM transactions WHERE categoryId = :categoryId AND isDeleted = 0")
     suspend fun getTransactionCountForCategory(categoryId: Int): Int
 
-    @Query("SELECT COUNT(*) FROM transactions WHERE accountId = :accountId")
+    @Query("SELECT COUNT(*) FROM transactions WHERE accountId = :accountId AND isDeleted = 0")
     suspend fun getTransactionCountForAccount(accountId: Int): Int
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertTransaction(transaction: Transaction): Long
 
     @Update
@@ -138,6 +161,9 @@ interface TransactionDao {
 
     @Delete
     suspend fun deleteTransaction(transaction: Transaction)
+
+    @Query("UPDATE transactions SET isDeleted = 1, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun softDeleteTransaction(id: Int, updatedAt: String)
 
     @Query("DELETE FROM transactions")
     suspend fun deleteAllTransactions()
@@ -224,4 +250,25 @@ interface SettingsDao {
 
     @Update
     suspend fun updateSettings(settings: Settings)
+}
+
+@Dao
+interface UnrecognizedSmsDao {
+    @Query("SELECT * FROM unrecognized_sms WHERE reviewed = 0 ORDER BY timestamp DESC")
+    fun getPending(): Flow<List<UnrecognizedSms>>
+
+    @Query("SELECT COUNT(*) FROM unrecognized_sms WHERE reviewed = 0")
+    fun getPendingCount(): Flow<Int>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(sms: UnrecognizedSms): Long
+
+    @Query("UPDATE unrecognized_sms SET reviewed = 1 WHERE id = :id")
+    suspend fun markReviewed(id: Int)
+
+    @Query("DELETE FROM unrecognized_sms WHERE id = :id")
+    suspend fun delete(id: Int)
+
+    @Query("DELETE FROM unrecognized_sms")
+    suspend fun deleteAll()
 }

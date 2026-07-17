@@ -13,7 +13,11 @@ data class Account(
     val openingBalance: Double,
     val currentBalance: Double,
     val icon: String,
-    val color: String
+    val color: String,
+    /** Bank name from SMS parsers, e.g. "HDFC Bank" */
+    val bankName: String? = null,
+    /** Last 4 digits of account/card when known from SMS */
+    val accountLast4: String? = null
 )
 
 @Entity(tableName = "categories")
@@ -46,7 +50,8 @@ data class Category(
     indices = [
         Index("transactionDate"),
         Index("categoryId"),
-        Index("accountId")
+        Index("accountId"),
+        Index(value = ["transactionHash"], unique = true)
     ]
 )
 data class Transaction(
@@ -60,7 +65,19 @@ data class Transaction(
     val createdAt: String,
     val updatedAt: String,
     val attachmentPath: String? = null,
-    val tags: String = ""
+    val tags: String = "",
+    // SMS / bank fields
+    val merchantName: String? = null,
+    val bankName: String? = null,
+    val smsBody: String? = null,
+    val smsSender: String? = null,
+    val accountNumber: String? = null,
+    val balanceAfter: Double? = null,
+    val transactionHash: String? = null,
+    val source: String = "manual", // manual | sms
+    val currency: String = "INR",
+    val reference: String? = null,
+    val isDeleted: Boolean = false
 )
 
 @Entity(tableName = "budgets")
@@ -130,5 +147,24 @@ data class Settings(
     val pinEnabled: Boolean = false,
     val biometricEnabled: Boolean = false,
     val notificationsEnabled: Boolean = true,
-    val colorPalette: String = "Default"
+    val colorPalette: String = "Default",
+    val lastSmsScanAt: Long = 0L,
+    val smsScanEnabled: Boolean = true
+)
+
+/**
+ * Bank-like SMS that no registered parser claimed — kept for review / future parsers.
+ */
+@Entity(
+    tableName = "unrecognized_sms",
+    indices = [Index(value = ["sender", "timestamp", "bodyHash"], unique = true)]
+)
+data class UnrecognizedSms(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val sender: String,
+    val body: String,
+    val bodyHash: String,
+    val timestamp: Long,
+    val reviewed: Boolean = false,
+    val createdAt: String
 )

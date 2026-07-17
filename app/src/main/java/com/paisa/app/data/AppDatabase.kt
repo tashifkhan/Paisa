@@ -14,9 +14,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         Budget::class,
         SavingsGoal::class,
         RecurringTransaction::class,
-        Settings::class
+        Settings::class,
+        UnrecognizedSms::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -27,6 +28,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun savingsGoalDao(): SavingsGoalDao
     abstract fun recurringTransactionDao(): RecurringTransactionDao
     abstract fun settingsDao(): SettingsDao
+    abstract fun unrecognizedSmsDao(): UnrecognizedSmsDao
 
     companion object {
         @Volatile
@@ -60,7 +62,6 @@ abstract class AppDatabase : RoomDatabase() {
 
             private fun seedDatabase(db: SupportSQLiteDatabase) {
                 try {
-                    // Income categories
                     db.execSQL(
                         "INSERT OR IGNORE INTO categories (name, type, icon, color, isDefault, orderIndex) VALUES " +
                             "('Salary', 'income', 'payments', '#BFFCC6', 0, 1)," +
@@ -68,10 +69,14 @@ abstract class AppDatabase : RoomDatabase() {
                             "('Investments', 'income', 'trending_up', '#9BF6FF', 0, 3)," +
                             "('Gifts', 'income', 'card_giftcard', '#FFFFBA', 0, 4)," +
                             "('Freelance', 'income', 'computer', '#FFCAD4', 0, 5)," +
-                            "('Other', 'income', 'more_horiz', '#E8AEB2', 0, 6)"
+                            "('Refunds', 'income', 'receipt_long', '#D8B4FE', 0, 6)," +
+                            "('Interest', 'income', 'savings', '#B9FBC0', 0, 7)," +
+                            "('Dividends', 'income', 'account_balance', '#CAFFBF', 0, 8)," +
+                            "('Cashback', 'income', 'redeem', '#FFCAD4', 0, 9)," +
+                            "('Income', 'income', 'payments', '#BFFCC6', 0, 10)," +
+                            "('Other', 'income', 'more_horiz', '#E8AEB2', 0, 11)"
                     )
 
-                    // Expense categories
                     db.execSQL(
                         "INSERT OR IGNORE INTO categories (name, type, icon, color, isDefault, orderIndex) VALUES " +
                             "('Food & Dining', 'expense', 'restaurant', '#FFDFBA', 0, 1)," +
@@ -85,24 +90,26 @@ abstract class AppDatabase : RoomDatabase() {
                             "('Education', 'expense', 'school', '#E2F0D9', 0, 9)," +
                             "('Subscriptions', 'expense', 'subscriptions', '#E4C1F9', 0, 10)," +
                             "('Travel', 'expense', 'flight', '#D0F4EA', 0, 11)," +
-                            "('Other', 'expense', 'more_horiz', '#E8AEB2', 0, 12)"
+                            "('Insurance', 'expense', 'shield', '#FCF6BD', 0, 12)," +
+                            "('Fuel', 'expense', 'local_gas_station', '#FFD6A5', 0, 13)," +
+                            "('UPI Transfer', 'expense', 'swap_horiz', '#A0C4FF', 0, 14)," +
+                            "('Others', 'expense', 'more_horiz', '#E8AEB2', 0, 15)," +
+                            "('Other', 'expense', 'more_horiz', '#E8AEB2', 0, 16)"
                     )
 
-                    // Default accounts
                     db.execSQL(
-                        "INSERT INTO accounts (id, name, type, openingBalance, currentBalance, icon, color) " +
-                            "VALUES (1, 'Cash', 'Cash', 0.0, 0.0, 'wallet', '#FFD6A5')"
+                        "INSERT INTO accounts (id, name, type, openingBalance, currentBalance, icon, color, bankName, accountLast4) " +
+                            "VALUES (1, 'Cash', 'Cash', 0.0, 0.0, 'wallet', '#FFD6A5', NULL, NULL)"
                     )
                     db.execSQL(
-                        "INSERT INTO accounts (id, name, type, openingBalance, currentBalance, icon, color) " +
-                            "VALUES (2, 'Bank Account', 'Bank Account', 0.0, 0.0, 'account_balance', '#A0C4FF')"
+                        "INSERT INTO accounts (id, name, type, openingBalance, currentBalance, icon, color, bankName, accountLast4) " +
+                            "VALUES (2, 'Bank Account', 'Bank Account', 0.0, 0.0, 'account_balance', '#A0C4FF', NULL, NULL)"
                     )
 
-                    // Settings (INR default)
                     db.execSQL(
                         "INSERT OR IGNORE INTO settings " +
-                            "(id, themeMode, currency, pinEnabled, biometricEnabled, notificationsEnabled, colorPalette) " +
-                            "VALUES (1, 'system', '₹', 0, 0, 1, 'Default')"
+                            "(id, themeMode, currency, pinEnabled, biometricEnabled, notificationsEnabled, colorPalette, lastSmsScanAt, smsScanEnabled) " +
+                            "VALUES (1, 'system', '₹', 0, 0, 1, 'Default', 0, 1)"
                     )
                 } catch (e: Exception) {
                     e.printStackTrace()

@@ -16,11 +16,18 @@ class Repository(private val db: AppDatabase) {
     private val savingsGoalDao = db.savingsGoalDao()
     private val recurringTransactionDao = db.recurringTransactionDao()
     private val settingsDao = db.settingsDao()
+    private val unrecognizedSmsDao = db.unrecognizedSmsDao()
 
     // --- ACCOUNTS ---
     val allAccounts: Flow<List<Account>> = accountDao.getAllAccounts()
 
     suspend fun getAccountById(id: Int): Account? = accountDao.getAccountById(id)
+
+    suspend fun getAccountByBankAndLast4(bankName: String, accountLast4: String): Account? =
+        accountDao.getAccountByBankAndLast4(bankName, accountLast4)
+
+    suspend fun getAccountByBankName(bankName: String): Account? =
+        accountDao.getAccountByBankName(bankName)
 
     suspend fun insertAccount(account: Account): Long = accountDao.insertAccount(account)
 
@@ -52,6 +59,30 @@ class Repository(private val db: AppDatabase) {
         return true
     }
 
+    /**
+     * Resolve a category by name+type, creating a lightweight default if missing.
+     * Used by SMS import when merchant mapping produces a category not yet seeded.
+     */
+    suspend fun findOrCreateCategory(name: String, type: String): Int {
+        categoryDao.getCategoryByName(name, type)?.let { return it.id }
+        // also try common aliases
+        val aliases = listOf(name, "Others", "Other")
+        for (alias in aliases) {
+            categoryDao.getCategoryByName(alias, type)?.let { return it.id }
+        }
+        val id = categoryDao.insertCategory(
+            Category(
+                name = name,
+                type = type,
+                icon = "more_horiz",
+                color = if (type == "income") "#BFFCC6" else "#E8AEB2",
+                isDefault = false,
+                orderIndex = 99
+            )
+        )
+        return id.toInt()
+    }
+
     // --- TRANSACTIONS ---
     val allTransactions: Flow<List<TransactionWithDetails>> = transactionDao.getAllTransactions()
 
@@ -60,6 +91,9 @@ class Repository(private val db: AppDatabase) {
 
     suspend fun getTransactionById(id: Int): TransactionWithDetails? =
         transactionDao.getTransactionById(id)
+
+    suspend fun getTransactionByHash(hash: String): Transaction? =
+        transactionDao.getTransactionByHash(hash)
 
     suspend fun insertTransaction(transaction: Transaction): Long {
         return db.withTransaction {
@@ -73,6 +107,31 @@ class Repository(private val db: AppDatabase) {
                 accountDao.updateAccount(account.copy(currentBalance = newBalance))
             }
             transactionDao.insertTransaction(transaction)
+        }
+    }
+
+    /**
+     * Insert SMS-sourced transaction. If the SMS carried an absolute balance,
+     * prefer that over delta adjustment for the account's currentBalance.
+     */
+    suspend fun insertSmsTransaction(
+        transaction: Transaction,
+        absoluteBalance: Double?
+    ): Long {
+        return db.withTransaction {
+            val rowId = transactionDao.insertTransaction(transaction)
+            if (rowId == -1L) return@withTransaction -1L
+
+            val account = accountDao.getAccountById(transaction.accountId)
+            if (account != null) {
+                val newBalance = when {
+                    absoluteBalance != null -> absoluteBalance
+                    transaction.type == "income" -> account.currentBalance + transaction.amount
+                    else -> account.currentBalance - transaction.amount
+                }
+                accountDao.updateAccount(account.copy(currentBalance = newBalance))
+            }
+            rowId
         }
     }
 
@@ -110,7 +169,7 @@ class Repository(private val db: AppDatabase) {
             val transaction = transactionDao.getRawTransactionById(transactionId)
                 ?: return@withTransaction
             val account = accountDao.getAccountById(transaction.accountId)
-            if (account != null) {
+            if (account != null && !transaction.isDeleted) {
                 val reverted = if (transaction.type == "income") {
                     account.currentBalance - transaction.amount
                 } else {
@@ -118,7 +177,12 @@ class Repository(private val db: AppDatabase) {
                 }
                 accountDao.updateAccount(account.copy(currentBalance = reverted))
             }
-            transactionDao.deleteTransaction(transaction)
+            // Soft-delete so SMS re-scan won't re-import
+            if (transaction.transactionHash != null) {
+                transactionDao.softDeleteTransaction(transactionId, nowIso())
+            } else {
+                transactionDao.deleteTransaction(transaction)
+            }
         }
     }
 
@@ -171,7 +235,8 @@ class Repository(private val db: AppDatabase) {
                         note = "[Recurring] ${rule.note}",
                         transactionDate = "${execDateStr}T09:00:00",
                         createdAt = nowIso(),
-                        updatedAt = nowIso()
+                        updatedAt = nowIso(),
+                        source = "manual"
                     )
                     val account = accountDao.getAccountById(rule.accountId)
                     if (account != null) {
@@ -214,4 +279,15 @@ class Repository(private val db: AppDatabase) {
     suspend fun getSettingsDirect(): Settings? = settingsDao.getSettingsDirect()
 
     suspend fun updateSettings(settings: Settings) = settingsDao.updateSettings(settings)
+
+    // --- UNRECOGNIZED SMS ---
+    val pendingUnrecognizedSms: Flow<List<UnrecognizedSms>> = unrecognizedSmsDao.getPending()
+    val pendingUnrecognizedCount: Flow<Int> = unrecognizedSmsDao.getPendingCount()
+
+    suspend fun insertUnrecognizedSms(sms: UnrecognizedSms): Long =
+        unrecognizedSmsDao.insert(sms)
+
+    suspend fun markUnrecognizedReviewed(id: Int) = unrecognizedSmsDao.markReviewed(id)
+
+    suspend fun deleteUnrecognized(id: Int) = unrecognizedSmsDao.delete(id)
 }
