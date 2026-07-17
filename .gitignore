@@ -1,0 +1,61 @@
+# Reference clones (local study only — never commit)
+reference/
+
+# Built application files
+*.apk
+*.aar
+*.ap_
+*.aab
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+release/
+
+# Gradle files
+.gradle/
+build/
+**/build/
+
+# Local configuration
+local.properties
+
+# Android Studio / IntelliJ
+*.iml
+.idea/
+.navigation/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Kotlin
+.kotlin/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Signing
+*.jks
+*.keystore
+!debug.keystore
+
+# Log / temp
+*.log
+*.hprof
+*.swp
+*~
+
+# NDK
+obj/
+
+# Google Services (if added later)
+google-services.json
+**/google-services.json
