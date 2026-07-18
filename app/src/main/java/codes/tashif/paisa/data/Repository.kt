@@ -1,7 +1,8 @@
-package com.paisa.app.data
+package codes.tashif.paisa.data
 
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -17,17 +18,62 @@ class Repository(private val db: AppDatabase) {
     private val recurringTransactionDao = db.recurringTransactionDao()
     private val settingsDao = db.settingsDao()
     private val unrecognizedSmsDao = db.unrecognizedSmsDao()
+    private val merchantMappingDao = db.merchantMappingDao()
 
     // --- ACCOUNTS ---
     val allAccounts: Flow<List<Account>> = accountDao.getAllAccounts()
 
     suspend fun getAccountById(id: Int): Account? = accountDao.getAccountById(id)
 
+    suspend fun getAccountByName(name: String): Account? = accountDao.getAccountByName(name)
+
     suspend fun getAccountByBankAndLast4(bankName: String, accountLast4: String): Account? =
         accountDao.getAccountByBankAndLast4(bankName, accountLast4)
 
     suspend fun getAccountByBankName(bankName: String): Account? =
         accountDao.getAccountByBankName(bankName)
+
+    suspend fun getAccountByBankWithoutLast4(bankName: String): Account? =
+        accountDao.getAccountByBankWithoutLast4(bankName)
+
+    /** Deletes the account together with every transaction that belongs to it. */
+    suspend fun deleteAccountCascade(account: Account) {
+        accountDao.deleteTransactionsForAccount(account.id)
+        accountDao.deleteAccount(account)
+    }
+
+    /** Makes [accountId] the single default account (preselected for new transactions). */
+    suspend fun setDefaultAccount(accountId: Int) {
+        accountDao.clearDefaultAccount()
+        accountDao.markDefaultAccount(accountId)
+    }
+
+    /** Persists the given id order as each account's orderIndex. */
+    suspend fun reorderAccounts(orderedIds: List<Int>) {
+        orderedIds.forEachIndexed { position, id ->
+            accountDao.setAccountOrder(id, position)
+        }
+    }
+
+    /**
+     * Merges every group of accounts sharing (bankName, accountLast4) — the
+     * shadow duplicates the SMS parser used to create. Returns merge count.
+     * Within a group the oldest account (lowest id) is kept.
+     */
+    suspend fun autoMergeDuplicateAccounts(): Int {
+        val accounts = accountDao.getAllAccounts().first()
+        var merges = 0
+        accounts
+            .groupBy { Triple(it.bankName ?: it.name, it.accountLast4, it.type) }
+            .values
+            .filter { it.size > 1 }
+            .forEach { group ->
+                val target = group.minByOrNull { it.id } ?: return@forEach
+                mergeAccounts(target.id, group.map { it.id } - target.id)
+                merges += group.size - 1
+            }
+        return merges
+    }
 
     suspend fun insertAccount(account: Account): Long = accountDao.insertAccount(account)
 
@@ -38,6 +84,40 @@ class Repository(private val db: AppDatabase) {
         if (count > 0) return false
         accountDao.deleteAccount(account)
         return true
+    }
+
+    /**
+     * Merges [sourceIds] into the account [targetId]: transactions and recurring
+     * transactions move to the target, missing bank metadata is filled from the
+     * sources, and the source accounts are deleted.
+     *
+     * The merged balance is the latest SMS-reported balance across all moved
+     * transactions (merging is mostly used to unify duplicates of the same real
+     * account, where summing balances would double count). Without any reported
+     * balance the target's balance is kept.
+     */
+    suspend fun mergeAccounts(targetId: Int, sourceIds: List<Int>) {
+        val ids = sourceIds.filter { it != targetId }.distinct()
+        if (ids.isEmpty()) return
+        val target = accountDao.getAccountById(targetId) ?: return
+        val sources = ids.mapNotNull { accountDao.getAccountById(it) }
+        if (sources.isEmpty()) return
+
+        accountDao.reassignTransactions(ids, targetId)
+        accountDao.reassignRecurringTransactions(ids, targetId)
+
+        val latestBalance = accountDao.getLatestBalanceAfter(targetId)
+        accountDao.updateAccount(
+            target.copy(
+                currentBalance = latestBalance ?: target.currentBalance,
+                bankName = target.bankName ?: sources.firstNotNullOfOrNull { it.bankName },
+                accountLast4 = target.accountLast4
+                    ?: sources.firstNotNullOfOrNull { it.accountLast4 },
+                creditLimit = target.creditLimit
+                    ?: sources.firstNotNullOfOrNull { it.creditLimit }
+            )
+        )
+        sources.forEach { accountDao.deleteAccount(it) }
     }
 
     // --- CATEGORIES ---
@@ -64,15 +144,27 @@ class Repository(private val db: AppDatabase) {
      * Used by SMS import when merchant mapping produces a category not yet seeded.
      */
     suspend fun findOrCreateCategory(name: String, type: String): Int {
-        categoryDao.getCategoryByName(name, type)?.let { return it.id }
-        // also try common aliases
-        val aliases = listOf(name, "Others", "Other")
+        val canonical = canonicalizeCategoryName(name, type)
+        categoryDao.getCategoryByName(canonical, type)?.let { return it.id }
+        // Fallbacks for legacy / alias names
+        val aliases = buildList {
+            add(canonical)
+            add(name)
+            CATEGORY_ALIASES[name.lowercase()]?.let { add(it) }
+            if (type == "expense") {
+                add("Others")
+                add("Other")
+            } else {
+                add("Income")
+                add("Other")
+            }
+        }.distinct()
         for (alias in aliases) {
             categoryDao.getCategoryByName(alias, type)?.let { return it.id }
         }
         val id = categoryDao.insertCategory(
             Category(
-                name = name,
+                name = canonical,
                 type = type,
                 icon = "more_horiz",
                 color = if (type == "income") "#BFFCC6" else "#E8AEB2",
@@ -81,6 +173,82 @@ class Repository(private val db: AppDatabase) {
             )
         )
         return id.toInt()
+    }
+
+    /** Map historical / PennyWise names onto seeded Paisa categories. */
+    fun canonicalizeCategoryName(name: String, type: String): String {
+        if (type == "income") return name
+        return CATEGORY_ALIASES[name.lowercase(Locale.getDefault())] ?: name
+    }
+
+    companion object {
+        private val CATEGORY_ALIASES = mapOf(
+            "transportation" to "Transport",
+            "transport" to "Transport",
+            "healthcare" to "Health & Fitness",
+            "health" to "Health & Fitness",
+            "fitness" to "Health & Fitness",
+            "health & fitness" to "Health & Fitness",
+            "mobile" to "Bills & Utilities",
+            "food" to "Food & Dining",
+            "dining" to "Food & Dining",
+            "food & dining" to "Food & Dining",
+            "grocery" to "Groceries",
+            "utilities" to "Bills & Utilities",
+            "bills" to "Bills & Utilities",
+            "other" to "Others",
+            "uncategorized" to "Others"
+        )
+    }
+
+    // --- MERCHANT MAPPINGS ---
+    val allMerchantMappings: Flow<List<MerchantMapping>> = merchantMappingDao.getAllMappings()
+
+    suspend fun getCategoryForMerchant(merchantName: String): MerchantMapping? =
+        merchantMappingDao.getMappingForMerchant(merchantName.trim())
+
+    suspend fun saveMerchantMapping(
+        merchantName: String,
+        categoryName: String,
+        categoryType: String = "expense",
+        applyToPast: Boolean = true
+    ) {
+        val merchant = merchantName.trim()
+        if (merchant.isEmpty()) return
+        val now = nowIso()
+        val existing = merchantMappingDao.getMappingForMerchant(merchant)
+        merchantMappingDao.upsert(
+            MerchantMapping(
+                merchantName = existing?.merchantName ?: merchant,
+                categoryName = categoryName,
+                categoryType = categoryType,
+                createdAt = existing?.createdAt ?: now,
+                updatedAt = now
+            )
+        )
+        if (applyToPast) {
+            val categoryId = findOrCreateCategory(categoryName, categoryType)
+            merchantMappingDao.updateTransactionsForMerchant(merchant, categoryId, now)
+        }
+    }
+
+    suspend fun deleteMerchantMapping(merchantName: String) {
+        merchantMappingDao.deleteByMerchant(merchantName)
+    }
+
+    /**
+     * Resolve category name for a merchant: user mapping first, then keywords.
+     */
+    suspend fun resolveCategoryName(merchantName: String, transactionType: String): String {
+        val type = if (transactionType.equals("income", ignoreCase = true)) "income" else "expense"
+        val mapping = getCategoryForMerchant(merchantName)
+        if (mapping != null && mapping.categoryType == type) {
+            return canonicalizeCategoryName(mapping.categoryName, type)
+        }
+        return canonicalizeCategoryName(
+            codes.tashif.paisa.sms.CategoryMapping.determineCategory(merchantName, type.uppercase(Locale.getDefault())),
+            type
+        )
     }
 
     // --- TRANSACTIONS ---
@@ -92,8 +260,47 @@ class Repository(private val db: AppDatabase) {
     suspend fun getTransactionById(id: Int): TransactionWithDetails? =
         transactionDao.getTransactionById(id)
 
+    suspend fun getRawTransactionById(id: Int): Transaction? =
+        transactionDao.getRawTransactionById(id)
+
     suspend fun getTransactionByHash(hash: String): Transaction? =
         transactionDao.getTransactionByHash(hash)
+
+    /**
+     * Fuzzy match against already-logged transactions (SMS/manual/statement):
+     * same type, same amount (±0.01), date within ±[windowDays] days — bank posting
+     * dates often lag the SMS by a day or two.
+     */
+    suspend fun findSimilarTransaction(
+        amount: Double,
+        type: String,
+        dateIso: String,
+        windowDays: Int = 2
+    ): Transaction? {
+        val day = dateIso.take(10)
+        if (day.length != 10) return null
+        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+        val parsed = runCatching { fmt.parse(day) }.getOrNull() ?: return null
+        val cal = java.util.Calendar.getInstance()
+        cal.time = parsed
+        cal.add(java.util.Calendar.DAY_OF_MONTH, -windowDays)
+        val from = fmt.format(cal.time)
+        cal.add(java.util.Calendar.DAY_OF_MONTH, 2 * windowDays)
+        val to = fmt.format(cal.time)
+        return transactionDao.findSimilarTransactions(
+            type = type,
+            amountLow = amount - 0.01,
+            amountHigh = amount + 0.01,
+            fromDate = from,
+            toDate = to
+        ).minByOrNull {
+            // Prefer the entry closest to the statement row's date
+            runCatching { fmt.parse(it.transactionDate.take(10))?.time }
+                .getOrNull()
+                ?.let { t -> kotlin.math.abs(t - parsed.time) }
+                ?: Long.MAX_VALUE
+        }
+    }
 
     suspend fun insertTransaction(transaction: Transaction): Long {
         return db.withTransaction {

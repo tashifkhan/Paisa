@@ -1,4 +1,4 @@
-package com.paisa.app.data
+package codes.tashif.paisa.data
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -41,7 +41,7 @@ data class TransactionWithDetails(
 
 @Dao
 interface AccountDao {
-    @Query("SELECT * FROM accounts ORDER BY name ASC")
+    @Query("SELECT * FROM accounts ORDER BY orderIndex ASC, name ASC")
     fun getAllAccounts(): Flow<List<Account>>
 
     @Query("SELECT * FROM accounts WHERE id = :id")
@@ -58,6 +58,15 @@ interface AccountDao {
     @Query("SELECT * FROM accounts WHERE bankName = :bankName LIMIT 1")
     suspend fun getAccountByBankName(bankName: String): Account?
 
+    @Query(
+        """
+        SELECT * FROM accounts
+        WHERE bankName = :bankName AND (accountLast4 IS NULL OR accountLast4 = 'WALLET')
+        LIMIT 1
+        """
+    )
+    suspend fun getAccountByBankWithoutLast4(bankName: String): Account?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAccount(account: Account): Long
 
@@ -69,6 +78,35 @@ interface AccountDao {
 
     @Query("SELECT COUNT(*) FROM accounts")
     suspend fun getAccountCount(): Int
+
+    @Query("UPDATE transactions SET accountId = :targetId WHERE accountId IN (:sourceIds)")
+    suspend fun reassignTransactions(sourceIds: List<Int>, targetId: Int)
+
+    @Query("DELETE FROM transactions WHERE accountId = :accountId")
+    suspend fun deleteTransactionsForAccount(accountId: Int)
+
+    @Query("UPDATE accounts SET isDefault = 0")
+    suspend fun clearDefaultAccount()
+
+    @Query("UPDATE accounts SET isDefault = 1 WHERE id = :id")
+    suspend fun markDefaultAccount(id: Int)
+
+    @Query("UPDATE accounts SET orderIndex = :orderIndex WHERE id = :id")
+    suspend fun setAccountOrder(id: Int, orderIndex: Int)
+
+    @Query(
+        """
+        SELECT balanceAfter FROM transactions
+        WHERE accountId = :accountId AND balanceAfter IS NOT NULL AND isDeleted = 0
+        ORDER BY transactionDate DESC LIMIT 1
+        """
+    )
+    suspend fun getLatestBalanceAfter(accountId: Int): Double?
+
+    @Query(
+        "UPDATE recurring_transactions SET accountId = :targetId WHERE accountId IN (:sourceIds)"
+    )
+    suspend fun reassignRecurringTransactions(sourceIds: List<Int>, targetId: Int)
 }
 
 @Dao
@@ -146,6 +184,24 @@ interface TransactionDao {
 
     @Query("SELECT * FROM transactions WHERE transactionHash = :hash LIMIT 1")
     suspend fun getTransactionByHash(hash: String): Transaction?
+
+    @Query(
+        """
+        SELECT * FROM transactions
+        WHERE isDeleted = 0
+          AND type = :type
+          AND amount BETWEEN :amountLow AND :amountHigh
+          AND substr(transactionDate, 1, 10) BETWEEN :fromDate AND :toDate
+        ORDER BY transactionDate DESC
+        """
+    )
+    suspend fun findSimilarTransactions(
+        type: String,
+        amountLow: Double,
+        amountHigh: Double,
+        fromDate: String,
+        toDate: String
+    ): List<Transaction>
 
     @Query("SELECT COUNT(*) FROM transactions WHERE categoryId = :categoryId AND isDeleted = 0")
     suspend fun getTransactionCountForCategory(categoryId: Int): Int
@@ -271,4 +327,41 @@ interface UnrecognizedSmsDao {
 
     @Query("DELETE FROM unrecognized_sms")
     suspend fun deleteAll()
+}
+
+@Dao
+interface MerchantMappingDao {
+    @Query("SELECT * FROM merchant_mappings ORDER BY merchantName ASC")
+    fun getAllMappings(): Flow<List<MerchantMapping>>
+
+    @Query("SELECT * FROM merchant_mappings ORDER BY merchantName ASC")
+    suspend fun getAllMappingsList(): List<MerchantMapping>
+
+    @Query(
+        """
+        SELECT * FROM merchant_mappings
+        WHERE lower(merchantName) = lower(:merchantName)
+        LIMIT 1
+        """
+    )
+    suspend fun getMappingForMerchant(merchantName: String): MerchantMapping?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(mapping: MerchantMapping)
+
+    @Query("DELETE FROM merchant_mappings WHERE merchantName = :merchantName")
+    suspend fun deleteByMerchant(merchantName: String)
+
+    @Query(
+        """
+        UPDATE transactions SET categoryId = :categoryId, updatedAt = :updatedAt
+        WHERE isDeleted = 0 AND merchantName IS NOT NULL
+          AND lower(merchantName) = lower(:merchantName)
+        """
+    )
+    suspend fun updateTransactionsForMerchant(
+        merchantName: String,
+        categoryId: Int,
+        updatedAt: String
+    ): Int
 }

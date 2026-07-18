@@ -1,5 +1,6 @@
-package com.paisa.app.data
+package codes.tashif.paisa.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -17,7 +18,13 @@ data class Account(
     /** Bank name from SMS parsers, e.g. "HDFC Bank" */
     val bankName: String? = null,
     /** Last 4 digits of account/card when known from SMS */
-    val accountLast4: String? = null
+    val accountLast4: String? = null,
+    /** Total credit limit for Credit Card accounts, from SMS or manual entry */
+    val creditLimit: Double? = null,
+    /** Manual sort position in the accounts list (lower = first) */
+    @ColumnInfo(defaultValue = "0") val orderIndex: Int = 0,
+    /** Preselected account for new transactions; at most one is true */
+    @ColumnInfo(defaultValue = "0") val isDefault: Boolean = false
 )
 
 @Entity(tableName = "categories")
@@ -147,9 +154,23 @@ data class Settings(
     val pinEnabled: Boolean = false,
     val biometricEnabled: Boolean = false,
     val notificationsEnabled: Boolean = true,
-    val colorPalette: String = "Default",
+    val colorPalette: String = "dynamic", // PaisaPalette id; "dynamic" = wallpaper colors
     val lastSmsScanAt: Long = 0L,
-    val smsScanEnabled: Boolean = true
+    val smsScanEnabled: Boolean = true,
+    @ColumnInfo(defaultValue = "1") val expressiveUi: Boolean = true,
+    @ColumnInfo(defaultValue = "0") val amoledDark: Boolean = false,
+    /** Stronger text/outline contrast (accessibility / less soft M3 look). */
+    @ColumnInfo(defaultValue = "0") val highContrast: Boolean = false,
+    /** When true, home-screen balances and amounts start hidden. */
+    @ColumnInfo(defaultValue = "1") val hideBalancesByDefault: Boolean = true,
+    /**
+     * First-run feature tour completed (or skipped).
+     *
+     * SQL default is 1 so existing installs that migrate skip the tour.
+     * Fresh installs still get 0 via [AppDatabase] seed insert.
+     * Kotlin default stays false for in-memory construction.
+     */
+    @ColumnInfo(defaultValue = "1") val onboardingCompleted: Boolean = false
 )
 
 /**
@@ -167,4 +188,17 @@ data class UnrecognizedSms(
     val timestamp: Long,
     val reviewed: Boolean = false,
     val createdAt: String
+)
+
+/**
+ * User-learned merchant → category mapping (PennyWise-style).
+ * Applied before built-in keyword rules when saving SMS / statement rows.
+ */
+@Entity(tableName = "merchant_mappings")
+data class MerchantMapping(
+    @PrimaryKey val merchantName: String,
+    val categoryName: String,
+    val categoryType: String = "expense", // income | expense
+    val createdAt: String,
+    val updatedAt: String
 )
