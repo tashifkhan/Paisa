@@ -2,9 +2,7 @@
 
 Offline-first personal finance app for Android, written in **Kotlin + Jetpack Compose**.
 
-Structure is intentionally close to [Expenso](https://github.com/darkvortex144/Expenso): Room data layer, bottom navigation shell, and Material 3 UI. Bank SMS parsing is powered by a vendored copy of [PennyWise AI](https://github.com/sarim2000/pennywiseai-tracker)’s `parser-core` (~140 banks), all on-device.
-
-Local clones of Expenso and PennyWise can live under `reference/` for study only (gitignored — never committed).
+Structure: Room data layer, bottom navigation shell, and Material 3 UI. Bank SMS parsing is powered by a vendored copy of [PennyWise AI](https://github.com/sarim2000/pennywiseai-tracker)’s `parser-core` (~140 banks), all on-device.
 
 ---
 
@@ -66,7 +64,7 @@ First sync downloads the Gradle wrapper distribution and dependencies; that can 
 ./gradlew :app:installDebug
 
 # Or build + install in one step
-./gradlew :app:installDebug && adb shell am start -n com.paisa.app/.MainActivity
+./gradlew :app:installDebug && adb shell am start -n codes.tashif.paisa/.MainActivity
 ```
 
 APK output:
@@ -104,7 +102,7 @@ Notes:
 | Gradle sync fails on JDK | Use JDK 17 (Android Studio → Settings → Build → Gradle JDK) |
 | `BUILD FAILED` after pull | `./gradlew clean :app:assembleDebug` |
 | SMS scan does nothing | Check Settings → Apps → Paisa → Permissions → SMS |
-| App already installed with different signature | `adb uninstall com.paisa.app` then reinstall |
+| App already installed with different signature | `adb uninstall codes.tashif.paisa` then reinstall |
 
 ---
 
@@ -125,15 +123,21 @@ Notes:
 ## Project layout
 
 ```text
-app/src/main/java/com/paisa/app/
+app/src/main/java/codes/tashif/paisa/
 ├── MainActivity.kt
 ├── data/                    # Room entities, DAOs, repository, ViewModel
 ├── sms/
-│   ├── SmsTransactionProcessor.kt  # parse + store + dedup
+│   ├── SmsTransactionProcessor.kt  # parse + store + dedup + categorize
 │   ├── SmsReaderWorker.kt          # bulk inbox scan
 │   ├── SmsBroadcastReceiver.kt     # real-time SMS
-│   └── CategoryMapping.kt          # merchant → category
-└── ui/
+│   └── CategoryMapping.kt          # keyword merchant → category
+├── ai/
+│   ├── AiCredentialsStore.kt       # encrypted BYOK keys
+│   ├── LlmClient.kt                # OpenAI-compat / Gemini / Anthropic
+│   ├── StatementExtractionService.kt
+│   └── StatementImportUseCase.kt
+├── security/                # biometric / credential app lock
+└── ui/                      # theme, components, screens
 parser-core/                 # bank SMS parsers (AGPL, from PennyWise)
 ```
 
@@ -149,11 +153,11 @@ parser-core/                 # bank SMS parsers (AGPL, from PennyWise)
 
 ## Tabs
 
-1. **Home** — balance card + recent transactions  
-2. **Analytics** — charts placeholder  
-3. **Budgets** — budget list placeholder  
-4. **Accounts** — wallets / bank accounts  
-5. **More** — SMS import, categories, currency, theme  
+1. **Home** — balance card, filters, and recent transactions  
+2. **Analytics** — spend charts and period breakdowns  
+3. **Budgets** — monthly budgets by category  
+4. **Accounts** — wallets / bank accounts (reorder, default, merge)  
+5. **More** — SMS import, AI statements, appearance, categories, lock  
 
 FAB on Home opens the add-transaction sheet.
 
@@ -175,21 +179,47 @@ FAB on Home opens the add-transaction sheet.
 
 ```bash
 mkdir -p reference
-git clone --depth 1 https://github.com/darkvortex144/Expenso.git reference/Expenso
 git clone --depth 1 https://github.com/sarim2000/pennywiseai-tracker.git reference/pennywiseai-tracker
 ```
 
-These paths are listed in `.gitignore` and must not be committed.
+`reference/` is listed in `.gitignore` and must not be committed.
+
+---
+
+## Auto-categorization
+
+SMS (and statement) imports assign categories in this order:
+
+1. **Merchant rules** — learned when you change a category and keep “Always use for this merchant”
+2. **Keyword map** — built-in merchant dictionary (`CategoryMapping`, PennyWise-style)
+3. **Others** — fallback
+
+Manage rules under **More → Merchant rules**. Edit any transaction from Home to recategorize.
+
+## AI statement import (optional, BYOK)
+
+SMS never leaves the device. For bank PDF/CSV/image statements you can optionally:
+
+1. **More → AI provider** — paste an API key for OpenAI-compatible, Gemini, or Anthropic  
+2. **More → Import statement** — pick a file, review extracted rows, import  
+
+Keys are stored in EncryptedSharedPreferences. Extracted file text, or the selected image, is sent
+only to the endpoint you configure.
 
 ---
 
 ## Roadmap (near term)
 
 - [x] SMS import (bulk scan + live receiver + dedup)  
-- [ ] Full add/edit forms for accounts, categories, budgets  
-- [ ] Analytics charts and date filters  
-- [ ] Search + export  
-- [ ] App lock / biometrics  
+- [x] Auto-categorization + merchant learning  
+- [x] BYOK AI statement import (OpenAI-compatible / Gemini / Anthropic)  
+- [x] Accounts / categories / budgets CRUD  
+- [x] Analytics charts and date filters  
+- [x] Search + transaction filters  
+- [x] App lock / biometrics  
+- [ ] Export (CSV / OFX)  
+- [ ] Recurring transactions UI  
+
 
 ---
 
