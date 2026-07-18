@@ -5,10 +5,16 @@
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
 
+    <!-- Optional cloud AI (BYOK statement import only — SMS stays on-device) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- Scan progress + new-transaction alerts -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+    <!-- App lock via fingerprint / face / device credential -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
     <uses-feature
         android:name="android.hardware.telephony"
