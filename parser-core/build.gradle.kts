@@ -11,6 +11,7 @@ kotlin {
 
 dependencies {
     implementation(libs.kotlinx.datetime)
+    testImplementation(libs.junit)
 }
 
 java {
