@@ -1,10 +1,12 @@
-package com.paisa.app.sms
+package codes.tashif.paisa.sms
 
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.provider.Telephony
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -17,7 +19,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import com.paisa.app.data.AppDatabase
+import codes.tashif.paisa.data.AppDatabase
 import com.pennywiseai.parser.core.bank.BankParserFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -86,7 +88,7 @@ class SmsReaderWorker(
             )
         }
 
-        setForeground(createForegroundInfo(0, 0))
+        trySetForeground(createForegroundInfo(0, 0))
 
         val db = AppDatabase.getDatabase(applicationContext)
         val processor = SmsTransactionProcessor(db)
@@ -100,7 +102,7 @@ class SmsReaderWorker(
         Log.d(TAG, "Scanning ${messages.size} SMS messages (since=$since forceFull=$forceFull)")
 
         setProgress(progressData(stats))
-        setForeground(createForegroundInfo(0, messages.size))
+        trySetForeground(createForegroundInfo(0, messages.size))
 
         var newestTimestamp = since
         messages.forEachIndexed { index, sms ->
@@ -108,7 +110,6 @@ class SmsReaderWorker(
 
             val knownSender = BankParserFactory.isKnownBankSender(sms.sender)
             val result = processor.processAndSaveTransaction(sms.sender, sms.body, sms.timestamp)
-            stats.total // keep for clarity
             when {
                 result.success -> {
                     stats.parsed++
@@ -124,16 +125,10 @@ class SmsReaderWorker(
                 !knownSender -> stats.skipped++
                 else -> stats.skipped++
             }
-            stats.let { /* processed count from index */ }
-
             if (index % 25 == 0 || index == messages.lastIndex) {
                 val processed = index + 1
-                setProgress(
-                    progressData(stats).toBuilder()
-                        .putInt(PROGRESS_PROCESSED, processed)
-                        .build()
-                )
-                setForeground(createForegroundInfo(processed, messages.size))
+                setProgress(progressData(stats, processed))
+                trySetForeground(createForegroundInfo(processed, messages.size))
             }
         }
 
@@ -150,17 +145,16 @@ class SmsReaderWorker(
                 "dup=${stats.duplicates} unrecognized=${stats.unrecognized}"
         )
 
-        Result.success(
-            progressData(stats).toBuilder()
-                .putInt(PROGRESS_PROCESSED, messages.size)
-                .build()
-        )
+        Result.success(progressData(stats, messages.size))
     }
 
-    private fun progressData(stats: SmsTransactionProcessor.ScanStats): Data {
+    private fun progressData(
+        stats: SmsTransactionProcessor.ScanStats,
+        processed: Int = 0
+    ): Data {
         return workDataOf(
             PROGRESS_TOTAL to stats.total,
-            PROGRESS_PROCESSED to 0,
+            PROGRESS_PROCESSED to processed,
             PROGRESS_SAVED to stats.saved,
             PROGRESS_PARSED to stats.parsed,
             PROGRESS_DUPLICATES to stats.duplicates,
@@ -208,6 +202,16 @@ class SmsReaderWorker(
         return results
     }
 
+    // The scan must survive even when the foreground promotion is rejected
+    // (FGS restrictions, notifications off) — it just runs without a notification.
+    private suspend fun trySetForeground(info: ForegroundInfo) {
+        try {
+            setForeground(info)
+        } catch (e: Exception) {
+            Log.w(TAG, "setForeground failed, continuing as background work", e)
+        }
+    }
+
     private fun createForegroundInfo(processed: Int, total: Int): ForegroundInfo {
         val nm = applicationContext.getSystemService(NotificationManager::class.java)
         if (nm.getNotificationChannel(CHANNEL_ID) == null) {
@@ -227,6 +231,14 @@ class SmsReaderWorker(
             .setOngoing(true)
             .setSilent(true)
             .build()
-        return ForegroundInfo(NOTIFICATION_ID, notification)
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(
+                NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
+        } else {
+            ForegroundInfo(NOTIFICATION_ID, notification)
+        }
     }
 }

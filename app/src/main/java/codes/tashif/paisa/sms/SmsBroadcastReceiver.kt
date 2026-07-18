@@ -1,4 +1,4 @@
-package com.paisa.app.sms
+package codes.tashif.paisa.sms
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -9,9 +9,9 @@ import android.content.Intent
 import android.provider.Telephony
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.paisa.app.MainActivity
-import com.paisa.app.R
-import com.paisa.app.data.AppDatabase
+import codes.tashif.paisa.MainActivity
+import codes.tashif.paisa.R
+import codes.tashif.paisa.data.AppDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

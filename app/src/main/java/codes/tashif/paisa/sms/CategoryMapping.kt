@@ -1,4 +1,4 @@
-package com.paisa.app.sms
+package codes.tashif.paisa.sms
 
 object CategoryMapping {
 
@@ -780,23 +780,43 @@ object CategoryMapping {
         val excludes: Set<String> = emptySet()
     )
 
+    /**
+     * Rule outputs use **seeded category names** so SMS import never creates
+     * orphan categories. Prefer Transport / Health & Fitness over free-text
+     * variants used upstream in PennyWise.
+     */
     private val RULES: List<Rule> = listOf(
         Rule("Tax", TAX),
         Rule("Bank Charges", BANK_CHARGE),
         Rule("Credit Card Payment", CC_PAYMENT),
         Rule("Food & Dining", FOOD),
         Rule("Groceries", GROCERY),
-        Rule("Transportation", TRANSPORT),
+        // Fuel before Transport so petrol stations don't become "Transport"
+        Rule(
+            "Fuel",
+            setOf(
+                "petrol", "fuel", "fastag", "shell", "adnoc", "enoc", "emarat",
+                "eppco", "ptt", "pttst", "dolphin energy", "gas station"
+            )
+        ),
+        Rule("Transport", TRANSPORT),
         Rule("Shopping", SHOPPING + SHOPPING_EXTENDED, SHOPPING_EXCLUDE),
-        Rule("Bills & Utilities", UTILITIES),
+        Rule("Bills & Utilities", UTILITIES + MOBILE),
+        // Streaming subs before Entertainment catch-all
+        Rule(
+            "Subscriptions",
+            setOf(
+                "netflix", "spotify", "hotstar", "sony liv", "zee5", "youtube premium",
+                "apple music", "gaana", "jiosaavn", "wynk", "prime video", "disney+",
+                "disney plus", "apple tv", "youtube music"
+            )
+        ),
         Rule("Entertainment", ENTERTAINMENT),
-        Rule("Healthcare", HEALTHCARE),
+        Rule("Health & Fitness", HEALTHCARE + FITNESS),
         Rule("Investments", INVESTMENT),
         Rule("Banking", BANKING),
         Rule("Personal Care", PERSONAL_CARE),
         Rule("Education", EDUCATION),
-        Rule("Mobile", MOBILE),
-        Rule("Fitness", FITNESS),
         Rule("Insurance", INSURANCE),
         Rule("Travel", TRAVEL),
     )

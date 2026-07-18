@@ -1,12 +1,11 @@
-package com.paisa.app.sms
+package codes.tashif.paisa.sms
 
 import android.util.Log
-import com.paisa.app.data.Account
-import com.paisa.app.data.AppDatabase
-import com.paisa.app.data.Category
-import com.paisa.app.data.Repository
-import com.paisa.app.data.Transaction
-import com.paisa.app.data.UnrecognizedSms
+import codes.tashif.paisa.data.Account
+import codes.tashif.paisa.data.AppDatabase
+import codes.tashif.paisa.data.Repository
+import codes.tashif.paisa.data.Transaction
+import codes.tashif.paisa.data.UnrecognizedSms
 import com.pennywiseai.parser.core.ParsedTransaction
 import com.pennywiseai.parser.core.TransactionType
 import com.pennywiseai.parser.core.bank.BankParserFactory
@@ -87,17 +86,25 @@ class SmsTransactionProcessor(
                 return ProcessingResult(false, reason = "Duplicate transaction")
             }
 
+            // Balance-update SMS carry no transaction — sync the account and stop.
+            if (parsed.type == TransactionType.BALANCE_UPDATE) {
+                val accountId = resolveAccount(parsed)
+                applyAccountUpdates(accountId, parsed)
+                return ProcessingResult(false, reason = "Balance update applied")
+            }
+
             val type = mapType(parsed.type)
             val merchant = normalizeMerchant(parsed.merchant)
-            val categoryName = CategoryMapping.determineCategory(
+            // User merchant mapping → keyword rules → Others (canonical seed names)
+            val categoryName = repository.resolveCategoryName(
                 merchantName = merchant,
-                transactionType = when (parsed.type) {
-                    TransactionType.INCOME -> "INCOME"
-                    else -> "EXPENSE"
-                }
+                transactionType = type
             )
             val categoryId = repository.findOrCreateCategory(categoryName, type)
             val accountId = resolveAccount(parsed)
+            if (parsed.creditLimit != null) {
+                applyAccountUpdates(accountId, parsed, applyBalance = false)
+            }
             val dateIso = isoFromMillis(parsed.timestamp)
             val now = nowIso()
 
@@ -143,14 +150,43 @@ class SmsTransactionProcessor(
         }
     }
 
+    /**
+     * Sync account-level facts carried by the SMS: credit limit (marks the
+     * account as a Credit Card) and, for balance updates, the absolute balance.
+     */
+    private suspend fun applyAccountUpdates(
+        accountId: Int,
+        parsed: ParsedTransaction,
+        applyBalance: Boolean = true
+    ) {
+        val account = repository.getAccountById(accountId) ?: return
+        var updated = account
+        parsed.creditLimit?.let { limit ->
+            updated = updated.copy(
+                creditLimit = limit.toDouble(),
+                type = "Credit Card",
+                icon = "credit_card"
+            )
+        }
+        if (applyBalance && parsed.balance != null) {
+            updated = updated.copy(currentBalance = parsed.balance!!.toDouble())
+        }
+        if (updated != account) {
+            repository.updateAccount(updated)
+        }
+    }
+
     private suspend fun resolveAccount(parsed: ParsedTransaction): Int {
         val last4 = parsed.accountLast4
         val bank = parsed.bankName
 
         if (last4 != null) {
             repository.getAccountByBankAndLast4(bank, last4)?.let { return it.id }
-        } else if (parsed.isMobileWallet) {
-            repository.getAccountByBankName(bank)?.let { return it.id }
+        } else {
+            // No digits in the SMS: reuse the bank-level account instead of
+            // creating one per message (survives user renames via bankName).
+            repository.getAccountByBankWithoutLast4(bank)?.let { return it.id }
+            repository.getAccountByName(bank)?.let { return it.id }
         }
 
         val name = when {
@@ -158,8 +194,10 @@ class SmsTransactionProcessor(
             parsed.isMobileWallet -> bank
             else -> bank
         }
+        val isCreditCard = parsed.creditLimit != null ||
+            (parsed.isFromCard && parsed.type == TransactionType.CREDIT)
         val type = when {
-            parsed.isFromCard && parsed.type == TransactionType.CREDIT -> "Credit Card"
+            isCreditCard -> "Credit Card"
             parsed.isFromCard -> "Debit Card"
             parsed.isMobileWallet -> "Wallet"
             else -> "Bank Account"
@@ -173,10 +211,11 @@ class SmsTransactionProcessor(
                 type = type,
                 openingBalance = opening,
                 currentBalance = opening,
-                icon = if (parsed.isFromCard) "credit_card" else "account_balance",
+                icon = if (parsed.isFromCard || isCreditCard) "credit_card" else "account_balance",
                 color = color,
                 bankName = bank,
-                accountLast4 = last4 ?: if (parsed.isMobileWallet) "WALLET" else null
+                accountLast4 = last4 ?: if (parsed.isMobileWallet) "WALLET" else null,
+                creditLimit = parsed.creditLimit?.toDouble()
             )
         ).toInt()
     }
