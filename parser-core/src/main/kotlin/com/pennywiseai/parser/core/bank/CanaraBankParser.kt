@@ -8,6 +8,11 @@ import java.math.BigDecimal
  */
 class CanaraBankParser : BaseIndianBankParser() {
 
+    private val abbreviatedDebitPattern = Regex(
+        """\bDr\.\s*(?:INR|Rs\.?|₹)\s*[\d,]+(?:\.\d{2})?""",
+        RegexOption.IGNORE_CASE
+    )
+
     override fun getBankName() = "Canara Bank"
 
     override fun canHandle(sender: String): Boolean {
@@ -63,7 +68,20 @@ class CanaraBankParser : BaseIndianBankParser() {
             }
         }
 
-        // Pattern 2: UPI - paid thru A/C XX1234 on 08-8-25 16:41:00 to BMTC BUS KA57F6
+        // Pattern 2: abbreviated debit - "to WENGERS; UPI: 655371142911"
+        val abbreviatedDebitMerchantPattern = Regex(
+            """\bto\s+(.+?)\s*[;,]\s*UPI\s*:""",
+            RegexOption.IGNORE_CASE
+        )
+        abbreviatedDebitMerchantPattern.find(message)?.let { match ->
+            val merchant = cleanMerchantName(match.groupValues[1].trim())
+                .replace(Regex("""\s+"""), " ")
+            if (isValidMerchantName(merchant)) {
+                return merchant
+            }
+        }
+
+        // Pattern 3: UPI - paid thru A/C XX1234 on 08-8-25 16:41:00 to BMTC BUS KA57F6
         val upiMerchantPattern = Regex(
             """\sto\s+([^,]+?)(?:,\s*UPI|\.|-Canara)""",
             RegexOption.IGNORE_CASE
@@ -140,7 +158,8 @@ class CanaraBankParser : BaseIndianBankParser() {
         // Check for Canara-specific transaction keywords
         if (lowerMessage.contains("paid thru") ||
             lowerMessage.contains("has been debited") ||
-            lowerMessage.contains("has been credited")
+            lowerMessage.contains("has been credited") ||
+            abbreviatedDebitPattern.containsMatchIn(message)
         ) {
             return true
         }
@@ -155,6 +174,12 @@ class CanaraBankParser : BaseIndianBankParser() {
         // This overrides the base class which would mark "mutual fund" as INVESTMENT
         if (lowerMessage.contains("redemption") && lowerMessage.contains("credited")) {
             return TransactionType.INCOME
+        }
+
+        // Canara's newer compact template uses "Acct XXX270 Dr. INR 260.00"
+        // instead of spelling out "debited".
+        if (abbreviatedDebitPattern.containsMatchIn(message)) {
+            return TransactionType.EXPENSE
         }
 
         // Fall back to base class
