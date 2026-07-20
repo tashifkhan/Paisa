@@ -139,9 +139,16 @@ fun MoneyText(
     maskCount: Int = 6
 ) {
     if (hidden) {
+        val density = LocalDensity.current
+        // Scale mask pips from the *requested* text style so a displaySmall
+        // amount still looks like a big number when privacy is on.
+        val pipSize = with(density) {
+            (style.fontSize.toPx() * 0.42f).coerceIn(8f, 28f).toDp()
+        }
         HiddenMoneyMask(
             modifier = modifier,
             count = maskCount,
+            size = pipSize,
             baseColor = if (color != Color.Unspecified) {
                 color
             } else {
