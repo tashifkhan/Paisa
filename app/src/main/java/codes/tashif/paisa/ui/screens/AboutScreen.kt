@@ -2,6 +2,8 @@ package codes.tashif.paisa.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -19,7 +21,6 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Gavel
 import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.Sms
 import androidx.compose.material.icons.rounded.Tour
 import androidx.compose.material3.Icon
@@ -30,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.ui.components.DetailHeader
@@ -38,6 +40,7 @@ import codes.tashif.paisa.ui.components.SettingsItem
 import codes.tashif.paisa.ui.components.SettingsSectionLabel
 import codes.tashif.paisa.ui.components.groupPositionOf
 import codes.tashif.paisa.ui.theme.spacing
+import codes.tashif.paisa.R
 
 @Composable
 fun AboutScreen(
@@ -80,11 +83,12 @@ fun AboutScreen(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Rounded.Payments,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(36.dp)
+                    Image(
+                        painter = painterResource(R.drawable.ic_launcher_legacy),
+                        contentDescription = "Paisa app icon",
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(CircleShape)
                     )
                 }
                 Spacer(Modifier.height(MaterialTheme.spacing.small))

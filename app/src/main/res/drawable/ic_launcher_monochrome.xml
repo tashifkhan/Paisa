@@ -4,11 +4,10 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Coin / rupee mark. Kept inside the adaptive icon's 66dp safe zone. -->
     <path
-        android:fillColor="#FFFFFF"
+        android:fillColor="#000000"
         android:pathData="M54,24c-16.5,0 -30,13.5 -30,30s13.5,30 30,30 30,-13.5 30,-30 -13.5,-30 -30,-30zM54,28c14.3,0 26,11.7 26,26s-11.7,26 -26,26 -26,-11.7 -26,-26 11.7,-26 26,-26z" />
     <path
-        android:fillColor="#FFFFFF"
+        android:fillColor="#000000"
         android:pathData="M42,40h24v4h-9.2c0.9,1.5 1.5,3.2 1.7,5H66v4H58.6c-0.5,4.3 -3.5,7.9 -7.6,9.6l10,12h-5.8l-9.2,-11.2H42v-4h4.2c3.1,0 5.5,-2 6.1,-4.8H42v-4h10.3c-0.6,-2.8 -3,-4.8 -6.1,-4.8H42z" />
 </vector>
