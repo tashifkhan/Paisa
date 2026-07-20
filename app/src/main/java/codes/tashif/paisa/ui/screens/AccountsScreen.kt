@@ -33,6 +33,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DragIndicator
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.ViewCarousel
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -95,6 +96,7 @@ fun AccountsScreen(viewModel: PaisaViewModel) {
     val transactions by viewModel.transactions.collectAsState()
     val summary by viewModel.homeSummary.collectAsState()
     var accountToRename by remember { mutableStateOf<Account?>(null) }
+    var accountToUpdateBalance by remember { mutableStateOf<Account?>(null) }
     var accountToDelete by remember { mutableStateOf<Account?>(null) }
     var accountForActions by remember { mutableStateOf<Account?>(null) }
     var listView by remember { mutableStateOf(false) }
@@ -151,7 +153,7 @@ fun AccountsScreen(viewModel: PaisaViewModel) {
                 transactions = transactions,
                 summary = summary,
                 viewModel = viewModel,
-                onRename = { accountToRename = it }
+                onOpenActions = { accountForActions = it }
             )
         }
     }
@@ -175,6 +177,10 @@ fun AccountsScreen(viewModel: PaisaViewModel) {
                 accountForActions = null
                 accountToRename = account
             },
+            onUpdateBalance = {
+                accountForActions = null
+                accountToUpdateBalance = account
+            },
             onSetDefault = {
                 accountForActions = null
                 viewModel.setDefaultAccount(account)
@@ -182,6 +188,17 @@ fun AccountsScreen(viewModel: PaisaViewModel) {
             onDelete = {
                 accountForActions = null
                 accountToDelete = account
+            }
+        )
+    }
+
+    accountToUpdateBalance?.let { account ->
+        UpdateBalanceDialog(
+            account = account,
+            onDismiss = { accountToUpdateBalance = null },
+            onSave = { balance ->
+                viewModel.updateAccountBalance(account, balance)
+                accountToUpdateBalance = null
             }
         )
     }
@@ -702,10 +719,11 @@ private fun AccountActionsSheet(
     account: Account,
     onDismiss: () -> Unit,
     onRename: () -> Unit,
+    onUpdateBalance: () -> Unit,
     onSetDefault: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val actionCount = if (account.isDefault) 2 else 3
+    val actionCount = if (account.isDefault) 3 else 4
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
@@ -731,12 +749,21 @@ private fun AccountActionsSheet(
                     iconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     onClick = onRename
                 )
+                SettingsItem(
+                    title = "Update balance",
+                    subtitle = "Correct the current balance",
+                    icon = Icons.Rounded.Payments,
+                    position = groupPositionOf(1, actionCount),
+                    iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    iconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    onClick = onUpdateBalance
+                )
                 if (!account.isDefault) {
                     SettingsItem(
                         title = "Set as default",
                         subtitle = "Preselected when adding transactions",
                         icon = Icons.Rounded.Star,
-                        position = groupPositionOf(1, actionCount),
+                        position = groupPositionOf(2, actionCount),
                         iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
                         iconContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                         onClick = onSetDefault
@@ -763,7 +790,7 @@ private fun AccountCardsView(
     transactions: List<codes.tashif.paisa.data.TransactionWithDetails>,
     summary: codes.tashif.paisa.data.HomeSummary,
     viewModel: PaisaViewModel,
-    onRename: (Account) -> Unit
+    onOpenActions: (Account) -> Unit
 ) {
     // M3 multi-browse carousel — same layout as m3.material.io / Compose samples:
     // large focal item + smaller peeks that morph size on scroll, with maskClip.
@@ -787,7 +814,7 @@ private fun AccountCardsView(
             AccountCarouselItem(
                 account = account,
                 currency = summary.currency,
-                onEdit = { onRename(account) },
+                onEdit = { onOpenActions(account) },
                 modifier = Modifier
                     .height(205.dp)
                     .maskClip(MaterialTheme.shapes.extraLarge)
@@ -988,7 +1015,7 @@ private fun AccountCarouselItem(
                 ) {
                     Icon(
                         Icons.Rounded.Edit,
-                        contentDescription = "Rename account",
+                        contentDescription = "Account actions",
                         tint = onCard.copy(alpha = 0.9f)
                     )
                 }
@@ -1073,3 +1100,68 @@ private fun RenameAccountDialog(
         }
     )
 }
+
+@Composable
+private fun UpdateBalanceDialog(
+    account: Account,
+    onDismiss: () -> Unit,
+    onSave: (Double) -> Unit
+) {
+    var balanceText by remember(account.id) {
+        mutableStateOf(manualBalanceInputText(account.currentBalance))
+    }
+    val parsedBalance = parseManualBalanceInput(balanceText)
+    val haptics = rememberHaptics()
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Update balance") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
+                Text(
+                    text = "Set the current balance for ${account.name}. " +
+                        "This won't add a transaction or change its opening balance.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                OutlinedTextField(
+                    value = balanceText,
+                    onValueChange = { balanceText = it },
+                    label = { Text("Current balance") },
+                    supportingText = { Text("Use a minus sign for money owed or overdrawn.") },
+                    isError = balanceText.isNotBlank() &&
+                        balanceText != "-" && parsedBalance == null,
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = { keyboardController?.hide() }
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    haptics.confirm()
+                    onSave(parsedBalance ?: return@TextButton)
+                },
+                enabled = parsedBalance != null && parsedBalance != account.currentBalance
+            ) {
+                Text("Update")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+internal fun parseManualBalanceInput(value: String): Double? =
+    value.trim().toDoubleOrNull()?.takeIf { it.isFinite() }
+
+internal fun manualBalanceInputText(value: Double): String =
+    java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString()

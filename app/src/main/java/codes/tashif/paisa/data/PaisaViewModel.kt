@@ -112,7 +112,6 @@ class PaisaViewModel(application: Application) : AndroidViewModel(application) {
         _currentTab.value = index
     }
 
-
     /**
      * Destination requested by a home screen widget, held until the UI shows it.
      *
@@ -591,6 +590,14 @@ class PaisaViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.updateAccount(account.copy(name = trimmed))
             showSnackbar("Account renamed to $trimmed")
+        }
+    }
+
+    fun updateAccountBalance(account: Account, balance: Double) {
+        if (!balance.isFinite() || balance == account.currentBalance) return
+        viewModelScope.launch {
+            repository.updateCurrentBalance(account.id, balance)
+            showSnackbar("Balance updated for ${account.name}")
         }
     }
 
@@ -1193,4 +1200,3 @@ class PaisaViewModel(application: Application) : AndroidViewModel(application) {
         const val EXTERNAL_ACTIVITY_GRACE_MS = 2 * 60 * 1000L
     }
 }
-

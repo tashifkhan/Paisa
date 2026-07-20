@@ -79,6 +79,9 @@ class Repository(private val db: AppDatabase) {
 
     suspend fun updateAccount(account: Account) = accountDao.updateAccount(account)
 
+    suspend fun updateCurrentBalance(accountId: Int, balance: Double) =
+        accountDao.updateCurrentBalance(accountId, balance)
+
     suspend fun deleteAccount(account: Account): Boolean {
         val count = transactionDao.getTransactionCountForAccount(account.id)
         if (count > 0) return false
