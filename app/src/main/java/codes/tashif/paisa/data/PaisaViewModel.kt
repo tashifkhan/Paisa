@@ -153,13 +153,38 @@ class PaisaViewModel(application: Application) : AndroidViewModel(application) {
     val isLocked: StateFlow<Boolean> = _isLocked.asStateFlow()
     private var appLockSeeded = false
 
+    /**
+     * Set when we deliberately hand off to another app (file picker, export sheet).
+     * That stops our activity, which would otherwise trip the lock and dump the user
+     * back on the unlock screen mid-flow.
+     */
+    private var externalActivityStartedAt: Long? = null
+
     fun unlockApp() {
         _isLocked.value = false
     }
 
+    /** Call right before launching a picker/sheet so the resulting onStop doesn't lock. */
+    fun onExternalActivityLaunched() {
+        externalActivityStartedAt = System.currentTimeMillis()
+    }
+
     fun lockApp() {
+        if (externalActivityStartedAt != null) return
         if (settings.value?.biometricEnabled == true) {
             _isLocked.value = true
+        }
+    }
+
+    /**
+     * On return to the foreground, honour the deferred lock if the detour outlived the
+     * grace period — the user may have wandered off from the picker rather than come back.
+     */
+    fun onReturnToForeground() {
+        val startedAt = externalActivityStartedAt ?: return
+        externalActivityStartedAt = null
+        if (System.currentTimeMillis() - startedAt > EXTERNAL_ACTIVITY_GRACE_MS) {
+            lockApp()
         }
     }
 
@@ -1130,4 +1155,10 @@ class PaisaViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun nowIso(): String =
         SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).format(Date())
+
+    private companion object {
+        /** How long a picker/export detour may last before we lock on return anyway. */
+        const val EXTERNAL_ACTIVITY_GRACE_MS = 2 * 60 * 1000L
+    }
 }
+

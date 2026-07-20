@@ -143,6 +143,7 @@ fun StatementImportScreen(
                 },
                 onOpenAiSettings = onOpenAiSettings,
                 onChooseFile = {
+                    viewModel.onExternalActivityLaunched()
                     picker.launch(
                         arrayOf(
                             "application/pdf",

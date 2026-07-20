@@ -124,6 +124,7 @@ fun SmsSetupScreen(
                 add(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
+        viewModel.onExternalActivityLaunched()
         permissionLauncher.launch(perms.toTypedArray())
     }
 

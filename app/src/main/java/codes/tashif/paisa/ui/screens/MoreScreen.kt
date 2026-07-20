@@ -448,6 +448,7 @@ fun MoreScreen(
                         scope.launch {
                             exportSheetState.hide()
                             showExportOptions = false
+                            viewModel.onExternalActivityLaunched()
                             csvExportLauncher.launch("paisa_transactions_$stamp.csv")
                         }
                     }
@@ -464,6 +465,7 @@ fun MoreScreen(
                         scope.launch {
                             exportSheetState.hide()
                             showExportOptions = false
+                            viewModel.onExternalActivityLaunched()
                             pdfExportLauncher.launch("paisa_transactions_$stamp.pdf")
                         }
                     }

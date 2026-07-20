@@ -169,10 +169,16 @@ class MainActivity : FragmentActivity() {
         )
     }
 
+    override fun onStart() {
+        super.onStart()
+        // Applies a lock deferred for a picker/export detour that ran too long.
+        viewModel.onReturnToForeground()
+    }
 
     override fun onStop() {
         super.onStop()
         // Lock when leaving the app so the next resume requires biometrics.
+        // No-op while an in-app picker or export sheet is on screen.
         viewModel.lockApp()
     }
 }
