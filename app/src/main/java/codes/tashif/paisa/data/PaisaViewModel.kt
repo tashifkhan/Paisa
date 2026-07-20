@@ -78,12 +78,16 @@ sealed class StatementUiState {
     data object Idle : StatementUiState()
     data class Extracting(
         val completedChunks: Int = 0,
-        val totalChunks: Int = 0
+        val totalChunks: Int = 0,
+        val currentFile: Int = 1,
+        val totalFiles: Int = 1
     ) : StatementUiState()
 
     data class Preview(
         val rows: List<ExtractedTransaction>,
-        val chunksProcessed: Int
+        val chunksProcessed: Int,
+        val filesProcessed: Int = 1,
+        val failedFiles: List<String> = emptyList()
     ) : StatementUiState()
 
     data class Success(val imported: Int, val duplicates: Int, val skipped: Int) : StatementUiState()
@@ -705,7 +709,8 @@ class PaisaViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // --- STATEMENT IMPORT ---
-    fun extractStatement(uri: Uri) {
+    fun extractStatements(uris: List<Uri>) {
+        if (uris.isEmpty()) return
         // Runs on a background dispatcher in the ViewModel scope: the user can leave
         // the screen (or the app) while chunks process; a notification announces completion.
         viewModelScope.launch(Dispatchers.Default) {
@@ -716,87 +721,114 @@ class PaisaViewModel(application: Application) : AndroidViewModel(application) {
                 )
                 return@launch
             }
-            _statementUiState.value = StatementUiState.Extracting()
+            _statementUiState.value = StatementUiState.Extracting(totalFiles = uris.size)
             val app = getApplication<Application>()
-            try {
-                runCatching {
-                    app.contentResolver.takePersistableUriPermission(
-                        uri,
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
-                }
-                val result = statementExtraction.extractFromUri(
-                    context = app,
-                    uri = uri,
-                    credentials = creds,
-                    onProgress = { completed, total ->
-                        _statementUiState.value = StatementUiState.Extracting(
-                            completedChunks = completed,
-                            totalChunks = total
+            val merged = LinkedHashMap<String, ExtractedTransaction>()
+            var chunksProcessed = 0
+            val failedFiles = mutableListOf<String>()
+            var lastErrorMessage: String? = null
+
+            uris.forEachIndexed { fileIndex, uri ->
+                try {
+                    runCatching {
+                        app.contentResolver.takePersistableUriPermission(
+                            uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION
                         )
                     }
-                )
-                if (result.transactions.isEmpty()) {
-                    _statementUiState.value = StatementUiState.Error(
-                        "No transactions found. Try a clearer PDF/CSV or another model."
-                    )
-                    StatementNotifications.notifyExtractionFailed(
-                        app,
-                        "No transactions found in the statement."
-                    )
-                } else {
-                    // Enrich categories via local mapping when model omitted them,
-                    // and flag rows that look like transactions already in the ledger
-                    // (e.g. captured earlier from SMS).
-                    val enriched = result.transactions.map { row ->
-                        val withCategory = if (row.categoryName.isNullOrBlank()) {
-                            val name = repository.resolveCategoryName(row.merchant, row.type)
-                            row.copy(categoryName = name)
-                        } else {
-                            row.copy(
-                                categoryName = repository.canonicalizeCategoryName(
-                                    row.categoryName,
-                                    row.type
-                                )
+                    val result = statementExtraction.extractFromUri(
+                        context = app,
+                        uri = uri,
+                        credentials = creds,
+                        onProgress = { completed, total ->
+                            _statementUiState.value = StatementUiState.Extracting(
+                                completedChunks = completed,
+                                totalChunks = total,
+                                currentFile = fileIndex + 1,
+                                totalFiles = uris.size
                             )
                         }
-                        val existing = repository.findSimilarTransaction(
-                            amount = row.amount,
-                            type = row.type,
-                            dateIso = row.date
-                        )
-                        if (existing != null) {
-                            val sourceLabel = when (existing.source) {
-                                "sms" -> "SMS entry"
-                                "statement" -> "earlier import"
-                                else -> "manual entry"
-                            }
-                            withCategory.copy(
-                                likelyDuplicate = true,
-                                selected = false,
-                                duplicateNote = "Matches $sourceLabel" +
-                                    " on ${existing.transactionDate.take(10)}"
-                            )
-                        } else {
-                            withCategory
-                        }
+                    )
+                    chunksProcessed += result.chunksProcessed
+                    // Identical rows appearing in two files (e.g. overlapping
+                    // statement periods) collapse into one preview entry.
+                    for (tx in result.transactions) {
+                        merged.putIfAbsent(StatementExtractionService.dedupeKey(tx), tx)
                     }
-                    _statementUiState.value = StatementUiState.Preview(
-                        rows = enriched,
-                        chunksProcessed = result.chunksProcessed
-                    )
-                    StatementNotifications.notifyExtractionDone(
-                        app,
-                        found = enriched.size,
-                        duplicates = enriched.count { it.likelyDuplicate }
-                    )
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    lastErrorMessage = e.message
+                    failedFiles += statementFileName(uri, fileIndex)
                 }
-            } catch (e: Exception) {
-                val message = e.message ?: "Statement extraction failed"
+            }
+
+            if (merged.isEmpty()) {
+                val message = lastErrorMessage
+                    ?: "No transactions found. Try a clearer PDF/CSV or another model."
                 _statementUiState.value = StatementUiState.Error(message)
                 StatementNotifications.notifyExtractionFailed(app, message)
+            } else {
+                // Enrich categories via local mapping when model omitted them,
+                // and flag rows that look like transactions already in the ledger
+                // (e.g. captured earlier from SMS).
+                val enriched = merged.values.sortedByDescending { it.date }.map { row ->
+                    val withCategory = if (row.categoryName.isNullOrBlank()) {
+                        val name = repository.resolveCategoryName(row.merchant, row.type)
+                        row.copy(categoryName = name)
+                    } else {
+                        row.copy(
+                            categoryName = repository.canonicalizeCategoryName(
+                                row.categoryName,
+                                row.type
+                            )
+                        )
+                    }
+                    val existing = repository.findSimilarTransaction(
+                        amount = row.amount,
+                        type = row.type,
+                        dateIso = row.date
+                    )
+                    if (existing != null) {
+                        val sourceLabel = when (existing.source) {
+                            "sms" -> "SMS entry"
+                            "statement" -> "earlier import"
+                            else -> "manual entry"
+                        }
+                        withCategory.copy(
+                            likelyDuplicate = true,
+                            selected = false,
+                            duplicateNote = "Matches $sourceLabel" +
+                                " on ${existing.transactionDate.take(10)}"
+                        )
+                    } else {
+                        withCategory
+                    }
+                }
+                _statementUiState.value = StatementUiState.Preview(
+                    rows = enriched,
+                    chunksProcessed = chunksProcessed,
+                    filesProcessed = uris.size - failedFiles.size,
+                    failedFiles = failedFiles
+                )
+                StatementNotifications.notifyExtractionDone(
+                    app,
+                    found = enriched.size,
+                    duplicates = enriched.count { it.likelyDuplicate }
+                )
             }
         }
+    }
+
+    private fun statementFileName(uri: Uri, fileIndex: Int): String {
+        val resolved = runCatching {
+            getApplication<Application>().contentResolver
+                .query(uri, null, null, null, null)?.use { cursor ->
+                    val col = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (col >= 0 && cursor.moveToFirst()) cursor.getString(col) else null
+                }
+        }.getOrNull()
+        return resolved ?: "File ${fileIndex + 1}"
     }
 
     fun updateStatementPreview(rows: List<ExtractedTransaction>) {

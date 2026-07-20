@@ -118,15 +118,6 @@ class StatementExtractionService(
         throw lastError ?: LlmException("Extraction failed")
     }
 
-    private fun dedupeKey(tx: ExtractedTransaction): String =
-        listOf(
-            tx.date,
-            tx.amount.toString(),
-            tx.type,
-            tx.merchant.lowercase(),
-            tx.reference.orEmpty()
-        ).joinToString("|")
-
     private fun buildUserPrompt(chunk: String, part: Int, total: Int): String {
         val header = if (total > 1) {
             "This is part $part of $total of a bank/UPI statement.\n\n"
@@ -137,6 +128,15 @@ class StatementExtractionService(
     }
 
     companion object {
+        fun dedupeKey(tx: ExtractedTransaction): String =
+            listOf(
+                tx.date,
+                tx.amount.toString(),
+                tx.type,
+                tx.merchant.lowercase(),
+                tx.reference.orEmpty()
+            ).joinToString("|")
+
         private const val MAX_PARALLEL_CHUNKS = 3
         private const val MAX_ATTEMPTS = 3
         private const val RETRY_DELAY_MS = 1_500L

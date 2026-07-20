@@ -116,9 +116,9 @@ fun StatementImportScreen(
     }
 
     val picker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        uri?.let { viewModel.extractStatement(it) }
+        contract = ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris ->
+        if (uris.isNotEmpty()) viewModel.extractStatements(uris)
     }
 
     Column(
@@ -164,6 +164,8 @@ fun StatementImportScreen(
             is StatementUiState.Extracting -> ExtractingContent(
                 completed = s.completedChunks,
                 total = s.totalChunks,
+                currentFile = s.currentFile,
+                totalFiles = s.totalFiles,
                 onContinueInBackground = onBack
             )
 
@@ -193,14 +195,25 @@ fun StatementImportScreen(
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = if (s.chunksProcessed > 1) {
-                                    "Parsed from ${s.chunksProcessed} statement chunks"
-                                } else {
-                                    "Review rows, then import into an account"
+                                text = when {
+                                    s.filesProcessed > 1 ->
+                                        "Parsed from ${s.filesProcessed} files " +
+                                            "(${s.chunksProcessed} chunks)"
+                                    s.chunksProcessed > 1 ->
+                                        "Parsed from ${s.chunksProcessed} statement chunks"
+                                    else -> "Review rows, then import into an account"
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            if (s.failedFiles.isNotEmpty()) {
+                                Text(
+                                    text = "Could not read: " +
+                                        s.failedFiles.joinToString(", "),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
                             if (matchingRows.isNotEmpty()) {
                                 Text(
                                     text = "${matchingRows.size} possible " +
@@ -421,7 +434,8 @@ private fun IdleContent(
                     tint = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 Text(
-                    "Upload a bank or UPI statement (PDF, CSV, or image). Paisa sends the " +
+                    "Upload one or more bank or UPI statements (PDF, CSV, or images) — " +
+                        "select multiple files to process them together. Paisa sends the " +
                         "statement content only to the AI endpoint you configure — your API " +
                         "key never leaves the device.",
                     style = MaterialTheme.typography.bodyMedium,
@@ -490,7 +504,7 @@ private fun IdleContent(
         ) {
             Icon(Icons.Rounded.Description, contentDescription = null)
             Spacer(Modifier.width(MaterialTheme.spacing.smaller))
-            Text("Choose file")
+            Text("Choose files")
         }
     }
 }
@@ -500,6 +514,8 @@ private fun IdleContent(
 private fun ExtractingContent(
     completed: Int,
     total: Int,
+    currentFile: Int,
+    totalFiles: Int,
     onContinueInBackground: () -> Unit
 ) {
     Column(
@@ -525,7 +541,11 @@ private fun ExtractingContent(
             )
             Spacer(Modifier.height(MaterialTheme.spacing.smaller))
             Text(
-                text = "Chunk $completed of $total",
+                text = if (totalFiles > 1) {
+                    "File $currentFile of $totalFiles · chunk $completed of $total"
+                } else {
+                    "Chunk $completed of $total"
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -533,7 +553,11 @@ private fun ExtractingContent(
             LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth(0.75f))
             Spacer(Modifier.height(MaterialTheme.spacing.smaller))
             Text(
-                text = "Reading file…",
+                text = if (totalFiles > 1) {
+                    "File $currentFile of $totalFiles · reading…"
+                } else {
+                    "Reading file…"
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
