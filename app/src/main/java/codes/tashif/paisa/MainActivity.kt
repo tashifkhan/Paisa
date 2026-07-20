@@ -1,5 +1,6 @@
 package codes.tashif.paisa
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -78,6 +79,7 @@ import codes.tashif.paisa.ui.screens.TransactionDetailScreen
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.PaisaPalette
 import codes.tashif.paisa.ui.theme.PaisaTheme
+import codes.tashif.paisa.widget.WidgetDeepLink
 import codes.tashif.paisa.ui.theme.spacing
 
 class MainActivity : FragmentActivity() {
@@ -87,6 +89,7 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        handleWidgetIntent(intent)
 
         setContent {
             val settings by viewModel.settings.collectAsState()
@@ -152,6 +155,21 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    // launchMode is singleTop, so a widget tap on an already-running app arrives
+    // here rather than through onCreate.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleWidgetIntent(intent)
+    }
+
+    private fun handleWidgetIntent(intent: Intent?) {
+        viewModel.requestWidgetDestination(
+            intent?.getStringExtra(WidgetDeepLink.EXTRA_DESTINATION)
+        )
+    }
+
+
     override fun onStop() {
         super.onStop()
         // Lock when leaving the app so the next resume requires biometrics.
@@ -191,6 +209,20 @@ fun MainAppContent(viewModel: PaisaViewModel) {
     var showAbout by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val haptics = rememberHaptics()
+
+    // Widget deep links open the matching destination once, then clear so a
+    // config change or back press doesn't reopen it.
+    val widgetDestination by viewModel.pendingWidgetDestination.collectAsState()
+    LaunchedEffect(widgetDestination) {
+        when (widgetDestination) {
+            WidgetDeepLink.DEST_ADD_TRANSACTION -> showAddSheet = true
+            WidgetDeepLink.DEST_STATEMENT_IMPORT -> showStatementImport = true
+            WidgetDeepLink.DEST_SMS_SETUP -> showSmsSetup = true
+            WidgetDeepLink.DEST_ACCOUNTS -> viewModel.selectTab(3)
+            WidgetDeepLink.DEST_HOME -> viewModel.selectTab(0)
+        }
+        if (widgetDestination != null) viewModel.consumeWidgetDestination()
+    }
 
     // Full-screen secondary destinations (take priority over tabs)
     when {

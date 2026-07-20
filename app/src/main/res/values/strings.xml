@@ -12,4 +12,8 @@
     <string name="total_balance">Total balance</string>
     <string name="income">Income</string>
     <string name="expense">Expense</string>
+    <string name="widget_balance">Paisa balance</string>
+    <string name="widget_balance_description">Total balance with this month’s income and expense</string>
+    <string name="widget_quick_actions">Paisa quick actions</string>
+    <string name="widget_quick_actions_description">Add a transaction and jump to home, SMS rescan, AI import, or accounts</string>
 </resources>

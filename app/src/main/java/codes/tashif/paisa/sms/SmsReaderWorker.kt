@@ -145,6 +145,10 @@ class SmsReaderWorker(
                 "dup=${stats.duplicates} unrecognized=${stats.unrecognized}"
         )
 
+        // A widget-triggered scan runs with no ViewModel observing accounts, so
+        // refresh the home screen widgets from here once new rows are in.
+        codes.tashif.paisa.widget.PaisaWidgets.refresh(applicationContext)
+
         Result.success(progressData(stats, messages.size))
     }
 

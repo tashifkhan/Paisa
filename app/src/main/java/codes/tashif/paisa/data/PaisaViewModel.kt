@@ -108,6 +108,25 @@ class PaisaViewModel(application: Application) : AndroidViewModel(application) {
         _currentTab.value = index
     }
 
+
+    /**
+     * Destination requested by a home screen widget, held until the UI shows it.
+     *
+     * Kept in the ViewModel rather than read straight from the Intent so it
+     * survives the biometric lock screen — the widget tap still lands on the
+     * right screen after the user unlocks.
+     */
+    private val _pendingWidgetDestination = MutableStateFlow<String?>(null)
+    val pendingWidgetDestination: StateFlow<String?> = _pendingWidgetDestination.asStateFlow()
+
+    fun requestWidgetDestination(destination: String?) {
+        if (destination != null) _pendingWidgetDestination.value = destination
+    }
+
+    fun consumeWidgetDestination() {
+        _pendingWidgetDestination.value = null
+    }
+
     // --- PRIVACY: balance visibility (session) ---
     private val _balancesHidden = MutableStateFlow(true)
     val balancesHidden: StateFlow<Boolean> = _balancesHidden.asStateFlow()
@@ -333,6 +352,13 @@ class PaisaViewModel(application: Application) : AndroidViewModel(application) {
     init {
         viewModelScope.launch {
             repository.processRecurringTransactions()
+        }
+        // Keep home screen widgets in step with in-app edits; account rows carry
+        // the running balance, so this covers transaction changes too.
+        viewModelScope.launch {
+            repository.allAccounts.collect {
+                codes.tashif.paisa.widget.PaisaWidgets.refresh(getApplication())
+            }
         }
     }
 
