@@ -4,6 +4,14 @@ Your money, on your phone. Offline-first personal finance for Android.
 
 Bank SMS? Parsed on-device (~140 banks via a vendored [PennyWise](https://github.com/sarim2000/pennywiseai-tracker) `parser-core`).
 
+**Download**
+
+| | |
+| --- | --- |
+| **GitHub Release** | [Paisa v1.0.0](https://github.com/tashifkhan/Paisa/releases/tag/v1.0.0) · [APK](https://github.com/tashifkhan/Paisa/releases/download/v1.0.0/Paisa-v1.0.0.apk) |
+| **F-Droid repo** | add `https://tashif.codes/fdroid/repo` → install **Paisa** |
+| **All releases** | https://github.com/tashifkhan/Paisa/releases |
+
 ---
 
 ## Stack
