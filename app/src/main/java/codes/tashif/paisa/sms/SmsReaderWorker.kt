@@ -54,14 +54,18 @@ class SmsReaderWorker(
             Telephony.Sms.TYPE
         )
 
-        fun enqueue(context: Context, forceFull: Boolean = false) {
+        fun enqueue(
+            context: Context,
+            forceFull: Boolean = false,
+            existingWorkPolicy: ExistingWorkPolicy = ExistingWorkPolicy.REPLACE
+        ) {
             val request = OneTimeWorkRequestBuilder<SmsReaderWorker>()
                 .setInputData(workDataOf(KEY_FORCE_FULL to forceFull))
                 .addTag("sms_scan")
                 .build()
             WorkManager.getInstance(context).enqueueUniqueWork(
                 WORK_NAME,
-                ExistingWorkPolicy.REPLACE,
+                existingWorkPolicy,
                 request
             )
         }
@@ -94,7 +98,12 @@ class SmsReaderWorker(
         val processor = SmsTransactionProcessor(db)
         val settings = db.settingsDao().getSettingsDirect()
         val forceFull = inputData.getBoolean(KEY_FORCE_FULL, false)
-        val since = if (forceFull) 0L else (settings?.lastSmsScanAt ?: 0L)
+        val scanStartedAt = System.currentTimeMillis()
+        val since = SmsScanWindow.startTime(
+            lastScanAt = settings?.lastSmsScanAt ?: 0L,
+            forceFull = forceFull,
+            now = scanStartedAt
+        )
 
         val messages = readSmsMessages(since)
         val stats = SmsTransactionProcessor.ScanStats(total = messages.size)
@@ -135,7 +144,7 @@ class SmsReaderWorker(
         // Persist last scan watermark
         settings?.let {
             db.settingsDao().updateSettings(
-                it.copy(lastSmsScanAt = maxOf(newestTimestamp, System.currentTimeMillis()))
+                it.copy(lastSmsScanAt = maxOf(newestTimestamp, scanStartedAt))
             )
         }
 
