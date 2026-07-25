@@ -76,6 +76,60 @@ Stuck?
 
 ---
 
+## Release & F-Droid
+
+Releases are cut from **master** via GitHub Actions → **Release**.
+
+That workflow:
+
+1. Bumps `versionName` / `versionCode` in `app/build.gradle.kts`
+2. Builds a **signed** release APK
+3. Tags `vX.Y.Z`, publishes a GitHub Release with `Paisa-vX.Y.Z.apk` + SHA-256
+4. Optionally dispatches the F-Droid publisher on [`tashif.codes`](https://github.com/tashifkhan/tashif.codes) so the APK lands in:
+
+   ```text
+   https://tashif.codes/fdroid/repo
+   ```
+
+### Secrets (`tashifkhan/Paisa`)
+
+| Secret | Purpose |
+| --- | --- |
+| `KEYSTORE_BASE64` | base64 of the APK upload keystore (`.jks` / `.p12`) |
+| `KEYSTORE_PASSWORD` | keystore password |
+| `KEY_ALIAS` | key alias |
+| `KEY_PASSWORD` | key password |
+| `TASHIF_CODES_WORKFLOW_TOKEN` | fine-grained PAT with **Actions** write on `tashifkhan/tashif.codes` |
+
+Create an upload keystore once and **back it up** — lost keys mean users cannot update:
+
+```bash
+keytool -genkeypair \
+  -v \
+  -keystore paisa-upload.jks \
+  -storetype JKS \
+  -alias paisa \
+  -keyalg RSA \
+  -keysize 2048 \
+  -validity 10000
+
+base64 -i paisa-upload.jks | pbcopy   # → KEYSTORE_BASE64
+```
+
+### Secrets (`tashifkhan/tashif.codes`)
+
+Repo-signing key for the F-Droid **index** (separate from the APK keystore):
+
+- `FDROID_KEYSTORE_BASE64`, `FDROID_KEYSTORE_PASS`, `FDROID_KEY_ALIAS`, `FDROID_KEY_PASS`
+
+See [public/fdroid/README.md](https://github.com/tashifkhan/tashif.codes/blob/master/public/fdroid/README.md) on the site repo.
+
+### Manual F-Droid re-publish
+
+Actions → **Publish to F-Droid repo** (or run `publish-fdroid.yml` on `tashif.codes` with `source_repository=tashifkhan/Paisa`).
+
+---
+
 ## Layout
 
 ```

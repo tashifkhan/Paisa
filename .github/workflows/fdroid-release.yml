@@ -1,0 +1,46 @@
+name: Publish to F-Droid repo
+
+# Re-run or manually push an existing GitHub Release APK into
+# https://tashif.codes/fdroid/repo without rebuilding.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag that contains the APK (e.g. v1.0.1)
+        required: true
+        type: string
+      apk_pattern:
+        description: APK asset pattern on that release
+        required: true
+        default: "Paisa-v*.apk"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  trigger-website-fdroid:
+    name: Trigger tashif.codes F-Droid publish
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+      APK_PATTERN: ${{ inputs.apk_pattern }}
+      GH_TOKEN: ${{ secrets.TASHIF_CODES_WORKFLOW_TOKEN }}
+    steps:
+      - name: Validate token
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "Missing secret TASHIF_CODES_WORKFLOW_TOKEN"
+            echo "Create a fine-grained PAT with Actions: read/write on tashifkhan/tashif.codes"
+            exit 1
+          fi
+
+      - name: Trigger tashif.codes workflow
+        run: |
+          gh workflow run publish-fdroid.yml \
+            --repo tashifkhan/tashif.codes \
+            --field source_repository="${{ github.repository }}" \
+            --field release_tag="$RELEASE_TAG" \
+            --field apk_pattern="$APK_PATTERN"
+          echo "Dispatched publish-fdroid.yml for $RELEASE_TAG ($APK_PATTERN)"

@@ -1,0 +1,312 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: Version bump type (use "current" to ship the version already in build.gradle.kts)
+        required: true
+        type: choice
+        default: patch
+        options:
+          - current
+          - patch
+          - minor
+          - major
+      dry_run:
+        description: Dry run (preview only, no release)
+        required: false
+        type: boolean
+        default: false
+      publish_fdroid:
+        description: Publish APK to tashif.codes F-Droid repo
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build release APK
+    runs-on: ubuntu-latest
+    # Releases always ship from master
+    if: github.ref == 'refs/heads/master'
+
+    env:
+      TASHIF_CODES_WORKFLOW_TOKEN: ${{ secrets.TASHIF_CODES_WORKFLOW_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: temurin
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/libs.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Read current version
+        id: current_version
+        run: |
+          CURRENT_VERSION=$(grep 'versionName = ' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
+          CURRENT_CODE=$(grep 'versionCode = ' app/build.gradle.kts | sed 's/[^0-9]*//g')
+          echo "version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+          echo "code=$CURRENT_CODE" >> "$GITHUB_OUTPUT"
+          echo "Current version: $CURRENT_VERSION (code: $CURRENT_CODE)"
+
+      - name: Calculate next version
+        id: next_version
+        run: |
+          CURRENT="${{ steps.current_version.outputs.version }}"
+          CURRENT_CODE="${{ steps.current_version.outputs.code }}"
+          BUMP_TYPE="${{ inputs.version_bump }}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+          case "$BUMP_TYPE" in
+            current)
+              NEXT_VERSION="$CURRENT"
+              NEXT_CODE="$CURRENT_CODE"
+              echo "bump_gradle=false" >> "$GITHUB_OUTPUT"
+              ;;
+            major)
+              MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0
+              NEXT_VERSION="$MAJOR.$MINOR.$PATCH"
+              NEXT_CODE=$((CURRENT_CODE + 1))
+              echo "bump_gradle=true" >> "$GITHUB_OUTPUT"
+              ;;
+            minor)
+              MINOR=$((MINOR + 1)); PATCH=0
+              NEXT_VERSION="$MAJOR.$MINOR.$PATCH"
+              NEXT_CODE=$((CURRENT_CODE + 1))
+              echo "bump_gradle=true" >> "$GITHUB_OUTPUT"
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              NEXT_VERSION="$MAJOR.$MINOR.$PATCH"
+              NEXT_CODE=$((CURRENT_CODE + 1))
+              echo "bump_gradle=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unknown bump type: $BUMP_TYPE"
+              exit 1
+              ;;
+          esac
+
+          echo "version=$NEXT_VERSION" >> "$GITHUB_OUTPUT"
+          echo "code=$NEXT_CODE" >> "$GITHUB_OUTPUT"
+          echo "tag=v$NEXT_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Next version: $NEXT_VERSION (code: $NEXT_CODE) bump_gradle=${BUMP_TYPE}"
+
+      - name: Ensure tag is free
+        if: ${{ !inputs.dry_run }}
+        run: |
+          TAG_NAME="${{ steps.next_version.outputs.tag }}"
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Tag $TAG_NAME already exists locally"
+            exit 1
+          fi
+          if git ls-remote --tags origin "refs/tags/$TAG_NAME" | grep -q .; then
+            echo "Tag $TAG_NAME already exists on remote"
+            exit 1
+          fi
+          echo "Tag $TAG_NAME is available"
+
+      - name: Generate release notes
+        id: changelog
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          NEXT_VERSION="${{ steps.next_version.outputs.version }}"
+          TAG="${{ steps.next_version.outputs.tag }}"
+
+          {
+            echo "# Paisa $TAG"
+            echo ""
+            if [ -n "$LAST_TAG" ]; then
+              echo "## Changes since $LAST_TAG"
+              echo ""
+              git log "${LAST_TAG}..HEAD" --pretty=format:'- %s (%h)'
+              echo ""
+            else
+              echo "## Initial release"
+              echo ""
+              echo "First public release of Paisa — offline-first personal finance for Android."
+              echo ""
+            fi
+            echo "---"
+            echo ""
+            echo "### Install"
+            echo ""
+            echo "- **GitHub**: download the \`.apk\` attached below"
+            echo "- **F-Droid**: add \`https://tashif.codes/fdroid/repo\` then install **Paisa**"
+            echo ""
+            echo "Package: \`codes.tashif.paisa\` · versionCode \`${{ steps.next_version.outputs.code }}\`"
+          } > RELEASE_NOTES.md
+
+          cat RELEASE_NOTES.md
+
+      - name: Bump version in build.gradle.kts
+        if: ${{ !inputs.dry_run && steps.next_version.outputs.bump_gradle == 'true' }}
+        run: |
+          sed -i 's/versionName = ".*"/versionName = "${{ steps.next_version.outputs.version }}"/' app/build.gradle.kts
+          sed -i 's/versionCode = .*/versionCode = ${{ steps.next_version.outputs.code }}/' app/build.gradle.kts
+          echo "Updated version:"
+          grep -E 'version(Name|Code)' app/build.gradle.kts
+
+      - name: Decode release keystore
+        if: ${{ !inputs.dry_run }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "KEYSTORE_BASE64 secret is missing."
+            echo "Create an upload keystore and add KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD."
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "${{ github.workspace }}/release.keystore"
+          test -s "${{ github.workspace }}/release.keystore"
+          echo "Release keystore ready"
+
+      - name: Build signed release APK
+        if: ${{ !inputs.dry_run }}
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_PASSWORD"
+          test -n "$KEY_ALIAS"
+          test -n "$KEY_PASSWORD"
+
+          ./gradlew :app:assembleRelease \
+            -Pandroid.injected.signing.store.file="${{ github.workspace }}/release.keystore" \
+            -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASSWORD" \
+            --stacktrace
+
+      - name: Package APK artifacts
+        if: ${{ !inputs.dry_run }}
+        id: package
+        run: |
+          VERSION="${{ steps.next_version.outputs.version }}"
+          OUT_DIR="app/build/outputs/apk/release"
+          mkdir -p dist
+
+          # Prefer fully signed APK; fall back to unsigned only if signing was skipped
+          SRC=""
+          for candidate in \
+            "$OUT_DIR/app-release.apk" \
+            "$OUT_DIR/app-release-unsigned.apk"
+          do
+            if [ -f "$candidate" ]; then
+              SRC="$candidate"
+              break
+            fi
+          done
+
+          if [ -z "$SRC" ]; then
+            echo "No release APK found under $OUT_DIR"
+            ls -laR "$OUT_DIR" || true
+            exit 1
+          fi
+
+          APK_NAME="Paisa-v${VERSION}.apk"
+          cp "$SRC" "dist/$APK_NAME"
+          (
+            cd dist
+            sha256sum "$APK_NAME" | tee "${APK_NAME}.sha256"
+          )
+
+          echo "apk_path=dist/$APK_NAME" >> "$GITHUB_OUTPUT"
+          echo "sha_path=dist/${APK_NAME}.sha256" >> "$GITHUB_OUTPUT"
+          ls -lah dist/
+
+      - name: Commit version bump
+        if: ${{ !inputs.dry_run && steps.next_version.outputs.bump_gradle == 'true' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add app/build.gradle.kts
+          git commit -m "chore(release): bump version to ${{ steps.next_version.outputs.version }} [skip ci]"
+          git pull --rebase origin master
+          git push origin master
+
+      - name: Create and push tag
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          TAG="${{ steps.next_version.outputs.tag }}"
+          # When version was not bumped, tag the current HEAD on master
+          git pull --rebase origin master || true
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.next_version.outputs.tag }}
+          name: Paisa ${{ steps.next_version.outputs.tag }}
+          body_path: RELEASE_NOTES.md
+          files: |
+            ${{ steps.package.outputs.apk_path }}
+            ${{ steps.package.outputs.sha_path }}
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true
+
+      - name: Trigger tashif.codes F-Droid publish
+        if: ${{ !inputs.dry_run && inputs.publish_fdroid }}
+        env:
+          GH_TOKEN: ${{ env.TASHIF_CODES_WORKFLOW_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "TASHIF_CODES_WORKFLOW_TOKEN is not set — skipping F-Droid publish."
+            echo "Add a fine-grained PAT with Actions write access to tashifkhan/tashif.codes."
+            exit 0
+          fi
+          # Give GitHub a moment so the release asset is downloadable
+          sleep 10
+          gh workflow run publish-fdroid.yml \
+            --repo tashifkhan/tashif.codes \
+            --field source_repository="${{ github.repository }}" \
+            --field release_tag="${{ steps.next_version.outputs.tag }}" \
+            --field apk_pattern='Paisa-v*.apk'
+          echo "Triggered F-Droid publish for ${{ steps.next_version.outputs.tag }}"
+
+      - name: Dry run summary
+        if: ${{ inputs.dry_run }}
+        run: |
+          echo "DRY RUN — no version bump, build, tag, or release"
+          echo "Current: ${{ steps.current_version.outputs.version }} (code ${{ steps.current_version.outputs.code }})"
+          echo "Next:    ${{ steps.next_version.outputs.version }} (code ${{ steps.next_version.outputs.code }})"
+          echo "Bump:    ${{ inputs.version_bump }}"
+          echo "F-Droid: ${{ inputs.publish_fdroid }}"
+          echo ""
+          cat RELEASE_NOTES.md
+
+      - name: Clean up keystore
+        if: always()
+        run: rm -f "${{ github.workspace }}/release.keystore"
