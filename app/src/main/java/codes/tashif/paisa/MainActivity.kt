@@ -1,6 +1,8 @@
 package codes.tashif.paisa
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -54,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import codes.tashif.paisa.data.PaisaViewModel
 import codes.tashif.paisa.security.BiometricAuth
@@ -173,6 +176,9 @@ class MainActivity : FragmentActivity() {
         super.onStart()
         // Applies a lock deferred for a picker/export detour that ran too long.
         viewModel.onReturnToForeground()
+        // Catch messages delivered while the app was closed (or if the live SMS
+        // broadcast was delayed by the device). The worker deduplicates rows.
+        viewModel.scanSmsOnAppForeground()
     }
 
     override fun onStop() {
@@ -199,6 +205,7 @@ private val tabs = listOf(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MainAppContent(viewModel: PaisaViewModel) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val currentTab by viewModel.currentTab.collectAsState()
     val selectedTxId by viewModel.selectedTransactionId.collectAsState()
     val scanProgress by viewModel.smsScanProgress.collectAsState()
@@ -339,7 +346,15 @@ fun MainAppContent(viewModel: PaisaViewModel) {
                             onClick = {
                                 if (!scanProgress.isRunning) {
                                     haptics.click()
-                                    viewModel.startSmsScan()
+                                    val canReadSms = ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.READ_SMS
+                                    ) == PackageManager.PERMISSION_GRANTED
+                                    if (canReadSms) {
+                                        viewModel.startSmsScan()
+                                    } else {
+                                        showSmsSetup = true
+                                    }
                                 }
                             }
                         ) {

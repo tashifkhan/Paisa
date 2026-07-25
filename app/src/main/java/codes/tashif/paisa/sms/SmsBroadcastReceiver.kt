@@ -60,6 +60,7 @@ class SmsBroadcastReceiver : BroadcastReceiver() {
                     )
                     if (result.success && result.transactionId != null) {
                         Log.d(TAG, "Saved live SMS transaction ${result.transactionId}")
+                        codes.tashif.paisa.widget.PaisaWidgets.refresh(context.applicationContext)
                         showNotification(
                             context = context,
                             transactionId = result.transactionId,

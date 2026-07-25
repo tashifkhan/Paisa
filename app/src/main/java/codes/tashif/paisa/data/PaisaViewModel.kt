@@ -1,11 +1,15 @@
 package codes.tashif.paisa.data
 
+import android.Manifest
 import android.app.Application
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
+import androidx.work.ExistingWorkPolicy
 import androidx.work.WorkManager
 import codes.tashif.paisa.ai.AiCredentials
 import codes.tashif.paisa.ai.AiCredentialsStore
@@ -103,6 +107,7 @@ class PaisaViewModel(application: Application) : AndroidViewModel(application) {
     private val llmClient = LlmClient()
     private val statementExtraction = StatementExtractionService(llmClient)
     private val statementImport = StatementImportUseCase(repository)
+    private var lastForegroundScanRequestAt = 0L
 
     // --- NAVIGATION ---
     private val _currentTab = MutableStateFlow(0)
@@ -339,7 +344,11 @@ class PaisaViewModel(application: Application) : AndroidViewModel(application) {
     val smsScanProgress: StateFlow<SmsScanProgress> = workManager
         .getWorkInfosForUniqueWorkFlow(SmsReaderWorker.WORK_NAME)
         .map { infos ->
-            val info = infos.firstOrNull()
+            // REPLACE creates a new WorkSpec. Prefer active work so an older
+            // completed generation cannot make the home rescan button look idle.
+            val info = infos.firstOrNull {
+                it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED
+            } ?: infos.firstOrNull()
             val running = info?.state == WorkInfo.State.RUNNING ||
                 info?.state == WorkInfo.State.ENQUEUED
             val progress = info?.progress
@@ -881,8 +890,40 @@ class PaisaViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- SMS ---
     fun startSmsScan(forceFull: Boolean = false) {
-        SmsReaderWorker.enqueue(getApplication(), forceFull = forceFull)
+        val application = getApplication<Application>()
+        if (ContextCompat.checkSelfPermission(application, Manifest.permission.READ_SMS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            showSnackbar("Grant SMS permission to scan your inbox")
+            return
+        }
+        SmsReaderWorker.enqueue(application, forceFull = forceFull)
         showSnackbar(if (forceFull) "Full SMS scan started" else "SMS scan started")
+    }
+
+    /**
+     * Incrementally scans whenever the app enters the foreground. KEEP ensures
+     * this lifecycle safety scan never cancels a user-requested full rescan.
+     */
+    fun scanSmsOnAppForeground() {
+        val application = getApplication<Application>()
+        if (ContextCompat.checkSelfPermission(application, Manifest.permission.READ_SMS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) return
+
+        val now = System.currentTimeMillis()
+        if (now - lastForegroundScanRequestAt < FOREGROUND_SCAN_DEBOUNCE_MS) return
+        lastForegroundScanRequestAt = now
+
+        viewModelScope.launch {
+            val current = repository.getSettingsDirect() ?: return@launch
+            if (!current.onboardingCompleted || !current.smsScanEnabled) return@launch
+            SmsReaderWorker.enqueue(
+                context = application,
+                forceFull = false,
+                existingWorkPolicy = ExistingWorkPolicy.KEEP
+            )
+        }
     }
 
     fun cancelSmsScan() {
@@ -1198,5 +1239,6 @@ class PaisaViewModel(application: Application) : AndroidViewModel(application) {
     private companion object {
         /** How long a picker/export detour may last before we lock on return anyway. */
         const val EXTERNAL_ACTIVITY_GRACE_MS = 2 * 60 * 1000L
+        const val FOREGROUND_SCAN_DEBOUNCE_MS = 30_000L
     }
 }
