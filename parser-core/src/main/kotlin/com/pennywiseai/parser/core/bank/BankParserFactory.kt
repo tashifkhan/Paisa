@@ -20,11 +20,14 @@ object BankParserFactory {
         JuspayParser(),
         CashfreeParser(),  // Cashfree payment gateway (India) — grouped with other aggregators
         SliceParser(),
+        SuryodayBankParser(),  // Suryoday Small Finance Bank (India) — SSFBNK
         CredParser(),
         LazyPayParser(),
         UtkarshBankParser(),
         ICICIBankParser(),
         KarnatakaBankParser(),
+        SVCBankParser(),  // SVC Co-operative Bank (India) (#928)
+        TamilnadMercantileBankParser(),  // Tamilnad Mercantile Bank (India) (#917) — ahead of TTB, which used to claim any "TMB" sender
         KeralaGraminBankParser(),
         KeralaBankParser(),  // Kerala State Co-operative Bank (India) — KELBNK; distinct from Kerala Gramin (KGBANK)
         IDBIBankParser(),
@@ -53,6 +56,7 @@ object BankParserFactory {
         IndusIndBankParser(),
         AMEXBankParser(),
         OneCardParser(),
+        PluxeeBankParser(),  // Pluxee (India) — prepaid meal-benefit card (rebrand of Sodexo); PLUXEE DLT sender
         UCOBankParser(),
         AUBankParser(),
         YesBankParser(),
@@ -73,6 +77,11 @@ object BankParserFactory {
         MillenniumBimParser(),  // Millennium BIM (Mozambique)
         EverestBankParser(),  // Everest Bank (Nepal)
         BancolombiaParser(),  // Bancolombia (Colombia)
+        BancoCuscatlanParser(),  // Banco Cuscatlan (El Salvador)
+        BancoPromericaParser(),  // Banco Promerica (El Salvador) — must precede BancoAgricola: Promerica bodies
+        // mention Transfer365, and Agricola claims the shared "Transfer365" sender (it gates its own parse()
+        // on an "AGRICOLA" body marker, so a Transfer365-sender SMS from another bank falls through).
+        BancoAgricolaParser(),  // Banco Agricola (El Salvador) — senders "Agricola" and "Transfer365"
         MashreqBankParser(),  // Mashreq Bank (UAE)
         CharlesSchwabParser(),  // Charles Schwab (USA)
         NavyFederalParser(),  // Navy Federal Credit Union (USA)
@@ -99,19 +108,33 @@ object BankParserFactory {
         MixxByYasParser(),  // Mixx by Yas (Tanzania) — must precede TigoPesaParser (shares MIXXBYYAS sender; claims newer Mixx-specific formats)
         TigoPesaParser(),  // Tigo Pesa / Mixx by Yas (Tanzania)
         DiamondTrustBankParser(),  // Diamond Trust Bank (DTB) Tanzania
+        EquityBankKenyaParser(),  // Equity Bank (Kenya) (#894)
         CIBEgyptParser(),  // CIB - Commercial International Bank (Egypt)
         ArabBankParser(),  // Arab Bank (Egypt) — multi-currency card, English + Arabic SMS
+        NationalBankOfEgyptParser(),  // National Bank of Egypt / NBE (Egypt) — Arabic SMS (#762)
+        JordanIslamicBankParser(),  // Jordan Islamic Bank (Jordan) — JIB, Arabic SMS
+        IslamicInternationalArabBankParser(),  // Islamic International Arab Bank (Jordan) — ARABIISLAMI
+        BankAlEtihadParser(),  // Bank al Etihad (Jordan) — BankEtihad
+        SafwaIslamicBankParser(),  // Safwa Islamic Bank (Jordan)
+        OrangeMoneyJordanParser(),  // Orange Money (Jordan) — OrangeMoney wallet
         DhanlaxmiBankParser(),  // Dhanlaxmi Bank (India)
         DOPBankParser(),  // Department of Post (India)
         HuntingtonBankParser(),  // Huntington Bank (USA)
+        StandardCharteredNigeriaParser(),  // Standard Chartered Bank Nigeria - must precede the India/Pakistan parser (shared sender)
         StandardCharteredBankParser(),  // Standard Chartered Bank (India and Pakistan)
         EquitasBankParser(),  // Equitas Small Finance Bank (India)
         TelebirrParser(),  // Telebirr (Ethiopia)
         ZemenBankParser(),  // Zemen Bank (Ethiopia)
         DashenBankParser(),  // Dashen Bank (Ethiopia)
+        BankOfAbyssiniaParser(),  // Bank of Abyssinia (Ethiopia)
+        ZamZamBankParser(),  // ZamZam Bank (Ethiopia)
+        SiketBankParser(),  // Siket Bank (Ethiopia)
+        AwashBankParser(),  // Awash Bank (Ethiopia)
+        ApolloParser(),  // Apollo mobile wallet (Ethiopia)
         FaysalBankParser(),  // Faysal Bank (Pakistan)
         MelliBankParser(),  // Melli Bank (Iran)
         MellatBankParser(), // Mellat Bank (Iran)
+        PasargadBankParser(), // Pasargad Bank (Iran)
         ParsianBankParser(),  // Parsian Bank (Iran)
         BankinoBankParser(),  // Bankino / Middle East Bank (Iran)
         BluBankParser(),  // blu Bank (Iran)
@@ -127,8 +150,12 @@ object BankParserFactory {
         CIMBThaiParser(),  // CIMB Thai (Thailand)
         KTCCreditCardParser(),  // KTC Credit Card (Thailand)
         TBankParser(),  // T-Bank / Tinkoff (Russia)
+        DubaiFirstParser(),  // Dubai First (UAE credit cards, app notifications)
+        ChaseUKParser(),  // Chase UK (GBP, app notifications) — before the US Chase parser
         ChaseBankParser(),  // Chase Bank (USA)
+        Trading212Parser(),  // Trading 212 (app notifications)
         AlRajhiBankParser(),  // Al Rajhi Bank (Saudi Arabia)
+        BSFBankParser(),  // Banque Saudi Fransi / BSF (Saudi Arabia)
         SNBAlAhliBankParser(),  // Saudi National Bank / Al Ahli Bank (Saudi Arabia)
         STCBankParser(),  // STC Bank (Saudi Arabia)
         SabbBankParser(),  // SABB - Saudi Awwal Bank (Saudi Arabia)
@@ -142,12 +169,17 @@ object BankParserFactory {
         SampathBankParser(),  // Sampath Bank (Sri Lanka)
         NationsTrustBankParser(),  // Nations Trust Bank (Sri Lanka)
         NationalSavingsBankParser(),  // National Savings Bank / NSB (Sri Lanka)
+        NDBBankParser(),  // National Development Bank / NDB (Sri Lanka)
+        BRACBankParser(),  // BRAC Bank (Bangladesh) (#943)
         BkashParser(),  // bKash (Bangladesh) — mobile money
         AccessBankParser(),  // Access Bank (Nigeria)
         ZenithBankParser(),  // Zenith Bank (Nigeria)
         KeystoneBankParser(),  // Keystone Bank (Nigeria)
         JaizBankParser(),  // Jaiz Bank (Nigeria)
-        OpayBankParser()  // Opay (Nigeria)
+        OpayBankParser(),  // Opay (Nigeria)
+        MoniepointParser(),  // Moniepoint MFB (Nigeria)
+        GTBankParser(),  // Guaranty Trust Bank / GTBank (Nigeria)
+        VFDBankParser()  // VFD Microfinance Bank (Nigeria)
         // Add more bank parsers here as we implement them
     )
 
