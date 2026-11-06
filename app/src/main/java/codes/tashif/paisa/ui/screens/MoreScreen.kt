@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.CloudUpload
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Fingerprint
@@ -82,6 +83,7 @@ fun MoreScreen(
     onOpenMerchantMappings: () -> Unit = {},
     onOpenCategories: () -> Unit = {},
     onOpenCurrency: () -> Unit = {},
+    onOpenBackup: () -> Unit = {},
     onOpenAbout: () -> Unit = {}
 ) {
     val settings by viewModel.settings.collectAsState()
@@ -191,6 +193,15 @@ fun MoreScreen(
             SettingsSectionLabel("Data")
             SettingsGroup {
                 SettingsItem(
+                    title = "Backup",
+                    subtitle = "Google Drive, Nextcloud, or a file",
+                    icon = Icons.Rounded.CloudUpload,
+                    position = groupPositionOf(0, 2),
+                    iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    iconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    onClick = onOpenBackup
+                )
+                SettingsItem(
                     title = "Export data",
                     subtitle = when {
                         isExporting -> "Exporting…"
@@ -199,7 +210,7 @@ fun MoreScreen(
                             "${transactions.size} transaction${if (transactions.size == 1) "" else "s"} · CSV or PDF"
                     },
                     icon = Icons.Rounded.Share,
-                    position = groupPositionOf(0, 1),
+                    position = groupPositionOf(1, 2),
                     iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
                     iconContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                     onClick = {

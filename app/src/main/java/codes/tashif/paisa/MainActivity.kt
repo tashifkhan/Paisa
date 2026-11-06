@@ -69,6 +69,7 @@ import codes.tashif.paisa.ui.screens.AiSettingsScreen
 import codes.tashif.paisa.ui.screens.AnalysisScreen
 import codes.tashif.paisa.ui.screens.AppLockScreen
 import codes.tashif.paisa.ui.screens.AppearanceScreen
+import codes.tashif.paisa.ui.screens.BackupScreen
 import codes.tashif.paisa.ui.screens.BudgetsScreen
 import codes.tashif.paisa.ui.screens.CategoriesScreen
 import codes.tashif.paisa.ui.screens.CurrencyScreen
@@ -122,10 +123,19 @@ class MainActivity : FragmentActivity() {
 
                     val needsOnboarding = !settings!!.onboardingCompleted
                     val appLockOn = settings!!.biometricEnabled
+                    var restoringFromOnboarding by remember { mutableStateOf(false) }
                     when {
+                        needsOnboarding && restoringFromOnboarding -> {
+                            // A successful restore sets onboardingCompleted, which leaves this branch.
+                            BackupScreen(
+                                viewModel = viewModel,
+                                onBack = { restoringFromOnboarding = false }
+                            )
+                        }
                         needsOnboarding -> {
                             OnboardingScreen(
-                                onFinished = { viewModel.completeOnboarding() }
+                                onFinished = { viewModel.completeOnboarding() },
+                                onRestoreBackup = { restoringFromOnboarding = true }
                             )
                         }
                         appLockOn && isLocked -> {
@@ -219,6 +229,7 @@ fun MainAppContent(viewModel: PaisaViewModel) {
     var showMerchantMappings by remember { mutableStateOf(false) }
     var showCategories by remember { mutableStateOf(false) }
     var showCurrency by remember { mutableStateOf(false) }
+    var showBackup by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val haptics = rememberHaptics()
@@ -296,6 +307,13 @@ fun MainAppContent(viewModel: PaisaViewModel) {
             CurrencyScreen(
                 viewModel = viewModel,
                 onBack = { showCurrency = false }
+            )
+            return
+        }
+        showBackup -> {
+            BackupScreen(
+                viewModel = viewModel,
+                onBack = { showBackup = false }
             )
             return
         }
@@ -432,6 +450,7 @@ fun MainAppContent(viewModel: PaisaViewModel) {
                         onOpenMerchantMappings = { showMerchantMappings = true },
                         onOpenCategories = { showCategories = true },
                         onOpenCurrency = { showCurrency = true },
+                        onOpenBackup = { showBackup = true },
                         onOpenAbout = { showAbout = true }
                     )
                 }
