@@ -75,6 +75,8 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.androidx.security.crypto)
     implementation(libs.pdfbox.android)
+    // Google Drive backup sign-in (AuthorizationClient)
+    implementation(libs.play.services.auth)
 
     testImplementation(libs.androidx.compose.ui.test.junit4)
     testImplementation(libs.androidx.core)
@@ -83,6 +85,8 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     // Real org.json for JVM unit tests (Android stubs throw at runtime)
     testImplementation("org.json:json:20240303")
+    // Real SQLite + android.util for the backup archive round-trip test
+    testImplementation("org.robolectric:robolectric:4.16")
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)

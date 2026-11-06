@@ -89,7 +89,8 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun OnboardingScreen(
-    onFinished: () -> Unit
+    onFinished: () -> Unit,
+    onRestoreBackup: (() -> Unit)? = null
 ) {
     val pages = onboardingPages
     val pagerState = rememberPagerState(pageCount = { pages.size })
@@ -145,6 +146,19 @@ fun OnboardingScreen(
                         )
                     }
                     Spacer(Modifier.weight(1f))
+                    if (onRestoreBackup != null && pagerState.currentPage == 0) {
+                        TextButton(
+                            onClick = {
+                                haptics.click()
+                                onRestoreBackup()
+                            }
+                        ) {
+                            Text(
+                                text = "Restore backup",
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
+                    }
                     if (!isLast) {
                         TextButton(
                             onClick = {

@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Android Auto Backup, API 23–30. Keys and passwords never leave the device. -->
 <full-backup-content>
-    <!-- Customize auto-backup includes/excludes as needed. -->
+    <exclude domain="sharedpref" path="paisa_ai_credentials.xml" />
+    <exclude domain="sharedpref" path="paisa_ai_credentials_plain.xml" />
+    <exclude domain="sharedpref" path="paisa_backup.xml" />
+    <exclude domain="sharedpref" path="paisa_backup_plain.xml" />
 </full-backup-content>

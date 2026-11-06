@@ -19,7 +19,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         UnrecognizedSms::class,
         MerchantMapping::class
     ],
-    version = 9,
+    version = AppDatabase.SCHEMA_VERSION,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -34,6 +34,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun merchantMappingDao(): MerchantMappingDao
 
     companion object {
+        /** Bump with every migration. Backups made on a newer schema are refused. */
+        const val SCHEMA_VERSION = 9
+
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
