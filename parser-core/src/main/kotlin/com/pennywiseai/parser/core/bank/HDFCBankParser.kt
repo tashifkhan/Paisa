@@ -37,6 +37,21 @@ class HDFCBankParser : BaseIndianBankParser() {
     }
 
     override fun extractMerchant(message: String, sender: String): String? {
+        // Reversal/refund format: "... By AMAZON        000 On 2026-08-21:..." —
+        // HDFC right-pads the merchant name with spaces before a trailing code,
+        // so capture up to that run of spaces (or " On "). (#698)
+        if (message.contains("reversed", ignoreCase = true) ||
+            message.contains("reversal", ignoreCase = true)
+        ) {
+            Regex("""\bBy\s+(.+?)(?:\s{2,}|\s+On\s)""", RegexOption.IGNORE_CASE)
+                .find(message)?.let { match ->
+                    val merchant = cleanMerchantName(match.groupValues[1].trim())
+                    if (merchant.isNotEmpty()) {
+                        return merchant
+                    }
+                }
+        }
+
         // Check for HDFC Bank Card debit transactions - "Spent Rs.xxx From HDFC Bank Card xxxx At [MERCHANT] On xxx"
         if (message.contains("From HDFC Bank Card", ignoreCase = true) &&
             message.contains(" At ", ignoreCase = true) &&
@@ -120,6 +135,16 @@ class HDFCBankParser : BaseIndianBankParser() {
                     return cleanMerchantName(cleanedMerchant)
                 }
             }
+        }
+
+        if (message.contains("NetBanking", ignoreCase = true)) {
+            Regex("""to\s+(.+?)\s+via\s+HDFC\s+Bank\s+NetBanking""", RegexOption.IGNORE_CASE)
+                .find(message)?.let { match ->
+                    val merchant = cleanMerchantName(match.groupValues[1].trim())
+                    if (merchant.isNotEmpty()) {
+                        return merchant
+                    }
+                }
         }
 
         // Try HDFC specific patterns
@@ -268,6 +293,12 @@ class HDFCBankParser : BaseIndianBankParser() {
         return super.extractMerchant(message, sender)
     }
 
+    // The BLOCK instruction names the card type, so it marks a card even when the
+    // body only says "used on HDFC Bank PIXEL Card" (no "credit card" wording).
+    override fun detectIsCard(message: String): Boolean =
+        Regex("""\bblock\s?(?:p?cc|dc)\b""", RegexOption.IGNORE_CASE).containsMatchIn(message) ||
+            super.detectIsCard(message)
+
     override fun extractTransactionType(message: String): TransactionType? {
         val lowerMessage = message.lowercase()
 
@@ -277,9 +308,20 @@ class HDFCBankParser : BaseIndianBankParser() {
         }
 
         return when {
+            // Reversals return money to the account — on a credit card this pays
+            // down the outstanding balance (INCOME semantics in BalanceCalculator),
+            // so classify it before the debit/expense keywords below. (#698)
+            lowerMessage.contains("reversed") || lowerMessage.contains("reversal") -> TransactionType.INCOME
+
             // Credit card transactions - ONLY if message contains CC or PCC indicators
-            // Any transaction with BLOCK CC or BLOCK PCC is a credit card transaction
-            lowerMessage.contains("block cc") || lowerMessage.contains("block pcc") -> TransactionType.CREDIT
+            // Any transaction with BLOCK CC or BLOCK PCC is a credit card transaction.
+            // The space is optional: PIXEL cards write "SMS BLOCKPCC 1234".
+            Regex("""\bblock\s?p?cc\b""").containsMatchIn(lowerMessage) -> TransactionType.CREDIT
+
+            // "INR X deposited in HDFC Bank A/c … for Interest paid till …" — money in.
+            // Checked before the expense keywords: the narration's "paid" would
+            // otherwise make an interest credit an expense.
+            lowerMessage.contains("deposited in") -> TransactionType.INCOME
 
             // Legacy pattern for older format that explicitly says "spent on card"
             lowerMessage.contains("spent on card") && !lowerMessage.contains("block dc") -> TransactionType.CREDIT
@@ -287,6 +329,8 @@ class HDFCBankParser : BaseIndianBankParser() {
             // Credit card bill payments (these are regular expenses from bank account)
             lowerMessage.contains("payment") && lowerMessage.contains("credit card") -> TransactionType.EXPENSE
             lowerMessage.contains("towards") && lowerMessage.contains("credit card") -> TransactionType.EXPENSE
+
+            lowerMessage.contains("payment successful") -> TransactionType.EXPENSE
 
             // HDFC specific: "Sent Rs.X From HDFC Bank"
             lowerMessage.contains("sent") && lowerMessage.contains("from hdfc") -> TransactionType.EXPENSE
@@ -353,8 +397,9 @@ class HDFCBankParser : BaseIndianBankParser() {
             return match.groupValues[1]
         }
 
-        // Pattern for "BLOCK DC ####" format — already exactly 4 digits
-        val blockDCPattern = Regex("""BLOCK\s+DC\s+(\d{4})""", RegexOption.IGNORE_CASE)
+        // "BLOCK DC ####" / "BLOCK CC ####" / "BLOCKPCC ####" — the card's last 4.
+        // PIXEL credit cards only name the card here ("SMS BLOCKPCC 1234").
+        val blockDCPattern = Regex("""BLOCK\s*(?:DC|P?CC)\s+(\d{4})\b""", RegexOption.IGNORE_CASE)
         blockDCPattern.find(message)?.let { match ->
             return match.groupValues[1]
         }
@@ -490,15 +535,9 @@ class HDFCBankParser : BaseIndianBankParser() {
             return false
         }
 
-        // Skip OTP and promotional messages
-        if (lowerMessage.contains("otp") ||
-            lowerMessage.contains("one time password") ||
-            lowerMessage.contains("verification code") ||
-            lowerMessage.contains("offer") ||
-            lowerMessage.contains("discount") ||
-            lowerMessage.contains("cashback offer") ||
-            lowerMessage.contains("win ")
-        ) {
+        // Shared skip-list (OTP, promos, payment requests, reminders, IPO
+        // blocking, e-vouchers). This used to be a local copy that drifted.
+        if (isNonTransactionMessage(message)) {
             return false
         }
 
@@ -509,7 +548,11 @@ class HDFCBankParser : BaseIndianBankParser() {
             "sent", // HDFC uses "Sent Rs.X From HDFC Bank"
             "deducted", // Add support for "deducted from" pattern
             "txn", // HDFC uses "Txn Rs.X" for card transactions
-            "refund" // "Refund initiated: Amt: Rs.X on HDFC Bank Credit Card ####"
+            "used on", // PIXEL credit card: "Rs X used on HDFC Bank PIXEL Card at M on …"
+            "refund", // "Refund initiated: Amt: Rs.X on HDFC Bank Credit Card ####"
+            "reversed", // "Transaction Reversed!On HDFC Bank CREDIT Card ####" (#698)
+            "reversal",
+            "payment successful"
         )
 
         return hdfcTransactionKeywords.any { lowerMessage.contains(it) }
