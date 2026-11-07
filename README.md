@@ -1,215 +1,95 @@
 # Paisa
 
-Your money, on your phone. Offline-first personal finance for Android.
+an expense manager that lives on your phone and stays there. no account, no cloud you didn't pick, no "upgrade to premium" popup every third tap.
 
-Bank SMS? Parsed on-device (~140 banks via a vendored [PennyWise](https://github.com/sarim2000/pennywiseai-tracker) `parser-core`).
+it reads your bank sms on the device, turns them into transactions, and leaves the rest of your inbox alone. around 140 indian banks are covered, thanks to the parsers from [PennyWise](https://github.com/sarim2000/pennywiseai-tracker).
 
-**Download**
+android only for now. a web version is [planned](#roadmap).
 
-| | |
-| --- | --- |
-| **GitHub Release** | [Paisa v1.0.0](https://github.com/tashifkhan/Paisa/releases/tag/v1.0.0) · [APK](https://github.com/tashifkhan/Paisa/releases/download/v1.0.0/Paisa-v1.0.0.apk) |
-| **F-Droid repo** | add `https://tashif.codes/fdroid/repo` → install **Paisa** |
-| **All releases** | https://github.com/tashifkhan/Paisa/releases |
+## get it
 
----
+- **f-droid:** add `https://tashif.codes/fdroid/repo?fingerprint=568557c435bdf555725de95de596a90d6fa964d4bf0b71874f254cd0be7e94c9` in Settings → Repositories, refresh, install Paisa. the fingerprint lets f-droid check the repo is really mine
+- **apk:** grab it from the [latest release](https://github.com/tashifkhan/Paisa/releases/latest). each apk ships with a `.sha256` next to it if you like checking things
 
-## Stack
+## what it does
 
-| | |
-| --- | --- |
-| UI | Jetpack Compose, Material 3 |
-| Shape | `:app` + `:parser-core`, ViewModel + Repository |
-| Storage | Room (SQLite), stays on the device |
-| SMS | bulk scan + live receiver, hash dedup |
-| Optional AI | BYOK statement import (OpenAI-compat / Gemini / Anthropic) |
-| Language | Kotlin · min SDK 24 · target 35 |
+- **sms import.** a bulk scan of your inbox, plus a live receiver that catches new bank alerts as they land. every message is hashed, so rescans don't double count, and a deleted transaction stays deleted
+- **categories that learn.** your own merchant rules go first, then a keyword map, then "Others". fix a merchant once and it sticks
+- **records, analytics and budgets.** search, filters, charts by date range, and monthly caps per category
+- **accounts.** wallets and bank accounts you can reorder, merge, set a default on, or correct the balance of by hand when the bank and the app disagree
+- **backups** to google drive, nextcloud or a `.paisa` file. set a password and the file is AES-256-GCM encrypted before it goes anywhere
+- **ai statement import, if you want it.** bring your own key (openai compatible, gemini or anthropic), then feed it pdf, csv or image statements, several at once. duplicates across files get dropped
+- **app lock** with biometrics or your screen lock
+- **export** to csv or pdf
+- **home screen widgets** for your balance and quick actions
+- **material 3 themes** with a few palettes to pick from
 
-## What’s in the box
+## the privacy bit
 
-- **Home** — balance, filters, recent txs  
-- **Analytics** — charts that actually chart something  
-- **Budgets** — monthly caps by category  
-- **Accounts** — wallets / banks (reorder, default, merge)  
-- **More** — SMS import, AI statements, themes, merchant rules, app lock  
+sms never leave the phone. the database is plain room/sqlite on the device. the only things that go anywhere are the ones you send yourself: a statement to an ai endpoint you configured, or a backup to the place you chose. ai keys live in EncryptedSharedPreferences.
 
-Plus onboarding, transaction detail, and a FAB that means “I spent money, log it.”
+## how sms become transactions
 
-### How SMS lands in the ledger
+1. **More → SMS import**, grant read and receive sms
+2. the bulk scan walks the inbox through `BankParserFactory` and dedups by hash
+3. the live receiver handles new alerts, and the app does a quick incremental rescan whenever you open it, in case android delivered something late
+4. messages that look financial but that no parser claims go to `unrecognized_sms` instead of vanishing
 
-1. **More → SMS import** → grant Read/Receive SMS
-2. Bulk scan walks the inbox through `BankParserFactory`, dedups by hash  
-3. Live receiver catches new bank alerts as they arrive  
-4. Weird financial-looking SMS that no parser claims go to `unrecognized_sms`  
-5. Soft-delete keeps the hash so a rescan won’t resurrect deleted rows  
+## run it
 
-Categories on import: learned **merchant rules** first → keyword map → **Others**.
-
-### Optional: AI statement import
-
-SMS never leaves the phone. For PDF/CSV/image statements you *can* paste your own API key (**More → AI provider**) and import via **More → Import statement**. Keys live in EncryptedSharedPreferences; only what you send to *your* endpoint leaves the device.
-
----
-
-## How to run
-
-Need **JDK 17**, Android Studio (or CLI + SDK), and for SMS a **physical phone**.
+you need jdk 17, the android sdk, and a real phone if you want to test sms (emulators have very boring inboxes).
 
 ```bash
-git clone <your-repo-url> Paisa
+git clone https://github.com/tashifkhan/Paisa
 cd Paisa
 
-# once — Studio also writes this when you open the project
+# android studio writes this for you when you open the project
 echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties   # macOS
 # echo "sdk.dir=$HOME/Android/Sdk" > local.properties         # Linux
 
 ./gradlew :app:installDebug
-# adb shell am start -n codes.tashif.paisa/.MainActivity
 ```
 
-Or open the **repo root** in Android Studio → run **`app`**.
+or open the repo root in android studio and run `app`.
 
-Stuck?
+when it breaks:
 
-- `SDK location not found` → `local.properties` with `sdk.dir=...`  
-- Gradle hates your JDK → set Gradle JDK to 17 in Studio  
-- Signature clash → `adb uninstall codes.tashif.paisa`  
-- SMS does nothing → Permissions → SMS, and use a real inbox  
+- `SDK location not found`: you skipped the `local.properties` step
+- gradle hates your jdk: set the gradle jdk to 17 in studio
+- signature clash on install: `adb uninstall codes.tashif.paisa`
+- sms import does nothing: check Permissions → SMS, and use a phone with actual bank messages
 
-```bash
-./gradlew :app:assembleDebug
-./gradlew :parser-core:compileKotlin
-./gradlew clean
-```
+## where stuff lives
 
----
-
-## Release & F-Droid
-
-Releases are cut from **master** via GitHub Actions → **Release**.
-
-That workflow:
-
-1. Bumps `versionName` / `versionCode` in `app/build.gradle.kts`
-2. Builds a **signed** release APK
-3. Tags `vX.Y.Z`, publishes a GitHub Release with `Paisa-vX.Y.Z.apk` + SHA-256
-4. Optionally dispatches the F-Droid publisher on [`tashif.codes`](https://github.com/tashifkhan/tashif.codes) so the APK lands in:
-
-   ```text
-   https://tashif.codes/fdroid/repo
-   ```
-
-### Secrets (`tashifkhan/Paisa`)
-
-| Secret | Purpose |
-| --- | --- |
-| `KEYSTORE_BASE64` | base64 of the APK upload keystore (`.jks` / `.p12`) |
-| `KEYSTORE_PASSWORD` | keystore password |
-| `KEY_ALIAS` | key alias |
-| `KEY_PASSWORD` | key password |
-| `TASHIF_CODES_WORKFLOW_TOKEN` | fine-grained PAT with **Actions** write on `tashifkhan/tashif.codes` |
-
-Create an upload keystore once and **back it up** — lost keys mean users cannot update:
-
-```bash
-keytool -genkeypair \
-  -v \
-  -keystore paisa-upload.jks \
-  -storetype JKS \
-  -alias paisa \
-  -keyalg RSA \
-  -keysize 2048 \
-  -validity 10000
-
-base64 -i paisa-upload.jks | pbcopy   # → KEYSTORE_BASE64
-```
-
-### Secrets (`tashifkhan/tashif.codes`)
-
-Repo-signing key for the F-Droid **index** (separate from the APK keystore):
-
-- `FDROID_KEYSTORE_BASE64`, `FDROID_KEYSTORE_PASS`, `FDROID_KEY_ALIAS`, `FDROID_KEY_PASS`
-
-See [public/fdroid/README.md](https://github.com/tashifkhan/tashif.codes/blob/master/public/fdroid/README.md) on the site repo.
-
-### Manual F-Droid re-publish
-
-Actions → **Publish to F-Droid repo** (or run `publish-fdroid.yml` on `tashif.codes` with `source_repository=tashifkhan/Paisa`).
-
----
-
-## Layout
-
-```
+```text
 app/src/main/java/codes/tashif/paisa/
-├── MainActivity.kt
-├── data/          # Room, repo, ViewModel
-├── sms/           # scan, live receiver, category map
-├── ai/            # BYOK statement import
-├── security/      # biometric / credential lock
-└── ui/            # theme, components, screens
-parser-core/       # bank SMS parsers (AGPL, from PennyWise)
+├── data/       room database, repository, viewmodel
+├── sms/        inbox scan, live receiver, category mapping
+├── backup/     drive, nextcloud and .paisa backups
+├── ai/         bring-your-own-key statement import
+├── widget/     home screen widgets
+├── security/   biometric lock
+└── ui/         theme, components, screens
+parser-core/    bank sms parsers, from PennyWise (AGPL)
 ```
 
----
+## roadmap
 
-## Roadmap
+- [ ] recurring transactions
+- [ ] better material 3 charts. the current ones work, they're just not pretty
+- [ ] a web app, which also means ios. no sms parsing there, because browsers can't read sms and ios won't let anyone read them anyway
 
-### Done / nearly done
+the web version won't be a rewrite in typescript. been there, not going back. the plan is kotlin multiplatform:
 
-- [x] SMS import (bulk + live + dedup)  
-- [x] BYOK AI statement import  (Your AI)
-- [x] Accounts / categories / budgets CRUD  
-- [x] Analytics charts + date filters  
-     - [ ] Umm better MD3 charts tho
-- [x] Search + transaction filters  
-- [x] App lock / biometrics  
-- [x] Export (CSV / PDF)  
-- [ ] Recurring transactions UI  
-- [ ] MAIN THING: web PWA without rewriting in JS (iOS support thus also there - but no SMS parsing coz web & also iOS is a bitch doesn't let you read SMS)
+1. **ui:** move compose to compose multiplatform and add a `wasmJs` target. android-only bits like `Context` and intents go behind `expect`/`actual`
+2. **database:** room multiplatform with a wasm sqlite driver, stored in the browser's origin private file system so it stays local and fast
+3. **pwa shell:** a manifest so it installs to the home screen, and a service worker that caches everything so it opens in airplane mode
+4. **exports:** the file system access api instead of android's file pickers
 
-### MAIN THING's plan -
+the web and ios versions get manual entry, statement import and exports. sms stays android only.
 
-Good news: we don’t need to throw Kotlin away and rebuild Paisa in TypeScript (coZ been there don't wanna go back). **Kotlin Multiplatform + Compose Multiplatform** can compile a lot of this straight to **WebAssembly** and ship it as a PWA.
+## license
 
-#### 1. Port the UI — Compose → Compose Multiplatform
+AGPL-3.0, see [LICENSE](LICENSE) and [COPYRIGHT](COPYRIGHT).
 
-Same declarative UI, different Gradle target.
-
-- Swap Android-only `androidx.compose` bits for `org.jetbrains.compose` where needed  
-- Add a KMP `wasmJs` target so the UI becomes a Wasm binary in the browser  
-- Anything Android-shaped (`Context`, Intents, Android `ViewModel` lifecycle) goes behind `expect` / `actual`  
-
-#### 2. Port the DB — Room Multiplatform + OPFS
-
-Offline-first only works if the web still has a real local store.
-
-- Room KMP (2.6+) instead of Android-only Room  
-- Web: Wasm SQLite driver, not the Android factory  
-- Persist under the browser’s **Origin Private File System (OPFS)** so SQLite stays fast and local, closer to “file on disk” than “hope localStorage is fine”  
-
-#### 3. PWA shell — installable + offline boot
-
-Once Wasm runs in a tab, wrap it like any web app:
-
-- `index.html` loads the compiled JS + Wasm  
-- `manifest.json` — name, icons, theme, `display: standalone` (home-screen install)  
-- Service worker (e.g. Workbox) caches shell + Wasm + fonts so cold start works with airplane mode on  
-
-#### 4. Exports without SAF / Intents
-
-Android file pickers don’t exist in the browser. For backups and CSV/JSON dumps, use the **File System Access API** so the user still picks where the file lands — same local-first vibe, different plumbing.
-
-*(SMS import stays Android-only, obviously. Web gets manual entry + statement import + export.)* _so does iOS_
-
----
-
-## License
-
-**AGPL-3.0** — see [LICENSE](LICENSE) and [COPYRIGHT](COPYRIGHT).
-
-```
-Copyright (c) 2026 Tashif Ahmad Khan
-```
-
-`parser-core/` comes from [PennyWise AI Tracker](https://github.com/sarim2000/pennywiseai-tracker) (also AGPL). Because that code ships with Paisa, the combined work is AGPL-3.0. If you modify and offer this as a network service, you need to give users the corresponding source.
+`parser-core/` comes from [PennyWise AI Tracker](https://github.com/sarim2000/pennywiseai-tracker), which is also AGPL, so the whole app is AGPL-3.0. if you modify paisa and run it as a network service, you have to give your users the source.
