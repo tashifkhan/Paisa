@@ -106,6 +106,33 @@ class SyncManagerTest {
     }
 
     @Test
+    fun pulledChangesRefreshOpenQueries() = runBlocking {
+        val phone = Device("phone4")
+        val tablet = Device("tablet4")
+        // Like the app: turning sync on syncs right away, so the first device's
+        // file (and salt) exists before the second joins.
+        phone.sync.enable("correct horse".toCharArray())
+        phone.sync.syncNow()
+        tablet.sync.enable("correct horse".toCharArray())
+        tablet.sync.syncNow()
+
+        // Room re-runs Flows (the transaction list, balances) only when its
+        // invalidation tracker hears about the write.
+        val invalidated = java.util.concurrent.CountDownLatch(1)
+        tablet.db.invalidationTracker.addObserver(object :
+            androidx.room.InvalidationTracker.Observer(arrayOf("transactions")) {
+            override fun onInvalidated(tables: Set<String>) = invalidated.countDown()
+        })
+        phone.add(12.0, "seen live")
+        phone.sync.syncNow()
+        tablet.sync.syncNow()
+        assertTrue(
+            "the UI would not see synced rows",
+            invalidated.await(5, java.util.concurrent.TimeUnit.SECONDS)
+        )
+    }
+
+    @Test
     fun wrongPasswordIsRejectedWhenJoining() = runBlocking {
         val phone = Device("phone2")
         phone.sync.enable("correct horse".toCharArray())

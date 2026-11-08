@@ -198,7 +198,9 @@ class SyncManager internal constructor(
         // Apply and record progress together, even if WorkManager cancels us.
         return withContext(NonCancellable) {
             val result = try {
-                SyncEngine.apply(sql, payload)
+                // Through Room, not the raw handle: Room only tells open queries
+                // (the UI, widgets) to re-run when one of its own transactions ends.
+                db.runInTransaction<SyncEngine.ApplyResult> { SyncEngine.apply(sql, payload) }
             } catch (e: SyncEngine.NewerVersionException) {
                 throw SkipDevice(e.message.orEmpty())
             }
