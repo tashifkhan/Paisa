@@ -36,7 +36,7 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         /** Bump with every migration. Backups made on a newer schema are refused. */
-        const val SCHEMA_VERSION = 10
+        const val SCHEMA_VERSION = 11
 
         @Volatile
         private var INSTANCE: AppDatabase? = null
@@ -142,6 +142,13 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE settings ADD COLUMN floatingNavBar INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE settings ADD COLUMN navBarLabels INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
         internal val MIGRATIONS: Array<Migration>
             get() = arrayOf(
                 MIGRATION_2_3,
@@ -151,7 +158,8 @@ abstract class AppDatabase : RoomDatabase() {
                 MIGRATION_6_7,
                 MIGRATION_7_8,
                 MIGRATION_8_9,
-                MIGRATION_9_10
+                MIGRATION_9_10,
+                MIGRATION_10_11
             )
 
         fun getDatabase(context: Context): AppDatabase {
