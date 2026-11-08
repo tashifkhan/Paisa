@@ -189,6 +189,8 @@ class MainActivity : FragmentActivity() {
         // Catch messages delivered while the app was closed (or if the live SMS
         // broadcast was delayed by the device). The worker deduplicates rows.
         viewModel.scanSmsOnAppForeground()
+        // Pick up what other devices changed while this one was closed.
+        codes.tashif.paisa.sync.SyncManager.requestSoon(this, delaySeconds = 1)
     }
 
     override fun onStop() {

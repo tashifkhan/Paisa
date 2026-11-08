@@ -105,6 +105,9 @@ class BackupManager(context: Context) {
                 // Fresh device: rescan the inbox. Hashes and soft deletes stop duplicates.
                 sdb.execSQL("UPDATE settings SET lastSmsScanAt = 0, onboardingCompleted = 1")
             }
+            // Everything here is new to the cloud now: re-read every device and send
+            // a full copy. Last-write-wins keeps whichever side changed a row last.
+            prefs.resetSyncProgress()
             PaisaWidgets.refresh(app)
             RestoreResult(snapshot.transactionCount, snapshot.createdAt)
         }
@@ -118,8 +121,8 @@ class BackupManager(context: Context) {
         private const val MAX_FILE_BYTES = 200 * 1024 * 1024
         private const val PERIODIC_WORK = "paisa_backup_periodic"
 
-        /** One backup or restore at a time, across the UI and WorkManager. */
-        private val lock = Mutex()
+        /** One backup, restore or sync at a time, across the UI and WorkManager. */
+        val lock = Mutex()
 
         fun schedule(context: Context, config: BackupConfig) {
             val wm = WorkManager.getInstance(context)
