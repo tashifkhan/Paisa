@@ -597,7 +597,7 @@ class PaisaViewModel(application: Application) : AndroidViewModel(application) {
         val trimmed = newName.trim()
         if (trimmed.isEmpty() || trimmed == account.name) return
         viewModelScope.launch {
-            repository.updateAccount(account.copy(name = trimmed))
+            repository.renameAccount(account.id, trimmed)
             showSnackbar("Account renamed to $trimmed")
         }
     }

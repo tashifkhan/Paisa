@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import codes.tashif.paisa.sync.SyncSchema
 
 @Database(
     entities = [
@@ -35,7 +36,7 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         /** Bump with every migration. Backups made on a newer schema are refused. */
-        const val SCHEMA_VERSION = 9
+        const val SCHEMA_VERSION = 10
 
         @Volatile
         private var INSTANCE: AppDatabase? = null
@@ -120,6 +121,39 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                for (table in SyncSchema.TABLES) {
+                    db.execSQL("ALTER TABLE `${table.name}` ADD COLUMN syncId TEXT")
+                    db.execSQL(
+                        "ALTER TABLE `${table.name}` ADD COLUMN syncStamp INTEGER NOT NULL DEFAULT 0"
+                    )
+                    db.execSQL(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS index_${table.name}_syncId " +
+                            "ON `${table.name}` (syncId)"
+                    )
+                }
+                db.execSQL("ALTER TABLE accounts ADD COLUMN balanceAnchor REAL NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE accounts ADD COLUMN balanceAnchorAt TEXT NOT NULL DEFAULT ''")
+                // Stamp 1: existing data beats a fresh install's seed rows (stamp 0)
+                // and loses to any edit made from now on.
+                SyncSchema.backfillIds(db, stamp = 1)
+                SyncSchema.deriveAnchors(db)
+            }
+        }
+
+        internal val MIGRATIONS: Array<Migration>
+            get() = arrayOf(
+                MIGRATION_2_3,
+                MIGRATION_3_4,
+                MIGRATION_4_5,
+                MIGRATION_5_6,
+                MIGRATION_6_7,
+                MIGRATION_7_8,
+                MIGRATION_8_9,
+                MIGRATION_9_10
+            )
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -127,16 +161,8 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "paisa_database"
                 )
-                    .addCallback(DatabaseCallback())
-                    .addMigrations(
-                        MIGRATION_2_3,
-                        MIGRATION_3_4,
-                        MIGRATION_4_5,
-                        MIGRATION_5_6,
-                        MIGRATION_6_7,
-                        MIGRATION_7_8,
-                        MIGRATION_8_9
-                    )
+                    .addCallback(callback)
+                    .addMigrations(*MIGRATIONS)
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                 INSTANCE = instance
@@ -144,15 +170,38 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        private class DatabaseCallback : RoomDatabase.Callback() {
+        /** Seeds a new database and keeps the sync triggers installed. Tests add it too. */
+        val callback: RoomDatabase.Callback get() = DatabaseCallback
+
+        private object DatabaseCallback : RoomDatabase.Callback() {
             override fun onCreate(db: SupportSQLiteDatabase) {
                 super.onCreate(db)
-                seedDatabase(db)
+                seed(db)
             }
 
             override fun onDestructiveMigration(db: SupportSQLiteDatabase) {
                 super.onDestructiveMigration(db)
-                seedDatabase(db)
+                seed(db)
+            }
+
+            override fun onOpen(db: SupportSQLiteDatabase) {
+                super.onOpen(db)
+                SyncSchema.install(db)
+            }
+
+            /**
+             * Seed rows get natural sync ids with stamp 0, so a second device's fresh
+             * defaults never overwrite edits the first device made to the same rows.
+             */
+            private fun seed(db: SupportSQLiteDatabase) {
+                SyncSchema.install(db)
+                SyncSchema.setApplying(db, true)
+                try {
+                    seedDatabase(db)
+                    SyncSchema.backfillIds(db, stamp = 0)
+                } finally {
+                    SyncSchema.setApplying(db, false)
+                }
             }
 
             private fun seedDatabase(db: SupportSQLiteDatabase) {

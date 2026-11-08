@@ -6,7 +6,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "accounts")
+@Entity(tableName = "accounts", indices = [Index(value = ["syncId"], unique = true)])
 data class Account(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
@@ -24,10 +24,23 @@ data class Account(
     /** Manual sort position in the accounts list (lower = first) */
     @ColumnInfo(defaultValue = "0") val orderIndex: Int = 0,
     /** Preselected account for new transactions; at most one is true */
-    @ColumnInfo(defaultValue = "0") val isDefault: Boolean = false
+    @ColumnInfo(defaultValue = "0") val isDefault: Boolean = false,
+    /**
+     * Known balance at [balanceAnchorAt]: the opening balance, a balance a bank SMS
+     * reported, or one the user typed in. [currentBalance] is this plus every
+     * transaction dated after [balanceAnchorAt], so every synced device computes
+     * the same number from the same rows.
+     */
+    @ColumnInfo(defaultValue = "0") val balanceAnchor: Double = 0.0,
+    /** ISO date-time the anchor applies to. Empty means before every transaction. */
+    @ColumnInfo(defaultValue = "''") val balanceAnchorAt: String = "",
+    /** Stable id shared by every device that syncs this row. Set by the sync triggers. */
+    val syncId: String? = null,
+    /** Last-write-wins clock for sync. Set by the sync triggers; don't write it from app code. */
+    @ColumnInfo(defaultValue = "0") val syncStamp: Long = 0
 )
 
-@Entity(tableName = "categories")
+@Entity(tableName = "categories", indices = [Index(value = ["syncId"], unique = true)])
 data class Category(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
@@ -35,7 +48,11 @@ data class Category(
     val icon: String,
     val color: String,
     val isDefault: Boolean = false,
-    val orderIndex: Int = 0
+    val orderIndex: Int = 0,
+    /** Stable id shared by every device that syncs this row. Set by the sync triggers. */
+    val syncId: String? = null,
+    /** Last-write-wins clock for sync. Set by the sync triggers; don't write it from app code. */
+    @ColumnInfo(defaultValue = "0") val syncStamp: Long = 0
 )
 
 @Entity(
@@ -58,7 +75,8 @@ data class Category(
         Index("transactionDate"),
         Index("categoryId"),
         Index("accountId"),
-        Index(value = ["transactionHash"], unique = true)
+        Index(value = ["transactionHash"], unique = true),
+        Index(value = ["syncId"], unique = true)
     ]
 )
 data class Transaction(
@@ -84,10 +102,14 @@ data class Transaction(
     val source: String = "manual", // manual | sms
     val currency: String = "INR",
     val reference: String? = null,
-    val isDeleted: Boolean = false
+    val isDeleted: Boolean = false,
+    /** Stable id shared by every device that syncs this row. Set by the sync triggers. */
+    val syncId: String? = null,
+    /** Last-write-wins clock for sync. Set by the sync triggers; don't write it from app code. */
+    @ColumnInfo(defaultValue = "0") val syncStamp: Long = 0
 )
 
-@Entity(tableName = "budgets")
+@Entity(tableName = "budgets", indices = [Index(value = ["syncId"], unique = true)])
 data class Budget(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val categoryId: Int?,
@@ -97,10 +119,14 @@ data class Budget(
     val budgetType: String = "MONTHLY",
     val startDate: Long? = null,
     val endDate: Long? = null,
-    val budgetName: String? = null
+    val budgetName: String? = null,
+    /** Stable id shared by every device that syncs this row. Set by the sync triggers. */
+    val syncId: String? = null,
+    /** Last-write-wins clock for sync. Set by the sync triggers; don't write it from app code. */
+    @ColumnInfo(defaultValue = "0") val syncStamp: Long = 0
 )
 
-@Entity(tableName = "savings_goals")
+@Entity(tableName = "savings_goals", indices = [Index(value = ["syncId"], unique = true)])
 data class SavingsGoal(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val title: String,
@@ -109,7 +135,11 @@ data class SavingsGoal(
     val targetDate: String,
     val status: String,
     val icon: String,
-    val color: String
+    val color: String,
+    /** Stable id shared by every device that syncs this row. Set by the sync triggers. */
+    val syncId: String? = null,
+    /** Last-write-wins clock for sync. Set by the sync triggers; don't write it from app code. */
+    @ColumnInfo(defaultValue = "0") val syncStamp: Long = 0
 )
 
 @Entity(
@@ -131,7 +161,8 @@ data class SavingsGoal(
     indices = [
         Index("nextExecutionDate"),
         Index("categoryId"),
-        Index("accountId")
+        Index("accountId"),
+        Index(value = ["syncId"], unique = true)
     ]
 )
 data class RecurringTransaction(
@@ -143,10 +174,14 @@ data class RecurringTransaction(
     val note: String,
     val frequency: String, // daily, weekly, monthly, yearly
     val nextExecutionDate: String,
-    val enabled: Boolean = true
+    val enabled: Boolean = true,
+    /** Stable id shared by every device that syncs this row. Set by the sync triggers. */
+    val syncId: String? = null,
+    /** Last-write-wins clock for sync. Set by the sync triggers; don't write it from app code. */
+    @ColumnInfo(defaultValue = "0") val syncStamp: Long = 0
 )
 
-@Entity(tableName = "settings")
+@Entity(tableName = "settings", indices = [Index(value = ["syncId"], unique = true)])
 data class Settings(
     @PrimaryKey val id: Int = 1,
     val themeMode: String = "system", // system, light, dark
@@ -170,7 +205,10 @@ data class Settings(
      * Fresh installs still get 0 via [AppDatabase] seed insert.
      * Kotlin default stays false for in-memory construction.
      */
-    @ColumnInfo(defaultValue = "1") val onboardingCompleted: Boolean = false
+    @ColumnInfo(defaultValue = "1") val onboardingCompleted: Boolean = false,
+    /** Sync covers only [currency]; see SyncSchema. Set by the sync triggers. */
+    val syncId: String? = null,
+    @ColumnInfo(defaultValue = "0") val syncStamp: Long = 0
 )
 
 /**
@@ -194,11 +232,15 @@ data class UnrecognizedSms(
  * User-learned merchant → category mapping (PennyWise-style).
  * Applied before built-in keyword rules when saving SMS / statement rows.
  */
-@Entity(tableName = "merchant_mappings")
+@Entity(tableName = "merchant_mappings", indices = [Index(value = ["syncId"], unique = true)])
 data class MerchantMapping(
     @PrimaryKey val merchantName: String,
     val categoryName: String,
     val categoryType: String = "expense", // income | expense
     val createdAt: String,
-    val updatedAt: String
+    val updatedAt: String,
+    /** Stable id shared by every device that syncs this row. Set by the sync triggers. */
+    val syncId: String? = null,
+    /** Last-write-wins clock for sync. Set by the sync triggers; don't write it from app code. */
+    @ColumnInfo(defaultValue = "0") val syncStamp: Long = 0
 )

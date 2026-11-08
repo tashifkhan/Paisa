@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import codes.tashif.paisa.sync.SyncSchema
 import kotlinx.coroutines.flow.Flow
 
 data class TransactionWithDetails(
@@ -73,8 +74,21 @@ interface AccountDao {
     @Update
     suspend fun updateAccount(account: Account)
 
-    @Query("UPDATE accounts SET currentBalance = :balance WHERE id = :accountId")
-    suspend fun updateCurrentBalance(accountId: Int, balance: Double)
+    @Query("UPDATE accounts SET name = :name WHERE id = :id")
+    suspend fun renameAccount(id: Int, name: String)
+
+    /** Pins the balance to [balance] as of [at]; later transactions move it from there. */
+    @Query("UPDATE accounts SET balanceAnchor = :balance, balanceAnchorAt = :at WHERE id = :accountId")
+    suspend fun setBalanceAnchor(accountId: Int, balance: Double, at: String)
+
+    @Query(SyncSchema.RECOMPUTE_BALANCES + " WHERE id = :accountId")
+    suspend fun recomputeBalance(accountId: Int)
+
+    @Query(SyncSchema.RECOMPUTE_BALANCES)
+    suspend fun recomputeAllBalances()
+
+    @Query("SELECT MAX(transactionDate) FROM transactions WHERE accountId = :accountId")
+    suspend fun getNewestTransactionDate(accountId: Int): String?
 
     @Delete
     suspend fun deleteAccount(account: Account)
@@ -96,15 +110,6 @@ interface AccountDao {
 
     @Query("UPDATE accounts SET orderIndex = :orderIndex WHERE id = :id")
     suspend fun setAccountOrder(id: Int, orderIndex: Int)
-
-    @Query(
-        """
-        SELECT balanceAfter FROM transactions
-        WHERE accountId = :accountId AND balanceAfter IS NOT NULL AND isDeleted = 0
-        ORDER BY transactionDate DESC LIMIT 1
-        """
-    )
-    suspend fun getLatestBalanceAfter(accountId: Int): Double?
 
     @Query(
         "UPDATE recurring_transactions SET accountId = :targetId WHERE accountId IN (:sourceIds)"
@@ -184,6 +189,15 @@ interface TransactionDao {
 
     @Query("SELECT * FROM transactions WHERE id = :id")
     suspend fun getRawTransactionById(id: Int): Transaction?
+
+    @Query(
+        """
+        SELECT * FROM transactions
+        WHERE accountId = :accountId AND balanceAfter IS NOT NULL AND isDeleted = 0
+        ORDER BY transactionDate DESC LIMIT 1
+        """
+    )
+    suspend fun getLatestWithBalance(accountId: Int): Transaction?
 
     @Query("SELECT * FROM transactions WHERE transactionHash = :hash LIMIT 1")
     suspend fun getTransactionByHash(hash: String): Transaction?

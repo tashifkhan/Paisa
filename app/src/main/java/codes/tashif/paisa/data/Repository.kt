@@ -75,12 +75,50 @@ class Repository(private val db: AppDatabase) {
         return merges
     }
 
-    suspend fun insertAccount(account: Account): Long = accountDao.insertAccount(account)
+    /** New accounts start anchored at their opening balance, before every transaction. */
+    suspend fun insertAccount(account: Account): Long = db.withTransaction {
+        val anchored = if (account.balanceAnchorAt.isEmpty()) {
+            account.copy(balanceAnchor = account.openingBalance)
+        } else {
+            account
+        }
+        val id = accountDao.insertAccount(anchored)
+        accountDao.recomputeBalance(id.toInt())
+        id
+    }
 
-    suspend fun updateAccount(account: Account) = accountDao.updateAccount(account)
+    /** Saves account fields. currentBalance is derived, so it's recomputed, not taken from [account]. */
+    suspend fun updateAccount(account: Account) = db.withTransaction {
+        accountDao.updateAccount(account)
+        accountDao.recomputeBalance(account.id)
+    }
 
-    suspend fun updateCurrentBalance(accountId: Int, balance: Double) =
-        accountDao.updateCurrentBalance(accountId, balance)
+    suspend fun renameAccount(accountId: Int, name: String) =
+        accountDao.renameAccount(accountId, name)
+
+    /**
+     * The user typed in what the account holds right now. Pinned after the newest
+     * transaction so future-dated entries don't move the number they just entered.
+     */
+    suspend fun updateCurrentBalance(accountId: Int, balance: Double) = db.withTransaction {
+        val newest = accountDao.getNewestTransactionDate(accountId).orEmpty()
+        val now = nowIso()
+        accountDao.setBalanceAnchor(accountId, balance, if (newest > now) newest else now)
+        accountDao.recomputeBalance(accountId)
+    }
+
+    /**
+     * A bank SMS reported [balance] as of [at]. Ignored when an earlier-dated SMS
+     * arrives late, so a rescan of old messages can't roll the balance back.
+     */
+    suspend fun applyReportedBalance(accountId: Int, balance: Double, at: String) {
+        db.withTransaction {
+            val account = accountDao.getAccountById(accountId) ?: return@withTransaction
+            if (at < account.balanceAnchorAt) return@withTransaction
+            accountDao.setBalanceAnchor(accountId, balance, at)
+            accountDao.recomputeBalance(accountId)
+        }
+    }
 
     suspend fun deleteAccount(account: Account): Boolean {
         val count = transactionDao.getTransactionCountForAccount(account.id)
@@ -106,21 +144,36 @@ class Repository(private val db: AppDatabase) {
         val sources = ids.mapNotNull { accountDao.getAccountById(it) }
         if (sources.isEmpty()) return
 
-        accountDao.reassignTransactions(ids, targetId)
-        accountDao.reassignRecurringTransactions(ids, targetId)
+        db.withTransaction {
+            accountDao.reassignTransactions(ids, targetId)
+            accountDao.reassignRecurringTransactions(ids, targetId)
 
-        val latestBalance = accountDao.getLatestBalanceAfter(targetId)
-        accountDao.updateAccount(
-            target.copy(
-                currentBalance = latestBalance ?: target.currentBalance,
-                bankName = target.bankName ?: sources.firstNotNullOfOrNull { it.bankName },
-                accountLast4 = target.accountLast4
-                    ?: sources.firstNotNullOfOrNull { it.accountLast4 },
-                creditLimit = target.creditLimit
-                    ?: sources.firstNotNullOfOrNull { it.creditLimit }
+            // Pin the merged balance: the newest SMS-reported balance if there is one,
+            // else what the target already showed. Moved transactions are duplicates
+            // of the same real account, so adding them again would double count.
+            val reported = latestReportedBalance(targetId)
+            val (anchor, at) = reported
+                ?: (target.currentBalance to accountDao.getNewestTransactionDate(targetId).orEmpty())
+            accountDao.updateAccount(
+                target.copy(
+                    balanceAnchor = anchor,
+                    balanceAnchorAt = at,
+                    bankName = target.bankName ?: sources.firstNotNullOfOrNull { it.bankName },
+                    accountLast4 = target.accountLast4
+                        ?: sources.firstNotNullOfOrNull { it.accountLast4 },
+                    creditLimit = target.creditLimit
+                        ?: sources.firstNotNullOfOrNull { it.creditLimit }
+                )
             )
-        )
-        sources.forEach { accountDao.deleteAccount(it) }
+            sources.forEach { accountDao.deleteAccount(it) }
+            accountDao.recomputeBalance(targetId)
+        }
+    }
+
+    private suspend fun latestReportedBalance(accountId: Int): Pair<Double, String>? {
+        val tx = transactionDao.getLatestWithBalance(accountId) ?: return null
+        val balance = tx.balanceAfter ?: return null
+        return balance to tx.transactionDate
     }
 
     // --- CATEGORIES ---
@@ -307,16 +360,9 @@ class Repository(private val db: AppDatabase) {
 
     suspend fun insertTransaction(transaction: Transaction): Long {
         return db.withTransaction {
-            val account = accountDao.getAccountById(transaction.accountId)
-            if (account != null) {
-                val newBalance = if (transaction.type == "income") {
-                    account.currentBalance + transaction.amount
-                } else {
-                    account.currentBalance - transaction.amount
-                }
-                accountDao.updateAccount(account.copy(currentBalance = newBalance))
-            }
-            transactionDao.insertTransaction(transaction)
+            val id = transactionDao.insertTransaction(transaction)
+            accountDao.recomputeBalance(transaction.accountId)
+            id
         }
     }
 
@@ -332,15 +378,11 @@ class Repository(private val db: AppDatabase) {
             val rowId = transactionDao.insertTransaction(transaction)
             if (rowId == -1L) return@withTransaction -1L
 
-            val account = accountDao.getAccountById(transaction.accountId)
-            if (account != null) {
-                val newBalance = when {
-                    absoluteBalance != null -> absoluteBalance
-                    transaction.type == "income" -> account.currentBalance + transaction.amount
-                    else -> account.currentBalance - transaction.amount
-                }
-                accountDao.updateAccount(account.copy(currentBalance = newBalance))
+            if (absoluteBalance != null) {
+                // The reported balance already includes this transaction.
+                applyReportedBalance(transaction.accountId, absoluteBalance, transaction.transactionDate)
             }
+            accountDao.recomputeBalance(transaction.accountId)
             rowId
         }
     }
@@ -349,28 +391,11 @@ class Repository(private val db: AppDatabase) {
         db.withTransaction {
             val oldTransaction = transactionDao.getRawTransactionById(newTransaction.id)
                 ?: return@withTransaction
-
-            val oldAccount = accountDao.getAccountById(oldTransaction.accountId)
-            if (oldAccount != null) {
-                val reverted = if (oldTransaction.type == "income") {
-                    oldAccount.currentBalance - oldTransaction.amount
-                } else {
-                    oldAccount.currentBalance + oldTransaction.amount
-                }
-                accountDao.updateAccount(oldAccount.copy(currentBalance = reverted))
-            }
-
-            val newAccount = accountDao.getAccountById(newTransaction.accountId)
-            if (newAccount != null) {
-                val applied = if (newTransaction.type == "income") {
-                    newAccount.currentBalance + newTransaction.amount
-                } else {
-                    newAccount.currentBalance - newTransaction.amount
-                }
-                accountDao.updateAccount(newAccount.copy(currentBalance = applied))
-            }
-
             transactionDao.updateTransaction(newTransaction)
+            accountDao.recomputeBalance(oldTransaction.accountId)
+            if (newTransaction.accountId != oldTransaction.accountId) {
+                accountDao.recomputeBalance(newTransaction.accountId)
+            }
         }
     }
 
@@ -378,21 +403,13 @@ class Repository(private val db: AppDatabase) {
         db.withTransaction {
             val transaction = transactionDao.getRawTransactionById(transactionId)
                 ?: return@withTransaction
-            val account = accountDao.getAccountById(transaction.accountId)
-            if (account != null && !transaction.isDeleted) {
-                val reverted = if (transaction.type == "income") {
-                    account.currentBalance - transaction.amount
-                } else {
-                    account.currentBalance + transaction.amount
-                }
-                accountDao.updateAccount(account.copy(currentBalance = reverted))
-            }
             // Soft-delete so SMS re-scan won't re-import
             if (transaction.transactionHash != null) {
                 transactionDao.softDeleteTransaction(transactionId, nowIso())
             } else {
                 transactionDao.deleteTransaction(transaction)
             }
+            accountDao.recomputeBalance(transaction.accountId)
         }
     }
 
@@ -433,6 +450,7 @@ class Repository(private val db: AppDatabase) {
         db.withTransaction {
             val nowStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
             val dueRules = recurringTransactionDao.getEnabledRecurringTransactions()
+            val touched = mutableSetOf<Int>()
             for (rule in dueRules) {
                 if (rule.nextExecutionDate > nowStr) continue
                 var execDateStr = rule.nextExecutionDate
@@ -446,24 +464,20 @@ class Repository(private val db: AppDatabase) {
                         transactionDate = "${execDateStr}T09:00:00",
                         createdAt = nowIso(),
                         updatedAt = nowIso(),
-                        source = "manual"
+                        source = "manual",
+                        // Same id on every device, so two synced phones that both run
+                        // this rule for the same day produce one transaction, not two.
+                        syncId = rule.syncId?.let { "rec:$it:$execDateStr" }
                     )
-                    val account = accountDao.getAccountById(rule.accountId)
-                    if (account != null) {
-                        val newBalance = if (rule.type == "income") {
-                            account.currentBalance + rule.amount
-                        } else {
-                            account.currentBalance - rule.amount
-                        }
-                        accountDao.updateAccount(account.copy(currentBalance = newBalance))
-                    }
                     transactionDao.insertTransaction(transaction)
+                    touched += rule.accountId
                     execDateStr = advanceDate(execDateStr, rule.frequency)
                 }
                 recurringTransactionDao.updateRecurringTransaction(
                     rule.copy(nextExecutionDate = execDateStr)
                 )
             }
+            touched.forEach { accountDao.recomputeBalance(it) }
         }
     }
 

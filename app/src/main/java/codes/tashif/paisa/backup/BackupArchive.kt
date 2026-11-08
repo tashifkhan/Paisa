@@ -10,6 +10,8 @@ import android.util.JsonWriter
 import androidx.sqlite.db.SupportSQLiteDatabase
 import codes.tashif.paisa.BuildConfig
 import codes.tashif.paisa.data.AppDatabase
+import codes.tashif.paisa.sync.SyncEngine
+import codes.tashif.paisa.sync.SyncSchema
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStreamReader
@@ -38,7 +40,8 @@ object BackupArchive {
         "recurring_transactions",
         "settings",
         "unrecognized_sms",
-        "merchant_mappings"
+        "merchant_mappings",
+        SyncSchema.TOMBSTONES
     )
 
     private val INTERNAL_TABLES = setOf("android_metadata", "sqlite_sequence", "room_master_table")
@@ -62,7 +65,7 @@ object BackupArchive {
         ).use { c ->
             while (c.moveToNext()) {
                 val name = c.getString(0)
-                if (name !in INTERNAL_TABLES) names += name
+                if (name !in INTERNAL_TABLES && name !in SyncSchema.LOCAL_ONLY_TABLES) names += name
             }
         }
         return names.sortedBy { TABLE_ORDER.indexOf(it).let { i -> if (i < 0) Int.MAX_VALUE else i } }
@@ -200,6 +203,10 @@ object BackupArchive {
      */
     fun restore(db: SupportSQLiteDatabase, snapshot: Snapshot) {
         val live = userTables(db)
+        // Keep each row's sync id and stamp as backed up. With the triggers on,
+        // the deletes below would turn into tombstones and the inserts into
+        // brand-new edits that overwrite newer changes on other devices.
+        SyncSchema.setApplying(db, true)
         db.execSQL("PRAGMA defer_foreign_keys = ON")
         for (table in live.asReversed()) db.execSQL("DELETE FROM `$table`")
         for (table in live) {
@@ -219,6 +226,13 @@ object BackupArchive {
                 throw BackupCrypto.NotABackupException("Backup has broken references (${c.getString(0)})")
             }
         }
+        if (SyncSchema.isInstalled(db)) {
+            // Backups from before sync have no sync ids or balance anchors.
+            SyncSchema.backfillIds(db, stamp = 1)
+            if (snapshot.dbVersion < 10) SyncSchema.deriveAnchors(db) else SyncSchema.recomputeBalances(db)
+            SyncEngine.clearAllOutbox(db)
+        }
+        SyncSchema.setApplying(db, false)
     }
 
     private fun putValue(cv: ContentValues, key: String, value: Any?) {

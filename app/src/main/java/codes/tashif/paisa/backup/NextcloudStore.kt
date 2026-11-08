@@ -4,6 +4,7 @@ import android.util.Xml
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import codes.tashif.paisa.sync.SyncFileNames
 import okhttp3.Credentials
 import okhttp3.FormBody
 import okhttp3.HttpUrl
@@ -39,7 +40,7 @@ class NextcloudStore(private val account: NextcloudAccount) : BackupStore {
         http.newCall(request).execute().use { res ->
             if (res.code == 404) return@withContext emptyList()
             check(res)
-            parsePropfind(res.body?.string().orEmpty())
+            parsePropfind(res.body?.string().orEmpty(), BackupNames::isBackup)
         }
     }
 
@@ -72,8 +73,50 @@ class NextcloudStore(private val account: NextcloudAccount) : BackupStore {
         }
     }
 
-    private fun ensureFolder() {
-        val request = authed(folder).method("MKCOL", null).build()
+    // Sync files live in /Paisa/sync so they don't clutter the backup list.
+
+    private val syncFolder: HttpUrl = folder.newBuilder().addPathSegment("sync").build()
+
+    override suspend fun listSync(): List<RemoteBackup> = withContext(Dispatchers.IO) {
+        val body = """<?xml version="1.0"?>
+            <d:propfind xmlns:d="DAV:"><d:prop><d:getcontentlength/></d:prop></d:propfind>"""
+        val request = authed(syncFolder)
+            .method("PROPFIND", body.toRequestBody(XML))
+            .header("Depth", "1")
+            .build()
+        http.newCall(request).execute().use { res ->
+            if (res.code == 404) return@withContext emptyList()
+            check(res)
+            parsePropfind(res.body?.string().orEmpty(), SyncFileNames::isSyncFile)
+        }
+    }
+
+    override suspend fun uploadSync(name: String, bytes: ByteArray): RemoteBackup =
+        withContext(Dispatchers.IO) {
+            ensureFolder()
+            ensureFolder(syncFolder)
+            val url = syncFolder.newBuilder().addPathSegment(name).build()
+            http.newCall(authed(url).put(bytes.toRequestBody(BINARY)).build()).execute().use { check(it) }
+            RemoteBackup(id = name, name = name, sizeBytes = bytes.size.toLong(), createdAt = 0L)
+        }
+
+    override suspend fun downloadSync(file: RemoteBackup): ByteArray = withContext(Dispatchers.IO) {
+        val url = syncFolder.newBuilder().addPathSegment(file.name).build()
+        http.newCall(authed(url).get().build()).execute().use { res ->
+            check(res)
+            res.body?.bytes() ?: throw IOException("Empty response from Nextcloud")
+        }
+    }
+
+    override suspend fun deleteSync(file: RemoteBackup) = withContext(Dispatchers.IO) {
+        val url = syncFolder.newBuilder().addPathSegment(file.name).build()
+        http.newCall(authed(url).delete().build()).execute().use { res ->
+            if (res.code != 404) check(res)
+        }
+    }
+
+    private fun ensureFolder(url: HttpUrl = folder) {
+        val request = authed(url).method("MKCOL", null).build()
         http.newCall(request).execute().use { res ->
             // 405 = already exists
             if (res.code != 405) check(res)
@@ -85,7 +128,7 @@ class NextcloudStore(private val account: NextcloudAccount) : BackupStore {
         .header("Authorization", Credentials.basic(account.loginName, account.appPassword))
         .header("User-Agent", USER_AGENT)
 
-    private fun parsePropfind(xml: String): List<RemoteBackup> {
+    private fun parsePropfind(xml: String, accept: (String) -> Boolean): List<RemoteBackup> {
         val parser = Xml.newPullParser()
         parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, true)
         parser.setInput(xml.reader())
@@ -110,7 +153,7 @@ class NextcloudStore(private val account: NextcloudAccount) : BackupStore {
                     "response" -> {
                         val name = href?.trimEnd('/')?.substringAfterLast('/')
                             ?.let { URLDecoder.decode(it, "UTF-8") }
-                        if (name != null && BackupNames.isBackup(name)) {
+                        if (name != null && accept(name)) {
                             out += RemoteBackup(
                                 id = name,
                                 name = name,

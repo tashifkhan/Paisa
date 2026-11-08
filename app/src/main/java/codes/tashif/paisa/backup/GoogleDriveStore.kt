@@ -10,7 +10,9 @@ import com.google.android.gms.common.api.Scope
 import com.google.android.gms.tasks.Tasks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import codes.tashif.paisa.sync.SyncFileNames
 import okhttp3.FormBody
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
@@ -172,6 +174,49 @@ class GoogleDriveStore(private val context: Context) : BackupStore {
             // Already gone.
         }
     }
+
+    // Sync files sit next to backups in appDataFolder, told apart by name.
+
+    override suspend fun listSync(): List<RemoteBackup> = withContext(Dispatchers.IO) {
+        val out = mutableListOf<RemoteBackup>()
+        var pageToken: String? = null
+        do {
+            val url = "$API/files".toHttpUrl().newBuilder()
+                .addQueryParameter("spaces", "appDataFolder")
+                .addQueryParameter("q", "name contains '${SyncFileNames.PREFIX}' and trashed = false")
+                .addQueryParameter("fields", "nextPageToken,files(id,name,size)")
+                .addQueryParameter("pageSize", "1000")
+                .apply { pageToken?.let { addQueryParameter("pageToken", it) } }
+                .build()
+            call { token ->
+                Request.Builder().url(url).header("Authorization", "Bearer $token").get().build()
+            }.use { res ->
+                val json = JSONObject(res.body?.string().orEmpty())
+                val files = json.optJSONArray("files")
+                if (files != null) {
+                    for (i in 0 until files.length()) {
+                        val f = files.getJSONObject(i)
+                        val name = f.optString("name")
+                        if (!SyncFileNames.isSyncFile(name)) continue
+                        out += RemoteBackup(
+                            id = f.getString("id"),
+                            name = name,
+                            sizeBytes = f.optString("size").toLongOrNull() ?: 0L,
+                            createdAt = 0L
+                        )
+                    }
+                }
+                pageToken = json.optString("nextPageToken").ifBlank { null }
+            }
+        } while (pageToken != null)
+        out
+    }
+
+    override suspend fun uploadSync(name: String, bytes: ByteArray): RemoteBackup = upload(name, bytes)
+
+    override suspend fun downloadSync(file: RemoteBackup): ByteArray = download(file)
+
+    override suspend fun deleteSync(file: RemoteBackup) = delete(file)
 
     private class RemoteMissing : IOException("Backup not found on Google Drive")
 

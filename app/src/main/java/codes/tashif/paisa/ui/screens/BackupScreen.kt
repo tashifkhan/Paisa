@@ -24,6 +24,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.CloudUpload
+import androidx.compose.material.icons.rounded.Devices
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Lock
@@ -110,6 +112,8 @@ fun BackupScreen(
     var showDisableEncryption by remember { mutableStateOf(false) }
     var showNextcloud by remember { mutableStateOf(false) }
     var showDisconnect by remember { mutableStateOf(false) }
+    var showSyncPassword by remember { mutableStateOf(false) }
+    var showDisableSync by remember { mutableStateOf(false) }
     var confirmRestore by remember { mutableStateOf<RemoteBackup?>(null) }
 
     BackHandler(onBack = onBack)
@@ -254,6 +258,61 @@ fun BackupScreen(
                     }
                 }
 
+                SettingsSectionLabel("Sync between devices")
+                SettingsGroup {
+                    val sync = config.sync
+                    val rows = if (sync.enabled) 2 else 1
+                    SettingsItem(
+                        title = "Sync between devices",
+                        subtitle = when {
+                            !connected -> "Connect Google Drive or Nextcloud first"
+                            sync.enabled && sync.error != null -> sync.error
+                            sync.enabled && sync.lastSyncAt > 0 -> "On · last synced ${formatDate(sync.lastSyncAt)}"
+                            sync.enabled -> "On"
+                            else -> "Use the same Paisa data on your phone, tablet or a second phone"
+                        },
+                        icon = Icons.Rounded.Sync,
+                        position = groupPositionOf(0, rows),
+                        iconContainerColor = if (sync.enabled) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerHigh
+                        },
+                        iconContentColor = if (sync.enabled) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        onClick = if (!connected || isBusy) null else ({
+                            if (sync.enabled) showDisableSync = true else showSyncPassword = true
+                        }),
+                        trailing = {
+                            Switch(
+                                checked = sync.enabled,
+                                enabled = connected && !isBusy,
+                                onCheckedChange = { on ->
+                                    if (on) showSyncPassword = true else showDisableSync = true
+                                }
+                            )
+                        }
+                    )
+                    if (sync.enabled) {
+                        SettingsItem(
+                            title = "Sync now",
+                            subtitle = if (sync.peers.isEmpty()) {
+                                "No other devices yet"
+                            } else {
+                                "With ${sync.peers.joinToString(", ")}"
+                            },
+                            icon = Icons.Rounded.Devices,
+                            position = groupPositionOf(1, rows),
+                            iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            iconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            onClick = if (isBusy) null else ({ backup.syncNow() })
+                        )
+                    }
+                }
+
                 SettingsSectionLabel("Automatic backups")
                 SettingsGroup {
                     SettingsItem(
@@ -369,7 +428,12 @@ fun BackupScreen(
                         "text it came from), budget, goal and merchant rule. AI keys and the " +
                         "Nextcloud password are never included. Paisa keeps the newest " +
                         "${BackupManager.KEEP} backups and deletes older ones. Restoring " +
-                        "replaces everything on this phone.",
+                        "replaces everything on this phone.\n\nSync works offline: every " +
+                        "change is saved on this device first and sent the next time there's " +
+                        "a connection. Sync files are encrypted with your sync password before " +
+                        "they're uploaded. SMS are read on each phone that has them, and the " +
+                        "same SMS on two phones counts once. Your currency follows you; " +
+                        "theme and app lock stay on each device.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small)
@@ -464,6 +528,36 @@ fun BackupScreen(
                 }) { Text("Disconnect") }
             },
             dismissButton = { TextButton(onClick = { showDisconnect = false }) { Text("Cancel") } }
+        )
+    }
+
+    if (showSyncPassword) {
+        SyncPasswordDialog(
+            onDismiss = { showSyncPassword = false },
+            onConfirm = { pw ->
+                showSyncPassword = false
+                backup.enableSync(pw)
+            }
+        )
+    }
+
+    if (showDisableSync) {
+        AlertDialog(
+            onDismissRequest = { showDisableSync = false },
+            title = { Text("Turn off sync?") },
+            text = {
+                Text(
+                    "This device stops sending and receiving changes. Your data stays " +
+                        "on this device, and your other devices keep what they have."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDisableSync = false
+                    backup.disableSync()
+                }) { Text("Turn off") }
+            },
+            dismissButton = { TextButton(onClick = { showDisableSync = false }) { Text("Cancel") } }
         )
     }
 
@@ -667,6 +761,56 @@ private fun SetPasswordDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit
 }
 
 @Composable
+private fun SyncPasswordDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var password by remember { mutableStateOf("") }
+    var confirm by remember { mutableStateOf("") }
+    val tooShort = password.length < MIN_SYNC_PASSWORD
+    val mismatch = confirm.isNotEmpty() && confirm != password
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { androidx.compose.material3.Icon(Icons.Rounded.Sync, null) },
+        title = { Text("Sync password") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)) {
+                Text(
+                    "Use the same password on every device. It encrypts your data before " +
+                        "it leaves this phone. Paisa can't reset it.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Password") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    supportingText = { Text("At least $MIN_SYNC_PASSWORD characters") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = confirm,
+                    onValueChange = { confirm = it },
+                    label = { Text("Confirm password") },
+                    singleLine = true,
+                    isError = mismatch,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    supportingText = if (mismatch) ({ Text("Passwords don't match") }) else null,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = !tooShort && confirm == password,
+                onClick = { onConfirm(password) }
+            ) { Text("Turn on") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+@Composable
 private fun EnterPasswordDialog(label: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
     var password by remember { mutableStateOf("") }
     AlertDialog(
@@ -777,3 +921,6 @@ private fun NextcloudSheet(
 }
 
 private const val MIN_PASSWORD = 6
+
+/** Longer than the backup minimum: sync files sit in the cloud indefinitely. */
+private const val MIN_SYNC_PASSWORD = 8

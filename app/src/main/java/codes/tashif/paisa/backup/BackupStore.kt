@@ -22,6 +22,12 @@ interface BackupStore {
     suspend fun upload(name: String, bytes: ByteArray): RemoteBackup
     suspend fun download(backup: RemoteBackup): ByteArray
     suspend fun delete(backup: RemoteBackup)
+
+    /** Every sync change file, from all devices. Order is not guaranteed. */
+    suspend fun listSync(): List<RemoteBackup>
+    suspend fun uploadSync(name: String, bytes: ByteArray): RemoteBackup
+    suspend fun downloadSync(file: RemoteBackup): ByteArray
+    suspend fun deleteSync(file: RemoteBackup)
 }
 
 object BackupNames {
