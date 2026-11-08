@@ -38,6 +38,18 @@ jobs:
       TASHIF_CODES_WORKFLOW_TOKEN: ${{ secrets.TASHIF_CODES_WORKFLOW_TOKEN }}
 
     steps:
+      # Fail before building or tagging. A missing token used to skip the
+      # F-Droid step with exit 0, so v1.1.0 shipped green but never reached F-Droid.
+      - name: Check F-Droid token
+        if: ${{ !inputs.dry_run && inputs.publish_fdroid }}
+        run: |
+          if [ -z "$TASHIF_CODES_WORKFLOW_TOKEN" ]; then
+            echo "::error::TASHIF_CODES_WORKFLOW_TOKEN is not set on this repo."
+            echo "Add a fine-grained PAT with Actions read/write on tashifkhan/tashif.codes,"
+            echo "or rerun with publish_fdroid unchecked."
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -287,9 +299,8 @@ jobs:
           GH_TOKEN: ${{ env.TASHIF_CODES_WORKFLOW_TOKEN }}
         run: |
           if [ -z "$GH_TOKEN" ]; then
-            echo "TASHIF_CODES_WORKFLOW_TOKEN is not set — skipping F-Droid publish."
-            echo "Add a fine-grained PAT with Actions write access to tashifkhan/tashif.codes."
-            exit 0
+            echo "::error::TASHIF_CODES_WORKFLOW_TOKEN is not set, F-Droid publish did not run."
+            exit 1
           fi
           # Give GitHub a moment so the release asset is downloadable
           sleep 10
