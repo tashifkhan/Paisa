@@ -423,7 +423,14 @@ fun MainAppContent(viewModel: PaisaViewModel) {
                         NavigationBarItem(
                             selected = currentTab == index,
                             onClick = { select(index) },
-                            icon = { Icon(tab.icon, contentDescription = null) },
+                            // A hidden label isn't composed, so name the icon or
+                            // TalkBack reads an unlabeled button.
+                            icon = {
+                                Icon(
+                                    tab.icon,
+                                    contentDescription = if (navBarLabels) null else tab.label
+                                )
+                            },
                             label = { Text(tab.label) },
                             // Off: only the selected tab is labeled.
                             alwaysShowLabel = navBarLabels
