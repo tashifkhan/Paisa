@@ -168,11 +168,15 @@ class SmsTransactionProcessor(
                 icon = "credit_card"
             )
         }
-        if (applyBalance && parsed.balance != null) {
-            updated = updated.copy(currentBalance = parsed.balance!!.toDouble())
-        }
         if (updated != account) {
             repository.updateAccount(updated)
+        }
+        if (applyBalance && parsed.balance != null) {
+            repository.applyReportedBalance(
+                accountId,
+                parsed.balance!!.toDouble(),
+                isoFromMillis(parsed.timestamp)
+            )
         }
     }
 
