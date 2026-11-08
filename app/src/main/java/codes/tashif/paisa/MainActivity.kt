@@ -37,6 +37,8 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import codes.tashif.paisa.ui.components.FloatingNavBar
+import codes.tashif.paisa.ui.components.NavTab
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
@@ -201,17 +203,12 @@ class MainActivity : FragmentActivity() {
     }
 }
 
-private data class TabItem(
-    val label: String,
-    val icon: ImageVector
-)
-
 private val tabs = listOf(
-    TabItem("Home", Icons.Rounded.Home),
-    TabItem("Analytics", Icons.Rounded.BarChart),
-    TabItem("Budgets", Icons.Rounded.DonutLarge),
-    TabItem("Accounts", Icons.Rounded.AccountBalance),
-    TabItem("More", Icons.Rounded.MoreHoriz)
+    NavTab("Home", Icons.Rounded.Home),
+    NavTab("Analytics", Icons.Rounded.BarChart),
+    NavTab("Budgets", Icons.Rounded.DonutLarge),
+    NavTab("Accounts", Icons.Rounded.AccountBalance),
+    NavTab("More", Icons.Rounded.MoreHoriz)
 )
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -221,6 +218,9 @@ fun MainAppContent(viewModel: PaisaViewModel) {
     val currentTab by viewModel.currentTab.collectAsState()
     val selectedTxId by viewModel.selectedTransactionId.collectAsState()
     val scanProgress by viewModel.smsScanProgress.collectAsState()
+    val appSettings by viewModel.settings.collectAsState()
+    val floatingNavBar = appSettings?.floatingNavBar == true
+    val navBarLabels = appSettings?.navBarLabels != false
     var showAddSheet by remember { mutableStateOf(false) }
     var showAddBudget by remember { mutableStateOf(false) }
     var showAddAccount by remember { mutableStateOf(false) }
@@ -411,17 +411,24 @@ fun MainAppContent(viewModel: PaisaViewModel) {
             }
         },
         bottomBar = {
-            NavigationBar {
-                tabs.forEachIndexed { index, tab ->
-                    NavigationBarItem(
-                        selected = currentTab == index,
-                        onClick = {
-                            if (currentTab != index) haptics.tick()
-                            viewModel.selectTab(index)
-                        },
-                        icon = { Icon(tab.icon, contentDescription = null) },
-                        label = { Text(tab.label) }
-                    )
+            val select: (Int) -> Unit = { index ->
+                if (currentTab != index) haptics.tick()
+                viewModel.selectTab(index)
+            }
+            if (floatingNavBar) {
+                FloatingNavBar(tabs = tabs, selected = currentTab, onSelect = select)
+            } else {
+                NavigationBar {
+                    tabs.forEachIndexed { index, tab ->
+                        NavigationBarItem(
+                            selected = currentTab == index,
+                            onClick = { select(index) },
+                            icon = { Icon(tab.icon, contentDescription = null) },
+                            label = { Text(tab.label) },
+                            // Off: only the selected tab is labeled.
+                            alwaysShowLabel = navBarLabels
+                        )
+                    }
                 }
             }
         }
