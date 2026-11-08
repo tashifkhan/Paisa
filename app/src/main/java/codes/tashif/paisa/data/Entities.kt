@@ -206,6 +206,10 @@ data class Settings(
      * Kotlin default stays false for in-memory construction.
      */
     @ColumnInfo(defaultValue = "1") val onboardingCompleted: Boolean = false,
+    /** Pill-shaped bottom bar floating above the screen edge instead of the docked one. */
+    @ColumnInfo(defaultValue = "0") val floatingNavBar: Boolean = false,
+    /** Docked bar only: label every tab, not just the selected one. */
+    @ColumnInfo(defaultValue = "1") val navBarLabels: Boolean = true,
     /** Sync covers only [currency]; see SyncSchema. Set by the sync triggers. */
     val syncId: String? = null,
     @ColumnInfo(defaultValue = "0") val syncStamp: Long = 0

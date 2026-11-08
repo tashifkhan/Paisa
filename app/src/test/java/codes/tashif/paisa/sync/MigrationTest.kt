@@ -38,7 +38,7 @@ class MigrationTest {
         )
         // No DROP COLUMN before SQLite 3.35, so recreate each (still empty) table
         // from its own CREATE statement minus the version 10 columns.
-        val added = Regex(""",\s*`(syncId|syncStamp|balanceAnchor|balanceAnchorAt)`[^,)]*""")
+        val added = Regex(""",\s*`(syncId|syncStamp|balanceAnchor|balanceAnchorAt|floatingNavBar|navBarLabels)`[^,)]*""")
         for (table in SyncSchema.TABLE_NAMES) {
             val create = raw.rawQuery("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", arrayOf(table))
                 .use { it.moveToFirst(); it.getString(0) }
@@ -92,6 +92,9 @@ class MigrationTest {
         assertEquals("sms:h1", syncId("SELECT syncId FROM transactions WHERE id = 2"))
         assertEquals("settings", syncId("SELECT syncId FROM settings WHERE id = 1"))
         assertEquals("$", syncId("SELECT currency FROM settings WHERE id = 1"))
+        // 10 to 11: navbar settings default to today's docked, labeled bar.
+        assertEquals("0", syncId("SELECT floatingNavBar FROM settings WHERE id = 1"))
+        assertEquals("1", syncId("SELECT navBarLabels FROM settings WHERE id = 1"))
         assertEquals(0, sql.query("SELECT COUNT(*) FROM transactions WHERE syncId IS NULL").use { it.moveToFirst(); it.getInt(0) })
 
         // Existing data isn't queued as fresh edits; the first sync sends a full copy anyway.
