@@ -1,5 +1,11 @@
 package codes.tashif.paisa.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+
+import androidx.compose.material.icons.automirrored.rounded.Label
+
+import androidx.compose.material.icons.rounded.CallToAction
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -278,6 +284,44 @@ fun AppearanceScreen(
                 viewModel.updateSettings(current.copy(highContrast = it))
             }
         )
+
+        Spacer(Modifier.height(MaterialTheme.spacing.small))
+        Text(
+            text = "Navigation bar",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(
+                start = MaterialTheme.spacing.extraSmall,
+                bottom = MaterialTheme.spacing.smaller
+            )
+        )
+        ToggleCard(
+            icon = Icons.Rounded.CallToAction,
+            title = "Floating navbar",
+            subtitle = "Pill-shaped bar that floats above the bottom edge",
+            checked = current.floatingNavBar,
+            onCheckedChange = {
+                haptics.toggle(on = it)
+                viewModel.updateSettings(current.copy(floatingNavBar = it))
+            }
+        )
+        // The floating bar always labels just the selected tab.
+        AnimatedVisibility(visible = !current.floatingNavBar) {
+            Column {
+                Spacer(Modifier.height(MaterialTheme.spacing.smaller))
+                ToggleCard(
+                    icon = Icons.AutoMirrored.Rounded.Label,
+                    title = "Navbar labels",
+                    subtitle = "Show a label under every tab, not just the selected one",
+                    checked = current.navBarLabels,
+                    onCheckedChange = {
+                        haptics.toggle(on = it)
+                        viewModel.updateSettings(current.copy(navBarLabels = it))
+                    }
+                )
+            }
+        }
         }
     }
 }
