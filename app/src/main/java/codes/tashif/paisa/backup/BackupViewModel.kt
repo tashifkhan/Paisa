@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import codes.tashif.paisa.sync.SyncManager
 import java.io.IOException
 import java.text.DateFormat
 import java.util.Date
@@ -175,6 +176,8 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
         manager.prefs.disconnect()
+        SyncManager.invalidateCache()
+        SyncManager.schedule(getApplication())
         reload()
         manager.schedule()
         _remote.value = emptyList()
@@ -208,6 +211,39 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
         reload()
         say("Encryption off. New backups won't need a password.")
     }
+
+    // --- Sync ---
+
+    private val sync = SyncManager(application)
+
+    fun enableSync(password: String) = run("Turning on sync…") {
+        sync.enable(password.toCharArray())
+        reload()
+        _busy.value = "Syncing…"
+        val report = sync.syncNow()
+        say(
+            if (report.devices == 0) "Sync is on. Turn it on with the same password on your other devices."
+            else "Sync is on. Got ${plural(report.received, "change")} from ${plural(report.devices, "device")}."
+        )
+    }
+
+    fun disableSync() {
+        sync.disable()
+        reload()
+        say("Sync is off. Data on this device and in the cloud stays.")
+    }
+
+    fun syncNow() = run("Syncing…") {
+        val report = sync.syncNow()
+        say(
+            when {
+                report.received == 0 && report.sent == 0 -> "Already up to date"
+                else -> "Sent ${plural(report.sent, "change")}, got ${plural(report.received, "change")}"
+            }
+        )
+    }
+
+    private fun plural(n: Int, word: String) = "$n $word" + if (n == 1) "" else "s"
 
     // --- Backup / restore ---
 
