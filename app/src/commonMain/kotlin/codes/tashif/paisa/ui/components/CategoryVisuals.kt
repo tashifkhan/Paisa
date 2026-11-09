@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.components
 
+import codes.tashif.paisa.ui.platform.parseColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
@@ -132,7 +133,7 @@ object CategoryVisuals {
 
     fun color(hex: String?): Color? =
         hex?.let {
-            runCatching { Color(android.graphics.Color.parseColor(it)) }.getOrNull()
+            runCatching { parseColor(it) }.getOrNull()
         }
 }
 

@@ -35,3 +35,6 @@ actual fun formatFixed(value: Double, decimals: Int, machine: Boolean): String =
 actual fun formatInteger(value: Long): String = NumberFormat.getIntegerInstance().format(value)
 
 actual fun localeFirstDayOfWeek(): Int = Calendar.getInstance().firstDayOfWeek
+
+actual fun formatGrouped(value: Double, decimals: Int): String =
+    String.format(Locale.getDefault(), "%,.${decimals}f", value)

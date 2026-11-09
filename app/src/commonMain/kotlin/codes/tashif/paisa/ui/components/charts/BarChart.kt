@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.components.charts
 
+import codes.tashif.paisa.platform.formatFixed
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -34,7 +35,7 @@ fun BarChart(
     modifier: Modifier = Modifier,
     barColor: Color = MaterialTheme.colorScheme.primary,
     highlightEvery: Int = 5,
-    formatValue: (Double) -> String = { "%.0f".format(it) },
+    formatValue: (Double) -> String = { formatFixed(it, 0) },
     tooltipLabel: (ChartEntry) -> String = { it.label },
     supportingLabel: (ChartEntry) -> String = { if (it.value > 0) "Daily spend" else "No spend" }
 ) {

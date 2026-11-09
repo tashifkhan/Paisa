@@ -1,16 +1,13 @@
 package codes.tashif.paisa.ui.theme
 
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MotionScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import codes.tashif.paisa.ui.platform.dynamicColorScheme
 
 /**
  * App theme wrapper.
@@ -29,15 +26,8 @@ fun PaisaTheme(
     highContrast: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val context = LocalContext.current
-    val baseScheme = if (
-        palette == PaisaPalette.Dynamic &&
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-    ) {
-        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-    } else {
-        palette.colorScheme(darkTheme)
-    }
+    val dynamic = if (palette == PaisaPalette.Dynamic) dynamicColorScheme(darkTheme) else null
+    val baseScheme = dynamic ?: palette.colorScheme(darkTheme)
     val colorScheme = baseScheme
         .let { if (darkTheme && amoledDark) it.toAmoled() else it }
         .let { if (highContrast) it.withHighContrast(darkTheme) else it }

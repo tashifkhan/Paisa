@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.components.charts
 
+import codes.tashif.paisa.platform.formatFixed
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Column
@@ -37,7 +38,7 @@ fun GroupedBarChart(
     modifier: Modifier = Modifier,
     nameA: String = "A",
     nameB: String = "B",
-    formatValue: (Double) -> String = { "%.0f".format(it) }
+    formatValue: (Double) -> String = { formatFixed(it, 0) }
 ) {
     if (labels.isEmpty()) return
     val maxValue = (seriesA + seriesB).maxOrNull()?.takeIf { it > 0 } ?: return

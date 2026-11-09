@@ -29,3 +29,9 @@ expect fun formatInteger(value: Long): String
 
 /** The locale's first day of the week, PaisaCalendar.SUNDAY to SATURDAY. */
 expect fun localeFirstDayOfWeek(): Int
+
+/** `"%,.Nf".format(value)`: grouped digits with [decimals] places, in the device's locale. */
+expect fun formatGrouped(value: Double, decimals: Int): String
+
+/** `Math.toDegrees`. */
+fun radiansToDegrees(radians: Double): Double = radians * 180.0 / kotlin.math.PI

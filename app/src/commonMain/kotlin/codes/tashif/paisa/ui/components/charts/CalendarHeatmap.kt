@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.components.charts
 
+import codes.tashif.paisa.platform.formatFixed
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,7 +36,7 @@ fun CalendarHeatmap(
     firstDayOffset: Int,
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colorScheme.primary,
-    formatValue: (Double) -> String = { "%.0f".format(it) },
+    formatValue: (Double) -> String = { formatFixed(it, 0) },
     dayLabel: (Int) -> String = { "Day $it" }
 ) {
     if (values.isEmpty()) return

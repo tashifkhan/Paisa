@@ -139,3 +139,12 @@ actual fun formatInteger(value: Long): String {
 }
 
 actual fun localeFirstDayOfWeek(): Int = PaisaCalendar.SUNDAY
+
+actual fun formatGrouped(value: Double, decimals: Int): String {
+    val fixed = formatFixed(kotlin.math.abs(value), decimals)
+    val whole = fixed.substringBefore('.')
+    val frac = fixed.substringAfter('.', "")
+    val grouped = whole.reversed().chunked(3).joinToString(",").reversed()
+    val sign = if (value < 0 && fixed.any { it in '1'..'9' }) "-" else ""
+    return sign + grouped + if (frac.isNotEmpty()) ".$frac" else ""
+}

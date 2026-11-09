@@ -1,5 +1,7 @@
 package codes.tashif.paisa.ui.components.charts
 
+import codes.tashif.paisa.platform.radiansToDegrees
+import codes.tashif.paisa.platform.formatFixed
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -36,7 +38,7 @@ fun DonutChart(
     centerTitle: String,
     centerSubtitle: String,
     modifier: Modifier = Modifier,
-    formatValue: (Double) -> String = { "%.0f".format(it) },
+    formatValue: (Double) -> String = { formatFixed(it, 0) },
     shareLabel: String = "of spending"
 ) {
     val total = entries.sumOf { it.value }.takeIf { it > 0 } ?: return
@@ -76,7 +78,7 @@ fun DonutChart(
                             selected = null
                             return@detectTapGestures
                         }
-                        var angle = Math.toDegrees(
+                        var angle = radiansToDegrees(
                             atan2((tap.y - cy).toDouble(), (tap.x - cx).toDouble())
                         ) + 90.0
                         if (angle < 0) angle += 360.0

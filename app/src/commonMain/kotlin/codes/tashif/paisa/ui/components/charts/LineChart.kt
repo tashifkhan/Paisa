@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.components.charts
 
+import codes.tashif.paisa.platform.formatFixed
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -40,7 +41,7 @@ fun LineChart(
     modifier: Modifier = Modifier,
     nameA: String = "A",
     nameB: String = "B",
-    formatValue: (Double) -> String = { "%.0f".format(it) },
+    formatValue: (Double) -> String = { formatFixed(it, 0) },
     tooltipLabel: (Int) -> String = { labels.getOrElse(it) { "" } }
 ) {
     if (labels.isEmpty()) return

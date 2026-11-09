@@ -20,7 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.isImeVisible
+import codes.tashif.paisa.ui.platform.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -68,7 +68,7 @@ fun FloatingNavBar(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val keyboardOpen = WindowInsets.isImeVisible
+    val keyboardOpen = isImeVisible()
     AnimatedVisibility(
         visible = !keyboardOpen,
         enter = slideInVertically { it / 2 } + fadeIn(),
