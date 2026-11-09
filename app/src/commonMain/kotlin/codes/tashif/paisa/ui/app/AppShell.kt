@@ -62,6 +62,8 @@ import codes.tashif.paisa.ui.platform.setWindowTitle
 import codes.tashif.paisa.ui.settings.MoreScreen
 import codes.tashif.paisa.ui.sms.SmsViewModel
 import codes.tashif.paisa.ui.transaction.TransactionDetailScreen
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.saveable.SaveableStateHolder
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -267,7 +269,10 @@ fun AppShell(
                 } else {
                     WindowInsets.systemBars.union(WindowInsets.displayCutout)
                 },
-                snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+                // With a bottom bar the snackbar sits on top of it and the
+                // FABs move up out of its way, instead of it floating over
+                // the list above the FABs.
+                snackbarHost = { if (useRail) SnackbarHost(hostState = snackbarHostState) },
                 floatingActionButtonPosition = FabPosition.End,
                 floatingActionButton = {
                     // The detail pane has its own save button where the FAB sits.
@@ -285,13 +290,16 @@ fun AppShell(
                 },
                 bottomBar = {
                     if (!useRail) {
-                        AppNavBar(
+                        Column(Modifier.animateContentSize()) {
+                            SnackbarHost(hostState = snackbarHostState)
+                            AppNavBar(
                             navTabs = navTabs,
                             currentTab = currentTab,
                             floating = settings?.floatingNavBar == true,
                             showLabels = settings?.navBarLabels != false,
                             onSelect = selectTab
                         )
+                        }
                     }
                 }
             ) { innerPadding ->
