@@ -9,6 +9,7 @@ import codes.tashif.paisa.backup.RemoteBackup
 import codes.tashif.paisa.data.AppDatabase
 import codes.tashif.paisa.data.Repository
 import codes.tashif.paisa.data.Transaction
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -130,6 +131,29 @@ class SyncManagerTest {
             "the UI would not see synced rows",
             invalidated.await(5, java.util.concurrent.TimeUnit.SECONDS)
         )
+    }
+
+    @Test
+    fun debtsSyncBetweenDevices() = runBlocking {
+        val phone = Device("phone5")
+        val tablet = Device("tablet5")
+        phone.sync.enable("correct horse".toCharArray())
+        phone.sync.syncNow()
+        tablet.sync.enable("correct horse".toCharArray())
+        tablet.sync.syncNow()
+
+        val radhika = phone.repo.addDebtPerson("Radhika", 5000.0)
+        phone.repo.addDebtEntry(radhika, -1000.0, "Paid back")
+        phone.sync.syncNow()
+        tablet.sync.syncNow()
+        val onTablet = tablet.repo.debtPeople.first()
+        assertEquals(listOf("Radhika" to 4000.0), onTablet.map { it.person.name to it.balance })
+
+        // Settling on the tablet reaches the phone.
+        tablet.repo.settleDebt(onTablet.single().person.id)
+        tablet.sync.syncNow()
+        phone.sync.syncNow()
+        assertEquals(0.0, phone.repo.debtPeople.first().single().balance, 0.001)
     }
 
     @Test

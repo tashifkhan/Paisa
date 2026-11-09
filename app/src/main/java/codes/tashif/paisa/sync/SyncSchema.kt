@@ -78,7 +78,10 @@ object SyncSchema {
             "merchant_mappings",
             pk = "merchantName",
             natural = { r -> "'mm:' || lower(${r}merchantName)" }
-        )
+        ),
+        // Two devices that add the same name get one person, not two.
+        Table("debt_people", natural = { r -> "'person:' || lower(${r}name)" }),
+        Table("debt_entries", fks = mapOf("personId" to "debt_people"))
     )
 
     val TABLE_NAMES: Array<String> = TABLES.map { it.name }.toTypedArray()

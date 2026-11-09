@@ -41,6 +41,8 @@ object BackupArchive {
         "settings",
         "unrecognized_sms",
         "merchant_mappings",
+        "debt_people",
+        "debt_entries",
         SyncSchema.TOMBSTONES
     )
 

@@ -210,10 +210,17 @@ data class Settings(
     @ColumnInfo(defaultValue = "0") val floatingNavBar: Boolean = false,
     /** Docked bar only: label every tab, not just the selected one. */
     @ColumnInfo(defaultValue = "1") val navBarLabels: Boolean = true,
+    /** Tab ids shown in the bottom bar, in order. See [Settings.DEFAULT_NAV_TABS]. */
+    @ColumnInfo(defaultValue = "'home,analytics,budgets,accounts,more'")
+    val navTabs: String = DEFAULT_NAV_TABS,
     /** Sync covers only [currency]; see SyncSchema. Set by the sync triggers. */
     val syncId: String? = null,
     @ColumnInfo(defaultValue = "0") val syncStamp: Long = 0
-)
+) {
+    companion object {
+        const val DEFAULT_NAV_TABS = "home,analytics,budgets,accounts,more"
+    }
+}
 
 /**
  * Bank-like SMS that no registered parser claimed — kept for review / future parsers.
