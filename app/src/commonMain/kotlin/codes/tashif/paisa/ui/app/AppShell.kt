@@ -62,6 +62,9 @@ import codes.tashif.paisa.ui.platform.setWindowTitle
 import codes.tashif.paisa.ui.settings.MoreScreen
 import codes.tashif.paisa.ui.sms.SmsViewModel
 import codes.tashif.paisa.ui.transaction.TransactionDetailScreen
+import androidx.compose.runtime.saveable.SaveableStateHolder
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.runtime.staticCompositionLocalOf
 
 /** The unlocked app: tabs, nav bar, FABs, snackbars and the screens they open. */
 @Composable
@@ -77,6 +80,10 @@ fun AppShell(
     val navTabs by viewModel.navTabs.collectAsState()
     val openDebtPersonId by debtsViewModel.openDebtPersonId.collectAsState()
     val state = rememberShellState()
+    // Each tab keeps its saved state (scroll positions, pager pages) while
+    // it's off screen: on a phone a transaction or setting replaces the tabs,
+    // and coming back shouldn't jump the list to the top.
+    val tabStates = rememberSaveableStateHolder()
     val snackbarHostState = remember { SnackbarHostState() }
     var showShortcuts by remember { mutableStateOf(false) }
 
@@ -218,6 +225,7 @@ fun AppShell(
     }
 
     CompositionLocalProvider(
+        LocalTabStates provides tabStates,
         LocalWindowWidth provides width,
         LocalShellState provides state
     ) {
@@ -403,6 +411,7 @@ private fun TabContent(
     val wide = LocalWindowWidth.current >= WindowWidth.EXPANDED
     // In the side-by-side layout one setting shows at a time.
     val open: (FullScreen) -> Unit = { if (wide) state.show(it) else state.open(it) }
+    LocalTabStates.current.SaveableStateProvider(page.name) {
     when (page) {
         AppTab.HOME -> RecordsScreen()
         AppTab.ANALYTICS -> AnalysisScreen()
@@ -425,4 +434,10 @@ private fun TabContent(
             selected = selected?.title
         )
     }
+    }
+}
+
+/** Holds each tab's saved state while the tab is off screen. Set by [AppShell]. */
+private val LocalTabStates = staticCompositionLocalOf<SaveableStateHolder> {
+    error("TabContent needs AppShell's SaveableStateHolder")
 }
