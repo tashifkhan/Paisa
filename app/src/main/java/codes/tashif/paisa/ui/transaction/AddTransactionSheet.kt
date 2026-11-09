@@ -1,6 +1,5 @@
 package codes.tashif.paisa.ui.transaction
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,7 +10,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bookmark
-import androidx.compose.material.icons.rounded.Handshake
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -61,11 +59,8 @@ fun AddTransactionSheet(
     var selectedCategoryId by remember { mutableStateOf<Int?>(null) }
     var selectedAccountId by remember { mutableStateOf<Int?>(null) }
     var rememberMerchant by remember { mutableStateOf(false) }
-    // "Someone owes me for this": who, and how much of the amount
-    var linkPerson by remember { mutableStateOf(false) }
-    var linkPersonId by remember { mutableStateOf<Int?>(null) }
-    var linkNewName by remember { mutableStateOf("") }
-    var linkAmountText by remember { mutableStateOf("") }
+    // "Split with others" for an expense, "Someone paid me back" for income
+    val split = rememberAddSplitState()
     val people by viewModel.debtPeople.collectAsState()
 
     val now = remember { Calendar.getInstance() }
@@ -189,35 +184,13 @@ fun AddTransactionSheet(
                 onSelect = { selectedAccountId = it }
             )
 
-            run {
-                Spacer(Modifier.height(MaterialTheme.spacing.small))
-                SheetToggleCard(
-                    icon = Icons.Rounded.Handshake,
-                    title = personLinkTitle(type == "expense"),
-                    subtitle = personLinkSubtitle(type == "expense"),
-                    checked = linkPerson,
-                    onCheckedChange = { on ->
-                        linkPerson = on
-                        if (on) {
-                            if (linkPersonId == null) linkPersonId = people.firstOrNull()?.person?.id
-                            if (linkAmountText.isEmpty()) linkAmountText = amountText
-                        }
-                    }
-                )
-                AnimatedVisibility(visible = linkPerson) {
-                    PersonLinkFields(
-                        people = people,
-                        selectedPersonId = linkPersonId,
-                        onSelectPerson = { linkPersonId = it },
-                        newName = linkNewName,
-                        onNewNameChange = { linkNewName = it },
-                        amountText = linkAmountText,
-                        onAmountChange = { linkAmountText = it },
-                        amountLabel = if (type == "expense") "How much they owe" else "Amount",
-                        modifier = Modifier.padding(top = MaterialTheme.spacing.smaller)
-                    )
-                }
-            }
+            AddTransactionSplitSection(
+                state = split,
+                isExpense = type == "expense",
+                people = people,
+                amountText = amountText,
+                currency = currency
+            )
 
             if (title.isNotBlank()) {
                 Spacer(Modifier.height(MaterialTheme.spacing.small))
@@ -254,15 +227,10 @@ fun AddTransactionSheet(
                     val iso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
                         .format(cal.time)
                     val merchant = title.trim().takeIf { it.isNotBlank() }
-                    val link = if (linkPerson) {
-                        personLinkOrNull(linkPersonId, linkNewName, linkAmountText.ifEmpty { amountText })
-                            ?: run {
-                                haptics.reject()
-                                viewModel.showSnackbar("Pick who it's with and how much")
-                                return@Button
-                            }
-                    } else {
-                        null
+                    val shares = split.shares(type == "expense", amount) ?: run {
+                        haptics.reject()
+                        viewModel.showSnackbar(split.problem(type == "expense", amount))
+                        return@Button
                     }
                     haptics.confirm()
                     viewModel.addTransaction(
@@ -274,7 +242,7 @@ fun AddTransactionSheet(
                         transactionDate = iso,
                         merchantName = merchant,
                         rememberMerchant = rememberMerchant && merchant != null,
-                        personLink = link
+                        debtShares = shares
                     )
                     onDismiss()
                 },

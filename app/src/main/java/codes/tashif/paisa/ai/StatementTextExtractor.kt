@@ -60,6 +60,25 @@ object StatementTextExtractor {
         return ""
     }
 
+    fun isPdf(context: Context, uri: Uri): Boolean {
+        val mime = context.contentResolver.getType(uri)?.lowercase().orEmpty()
+        val name = uri.lastPathSegment?.lowercase().orEmpty()
+        return mime.contains("pdf") || name.endsWith(".pdf")
+    }
+
+    /** The whole file for a model that reads PDFs, or null when it's too big to send. */
+    suspend fun readPdf(context: Context, uri: Uri): LlmPdf? = withContext(Dispatchers.IO) {
+        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            ?: return@withContext null
+        if (bytes.isEmpty() || bytes.size > MAX_PDF_BYTES) return@withContext null
+        LlmPdf(
+            base64Data = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP),
+            name = uri.lastPathSegment?.substringAfterLast('/')
+        )
+    }
+
+    private const val MAX_PDF_BYTES = 15 * 1024 * 1024
+
     private fun ensurePdfBox(context: Context) {
         if (!pdfBoxReady) {
             synchronized(this) {

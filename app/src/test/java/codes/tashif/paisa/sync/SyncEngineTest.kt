@@ -32,9 +32,9 @@ class SyncEngineTest {
 
     private class Device(val name: String, val db: AppDatabase) {
         val accountRepo = AccountRepository(db)
-        val transactionRepo = TransactionRepository(db, accountRepo)
-        val settingsRepo = SettingsRepository(db)
         val debtRepo = DebtRepository(db)
+        val transactionRepo = TransactionRepository(db, accountRepo, debtRepo)
+        val settingsRepo = SettingsRepository(db)
         val sql: SupportSQLiteDatabase get() = db.openHelper.writableDatabase
         var seq = 0L
 

@@ -13,11 +13,15 @@ import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Transactions and recurring rules. Every write keeps the account balance in step. */
+/**
+ * Transactions and recurring rules. Every write keeps the account balance in
+ * step, and edits and deletes keep the transaction's debt split in step too.
+ */
 @Singleton
 class TransactionRepository @Inject constructor(
     private val db: AppDatabase,
-    private val accountRepository: AccountRepository
+    private val accountRepository: AccountRepository,
+    private val debtRepository: DebtRepository
 ) {
 
     private val accountDao = db.accountDao()
@@ -113,6 +117,7 @@ class TransactionRepository @Inject constructor(
             val oldTransaction = transactionDao.getRawTransactionById(newTransaction.id)
                 ?: return@withTransaction
             transactionDao.updateTransaction(newTransaction)
+            debtRepository.onTransactionChanged(oldTransaction, newTransaction)
             accountDao.recomputeBalance(oldTransaction.accountId)
             if (newTransaction.accountId != oldTransaction.accountId) {
                 accountDao.recomputeBalance(newTransaction.accountId)
@@ -130,6 +135,7 @@ class TransactionRepository @Inject constructor(
             } else {
                 transactionDao.deleteTransaction(transaction)
             }
+            debtRepository.onTransactionDeleted(transaction)
             accountDao.recomputeBalance(transaction.accountId)
         }
     }

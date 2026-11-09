@@ -7,7 +7,7 @@ import androidx.compose.runtime.remember
 
 /** Secondary screens that cover the tabs. Earlier entries win when several are open. */
 enum class FullScreen {
-    SMS_SETUP, APPEARANCE, AI_SETTINGS, STATEMENT_IMPORT, MERCHANT_MAPPINGS,
+    SMS_SETUP, APPEARANCE, AI, STATEMENT_IMPORT, MERCHANT_MAPPINGS,
     CATEGORIES, CURRENCY, BACKUP, ABOUT
 }
 

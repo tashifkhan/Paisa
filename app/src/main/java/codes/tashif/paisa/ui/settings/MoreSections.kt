@@ -13,9 +13,9 @@ import androidx.compose.material.icons.rounded.Sms
 import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import codes.tashif.paisa.ai.AiCredentials
 import codes.tashif.paisa.data.AppTab
 import codes.tashif.paisa.data.Settings
+import codes.tashif.paisa.ui.ai.AiSummary
 import codes.tashif.paisa.ui.app.icon
 import codes.tashif.paisa.ui.components.SettingsGroup
 import codes.tashif.paisa.ui.components.SettingsItem
@@ -58,7 +58,7 @@ fun MoreScreensSection(
 fun MoreImportSection(
     scan: SmsScanProgress,
     unrecognizedCount: Int,
-    ai: AiCredentials,
+    ai: AiSummary,
     onOpenSmsSetup: () -> Unit,
     onOpenStatementImport: () -> Unit
 ) {
@@ -80,8 +80,8 @@ fun MoreImportSection(
         )
         SettingsItem(
             title = "Import statement",
-            subtitle = if (ai.isConfigured) {
-                "PDF/CSV via ${ai.provider.label}"
+            subtitle = if (ai.ready) {
+                "PDF/CSV via ${ai.providerName}"
             } else {
                 "Upload bank statement with your AI key"
             },
@@ -131,7 +131,7 @@ fun MoreDataSection(
 
 @Composable
 fun MoreIntelligenceSection(
-    ai: AiCredentials,
+    ai: AiSummary,
     merchantRuleCount: Int,
     onOpenAiSettings: () -> Unit,
     onOpenMerchantMappings: () -> Unit
@@ -139,11 +139,11 @@ fun MoreIntelligenceSection(
     SettingsSectionLabel("Intelligence")
     SettingsGroup {
         SettingsItem(
-            title = "AI provider",
-            subtitle = if (ai.isConfigured) {
-                "${ai.provider.label} · key set"
+            title = "AI",
+            subtitle = if (ai.ready) {
+                "${ai.modelName} · ${ai.providerName}"
             } else {
-                "OpenAI-compatible, Gemini, or Anthropic"
+                "Providers, models and fallbacks"
             },
             icon = Icons.Rounded.AutoAwesome,
             position = groupPositionOf(0, 2),

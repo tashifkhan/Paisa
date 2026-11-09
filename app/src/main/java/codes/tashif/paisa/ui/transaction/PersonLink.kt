@@ -110,29 +110,34 @@ fun personLinkOrNull(personId: Int?, newName: String, amountText: String): Perso
     return PersonLink(personId = personId, newName = name.takeIf { personId == null }, amount = amount)
 }
 
-/** Copy for the person option. Money out: they owe you. Money in: they paid you back, or lent it. */
+/** Copy for the Debts option. Money out: split it with others. Money in: someone paid you back. */
 fun personLinkTitle(isExpense: Boolean): String =
-    if (isExpense) "Someone owes me for this" else "Someone paid me back or lent me this"
+    if (isExpense) "Split with others" else "Someone paid me back"
 
 fun personLinkSubtitle(isExpense: Boolean): String =
     if (isExpense) {
-        "Adds it to what they owe you in Debts"
+        "Adds each person's share to what they owe you in Debts"
     } else {
         "Lowers what they owe you in Debts, or adds to what you owe them"
     }
 
-/** Dialog version for transactions that already exist, opened from the transaction screen. */
+/**
+ * Dialog version for transactions that already exist, opened from the
+ * transaction screen. [initialPersonId] and [initialAmount] prefill an edit.
+ */
 @Composable
 fun PersonLinkDialog(
     people: List<DebtPersonBalance>,
     transactionAmount: Double,
     isExpense: Boolean,
     onDismiss: () -> Unit,
-    onConfirm: (PersonLink) -> Unit
+    onConfirm: (PersonLink) -> Unit,
+    initialPersonId: Int? = null,
+    initialAmount: Double? = null
 ) {
-    var personId by remember { mutableStateOf(people.firstOrNull()?.person?.id) }
+    var personId by remember { mutableStateOf(initialPersonId ?: people.firstOrNull()?.person?.id) }
     var newName by remember { mutableStateOf("") }
-    var amountText by remember { mutableStateOf(formatPlain(transactionAmount)) }
+    var amountText by remember { mutableStateOf(formatPlain(initialAmount ?: transactionAmount)) }
     val link = personLinkOrNull(personId, newName, amountText)
 
     AlertDialog(

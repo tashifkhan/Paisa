@@ -150,6 +150,10 @@ class BackupViewModel @Inject constructor(
             say("Enter your Nextcloud address")
             return
         }
+        NextcloudStore.serverError(server)?.let {
+            say(it)
+            return
+        }
         nextcloudPoll?.cancel()
         nextcloudPoll = viewModelScope.launch {
             try {
@@ -174,6 +178,10 @@ class BackupViewModel @Inject constructor(
         val server = NextcloudStore.normalizeServer(serverInput)
         if (server == null || user.isBlank() || appPassword.isBlank()) {
             say("Fill in the address, username and app password")
+            return
+        }
+        NextcloudStore.serverError(server)?.let {
+            say(it)
             return
         }
         run("Connecting…") {

@@ -199,6 +199,9 @@ interface TransactionDao {
     )
     suspend fun getLatestWithBalance(accountId: Int): Transaction?
 
+    @Query("SELECT id FROM transactions WHERE syncId = :syncId AND isDeleted = 0 LIMIT 1")
+    suspend fun getIdBySyncId(syncId: String): Int?
+
     @Query("SELECT * FROM transactions WHERE transactionHash = :hash LIMIT 1")
     suspend fun getTransactionByHash(hash: String): Transaction?
 

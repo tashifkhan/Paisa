@@ -52,7 +52,11 @@ data class DebtEntry(
     val note: String,
     /** ISO-8601, same format as [Transaction.transactionDate]. */
     val entryDate: String,
-    /** syncId of the transaction this came from, if any. A soft link: deleting the transaction keeps the debt. */
+    /**
+     * syncId of the transaction this came from, if any. Every entry with the same
+     * transaction is that transaction's split. Editing the transaction rescales
+     * them and deleting it removes them.
+     */
     val transactionSyncId: String? = null,
     val createdAt: String,
     /** Stable id shared by every device that syncs this row. Set by the sync triggers. */
@@ -67,23 +71,67 @@ data class DebtPersonBalance(
     val balance: Double
 )
 
+/** A debt entry with the name of the person it belongs to, for a transaction's split. */
+data class DebtEntryWithPerson(
+    @Embedded val entry: DebtEntry,
+    val personName: String
+)
+
+/**
+ * Entries count only when they stand alone or their transaction still exists.
+ * A safety net for entries left behind by a delete on another device or by old data.
+ */
+private const val LIVE_ENTRY = """
+    (e.transactionSyncId IS NULL OR EXISTS (
+        SELECT 1 FROM transactions t WHERE t.syncId = e.transactionSyncId AND t.isDeleted = 0
+    ))
+"""
+
 @Dao
 interface DebtDao {
     @Query(
         """
         SELECT p.*, COALESCE(SUM(e.amount), 0) AS balance
-        FROM debt_people p LEFT JOIN debt_entries e ON e.personId = p.id
+        FROM debt_people p LEFT JOIN debt_entries e ON e.personId = p.id AND $LIVE_ENTRY
         GROUP BY p.id
         ORDER BY ABS(COALESCE(SUM(e.amount), 0)) DESC, p.name COLLATE NOCASE
         """
     )
     fun getPeopleWithBalances(): Flow<List<DebtPersonBalance>>
 
-    @Query("SELECT * FROM debt_entries WHERE personId = :personId ORDER BY entryDate DESC, id DESC")
+    @Query(
+        """
+        SELECT e.* FROM debt_entries e
+        WHERE e.personId = :personId AND $LIVE_ENTRY
+        ORDER BY e.entryDate DESC, e.id DESC
+        """
+    )
     fun getEntries(personId: Int): Flow<List<DebtEntry>>
 
-    @Query("SELECT COALESCE(SUM(amount), 0) FROM debt_entries WHERE personId = :personId")
+    @Query("SELECT COALESCE(SUM(e.amount), 0) FROM debt_entries e WHERE e.personId = :personId AND $LIVE_ENTRY")
     suspend fun getBalance(personId: Int): Double
+
+    @Query("SELECT * FROM debt_entries WHERE transactionSyncId = :transactionSyncId ORDER BY id")
+    suspend fun getEntriesForTransaction(transactionSyncId: String): List<DebtEntry>
+
+    @Query(
+        """
+        SELECT e.*, p.name AS personName
+        FROM debt_entries e INNER JOIN debt_people p ON p.id = e.personId
+        WHERE e.transactionSyncId = :transactionSyncId
+        ORDER BY e.id
+        """
+    )
+    fun observeEntriesForTransaction(transactionSyncId: String): Flow<List<DebtEntryWithPerson>>
+
+    @Query("DELETE FROM debt_entries WHERE transactionSyncId = :transactionSyncId")
+    suspend fun deleteEntriesForTransaction(transactionSyncId: String)
+
+    @Query("SELECT * FROM debt_entries WHERE id = :id")
+    suspend fun getEntry(id: Int): DebtEntry?
+
+    @Update
+    suspend fun updateEntry(entry: DebtEntry)
 
     @Query("SELECT * FROM debt_people WHERE id = :id")
     suspend fun getPerson(id: Int): DebtPerson?

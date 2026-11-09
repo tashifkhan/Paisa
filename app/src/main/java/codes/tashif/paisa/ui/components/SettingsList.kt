@@ -119,7 +119,9 @@ fun SettingsItem(
     iconContainerColor: Color = MaterialTheme.colorScheme.primaryContainer,
     iconContentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
     onClick: (() -> Unit)? = null,
-    trailing: (@Composable () -> Unit)? = null
+    trailing: (@Composable () -> Unit)? = null,
+    /** Replaces the tinted [icon] circle, for rows that show a logo or avatar. */
+    leading: (@Composable () -> Unit)? = null
 ) {
     val haptics = rememberHaptics()
     Surface(
@@ -146,11 +148,15 @@ fun SettingsItem(
                 ),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            SettingsItemIcon(
-                icon = icon,
-                containerColor = iconContainerColor,
-                contentColor = iconContentColor
-            )
+            if (leading != null) {
+                leading()
+            } else {
+                SettingsItemIcon(
+                    icon = icon,
+                    containerColor = iconContainerColor,
+                    contentColor = iconContentColor
+                )
+            }
             Spacer(Modifier.size(MaterialTheme.spacing.small))
             Column(modifier = Modifier.weight(1f)) {
                 Text(

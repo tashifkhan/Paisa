@@ -57,7 +57,7 @@ fun MoreScreen(
     val scan by viewModel.smsScanProgress.collectAsState()
     val unrecognizedCount by viewModel.unrecognizedSmsCount.collectAsState()
     val merchantRuleCount by viewModel.merchantRuleCount.collectAsState()
-    val ai by viewModel.aiCredentials.collectAsState()
+    val ai by viewModel.aiSummary.collectAsState()
     val transactionCount by viewModel.transactionCount.collectAsState()
     val isExporting by viewModel.isExporting.collectAsState()
 

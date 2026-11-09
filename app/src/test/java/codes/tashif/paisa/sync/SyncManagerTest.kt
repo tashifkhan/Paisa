@@ -21,6 +21,7 @@ import org.robolectric.annotation.Config
 import java.io.IOException
 import codes.tashif.paisa.data.repository.AccountRepository
 import codes.tashif.paisa.data.repository.DebtRepository
+import codes.tashif.paisa.data.repository.DebtShare
 import codes.tashif.paisa.data.repository.SettingsRepository
 import codes.tashif.paisa.data.repository.TransactionRepository
 
@@ -60,9 +61,9 @@ class SyncManagerTest {
         val prefs = BackupPrefs(context, "sync-test-$name")
         val sync = SyncManager(context, db, prefs, cloud)
         val accountRepo = AccountRepository(db)
-        val transactionRepo = TransactionRepository(db, accountRepo)
-        val settingsRepo = SettingsRepository(db)
         val debtRepo = DebtRepository(db)
+        val transactionRepo = TransactionRepository(db, accountRepo, debtRepo)
+        val settingsRepo = SettingsRepository(db)
 
         fun add(amount: Double, note: String) = runBlocking {
             val cat = db.openHelper.writableDatabase
@@ -160,6 +161,50 @@ class SyncManagerTest {
         tablet.sync.syncNow()
         phone.sync.syncNow()
         assertEquals(0.0, phone.debtRepo.debtPeople.first().single().balance, 0.001)
+    }
+
+    @Test
+    fun aSplitSavedOnTwoOfflineDevicesEndsUpAsOneSet() = runBlocking {
+        val phone = Device("phone6")
+        val tablet = Device("tablet6")
+        phone.sync.enable("correct horse".toCharArray())
+        phone.sync.syncNow()
+        tablet.sync.enable("correct horse".toCharArray())
+        tablet.sync.syncNow()
+
+        val dinnerOnPhone = phone.add(1200.0, "Dinner").toInt()
+        val txSync = phone.db.transactionDao().getRawTransactionById(dinnerOnPhone)!!.syncId!!
+        phone.sync.syncNow()
+        tablet.sync.syncNow()
+        val dinnerOnTablet = tablet.db.transactionDao().getIdBySyncId(txSync)!!
+
+        // Both devices are offline and each saves its own split, adding the
+        // same people by name.
+        phone.debtRepo.saveTransactionSplit(
+            dinnerOnPhone,
+            listOf(DebtShare(null, "Radhika", 400.0), DebtShare(null, "Omar", 400.0))
+        )
+        tablet.debtRepo.saveTransactionSplit(
+            dinnerOnTablet,
+            listOf(DebtShare(null, "Radhika", 500.0), DebtShare(null, "Omar", 300.0))
+        )
+
+        phone.sync.syncNow()
+        tablet.sync.syncNow()
+        phone.sync.syncNow()
+
+        fun split(device: Device) = runBlocking {
+            device.db.debtDao().getEntriesForTransaction(txSync)
+                .map { device.db.debtDao().getPerson(it.personId)!!.name to it.amount }
+                .sortedBy { it.first }
+        }
+        val expected = listOf("Omar" to 300.0, "Radhika" to 500.0)
+        assertEquals(expected, split(tablet))
+        assertEquals(expected, split(phone))
+        assertEquals(
+            mapOf("Omar" to 300.0, "Radhika" to 500.0),
+            phone.debtRepo.debtPeople.first().associate { it.person.name to it.balance }
+        )
     }
 
     @Test

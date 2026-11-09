@@ -36,6 +36,7 @@ import codes.tashif.paisa.ui.components.AccountPicker
 import codes.tashif.paisa.ui.components.CategoryPicker
 import codes.tashif.paisa.ui.components.CircleIconButton
 import codes.tashif.paisa.ui.components.DetailHeader
+import codes.tashif.paisa.ui.debts.DebtsViewModel
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.spacing
 import java.text.SimpleDateFormat
@@ -46,13 +47,15 @@ import java.util.Locale
 @Composable
 fun TransactionDetailScreen(
     onBack: () -> Unit,
-    viewModel: TransactionViewModel = hiltViewModel()
+    viewModel: TransactionViewModel = hiltViewModel(),
+    debtsViewModel: DebtsViewModel = hiltViewModel()
 ) {
     val transactions by viewModel.transactions.collectAsState()
     val selectedId by viewModel.selectedTransactionId.collectAsState()
     val categories by viewModel.categories.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
     val debtPeople by viewModel.debtPeople.collectAsState()
+    val split by viewModel.selectedSplit.collectAsState()
     val settings by viewModel.settings.collectAsState()
     val currency = settings?.currency ?: "₹"
     val haptics = rememberHaptics()
@@ -81,7 +84,6 @@ fun TransactionDetailScreen(
     }
     var rememberMerchant by remember(current.id) { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
-    var showPersonLink by remember { mutableStateOf(false) }
     var smsExpanded by remember(current.id) { mutableStateOf(false) }
     var title by remember(current.id) { mutableStateOf(current.merchantName.orEmpty()) }
     var note by remember(current.id) { mutableStateOf(current.note) }
@@ -215,6 +217,20 @@ fun TransactionDetailScreen(
                 )
             }
 
+            // --- SPLIT (who owes for this, in Debts) ---
+            TransactionSplitSection(
+                split = split,
+                people = debtPeople,
+                total = current.amount,
+                isExpense = current.type == "expense",
+                currency = currency,
+                onOpenPerson = { personId ->
+                    debtsViewModel.openDebtPersonFromTransaction(personId, current.id)
+                },
+                onSave = { viewModel.saveTransactionSplit(current.id, it) },
+                onRemove = { viewModel.removeTransactionSplit(current.id) }
+            )
+
             // --- EDIT FIELDS ---
             Spacer(Modifier.height(MaterialTheme.spacing.extraSmall))
             Text(
@@ -270,9 +286,7 @@ fun TransactionDetailScreen(
                 merchantForMapping = merchantForMapping,
                 fromSmsOrImport = isSms || isStatement,
                 rememberMerchant = rememberMerchant,
-                onRememberMerchantChange = { rememberMerchant = it },
-                isExpense = current.type == "expense",
-                onLinkPerson = { showPersonLink = true }
+                onRememberMerchantChange = { rememberMerchant = it }
             )
 
             Spacer(Modifier.height(MaterialTheme.spacing.medium))
@@ -302,20 +316,6 @@ fun TransactionDetailScreen(
                 Text("Save changes")
             }
         }
-    }
-
-    if (showPersonLink) {
-        PersonLinkDialog(
-            people = debtPeople,
-            transactionAmount = current.amount,
-            isExpense = current.type == "expense",
-            onDismiss = { showPersonLink = false },
-            onConfirm = { link ->
-                haptics.confirm()
-                viewModel.linkTransactionToDebt(current.id, link)
-                showPersonLink = false
-            }
-        )
     }
 
     if (showDeleteConfirm) {

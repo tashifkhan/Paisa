@@ -5,11 +5,14 @@ import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import codes.tashif.paisa.ai.AiCredentials
+import codes.tashif.paisa.ai.AiRepository
+import codes.tashif.paisa.ui.ai.AiSummary
 import codes.tashif.paisa.ai.ExtractedTransaction
 import codes.tashif.paisa.ai.StatementExtractionService
 import codes.tashif.paisa.ai.StatementImportUseCase
 import codes.tashif.paisa.ai.StatementNotifications
+import codes.tashif.paisa.ai.ladder.AiLadderRunner
+import codes.tashif.paisa.ai.ladder.AiService
 import codes.tashif.paisa.core.AppLockGuard
 import codes.tashif.paisa.core.SnackbarManager
 import codes.tashif.paisa.data.Account
@@ -26,6 +29,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -62,14 +66,18 @@ class StatementImportViewModel @Inject constructor(
     private val categoriesRepository: CategoryRepository,
     private val transactionsRepository: TransactionRepository,
     settingsRepository: SettingsRepository,
-    credentialsHolder: AiCredentialsHolder,
+    aiRepository: AiRepository,
     private val statementExtraction: StatementExtractionService,
+    private val ladderRunner: AiLadderRunner,
     private val statementImport: StatementImportUseCase,
     private val snackbarManager: SnackbarManager,
     private val appLockGuard: AppLockGuard
 ) : ViewModel() {
 
-    val aiCredentials: StateFlow<AiCredentials> = credentialsHolder.credentials
+    /** The first model that would run, or not ready when no rung has a key. */
+    val aiSummary: StateFlow<AiSummary> = combine(
+        aiRepository.ladders, aiRepository.providers, aiRepository.catalog, AiSummary::of
+    ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AiSummary())
 
     val accounts: StateFlow<List<Account>> = accountsRepository.allAccounts
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -91,10 +99,11 @@ class StatementImportViewModel @Inject constructor(
         // Runs on a background dispatcher in the ViewModel scope: the user can leave
         // the screen (or the app) while chunks process; a notification announces completion.
         viewModelScope.launch(Dispatchers.Default) {
-            val creds = aiCredentials.value
-            if (!creds.isConfigured) {
+            if (!ladderRunner.canRun(AiService.STATEMENT_IMPORT) &&
+                !ladderRunner.canRun(AiService.STATEMENT_PHOTOS)
+            ) {
                 _statementUiState.value = StatementUiState.Error(
-                    "Add an API key under AI provider settings first."
+                    "Add a model and save its key in AI settings first."
                 )
                 return@launch
             }
@@ -116,7 +125,6 @@ class StatementImportViewModel @Inject constructor(
                     val result = statementExtraction.extractFromUri(
                         context = app,
                         uri = uri,
-                        credentials = creds,
                         onProgress = { completed, total ->
                             _statementUiState.value = StatementUiState.Extracting(
                                 completedChunks = completed,

@@ -2,12 +2,15 @@ package codes.tashif.paisa.ui.debts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import codes.tashif.paisa.core.AppNavigator
+import codes.tashif.paisa.data.AppTab
 import codes.tashif.paisa.core.SnackbarManager
 import codes.tashif.paisa.data.DebtEntry
 import codes.tashif.paisa.data.DebtPerson
 import codes.tashif.paisa.data.DebtPersonBalance
 import codes.tashif.paisa.data.Settings
 import codes.tashif.paisa.data.repository.DebtRepository
+import codes.tashif.paisa.data.repository.DebtShare
 import codes.tashif.paisa.data.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -29,6 +32,7 @@ import kotlinx.coroutines.launch
 class DebtsViewModel @Inject constructor(
     private val debtRepository: DebtRepository,
     settingsRepository: SettingsRepository,
+    private val navigator: AppNavigator,
     private val snackbarManager: SnackbarManager
 ) : ViewModel() {
 
@@ -46,8 +50,31 @@ class DebtsViewModel @Inject constructor(
         .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else debtRepository.debtEntries(id) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    // Where Back goes from a person opened from a transaction's split card.
+    private var returnTo: Pair<Int, AppTab>? = null
+
     fun openDebtPerson(id: Int?) {
+        returnTo = null
         _openDebtPersonId.value = id
+    }
+
+    /** Opens [personId] from a transaction; Back then returns to that transaction. */
+    fun openDebtPersonFromTransaction(personId: Int, transactionId: Int) {
+        returnTo = transactionId to navigator.currentTab.value
+        _openDebtPersonId.value = personId
+        navigator.closeTransaction()
+        navigator.selectTab(AppTab.DEBTS)
+    }
+
+    /** Closes the person page, going back to the transaction it was opened from, if any. */
+    fun closeDebtPerson() {
+        val back = returnTo
+        returnTo = null
+        _openDebtPersonId.value = null
+        if (back != null) {
+            navigator.selectTab(back.second)
+            navigator.openTransaction(back.first)
+        }
     }
 
     fun addDebtPerson(name: String, startingAmount: Double) {
@@ -60,6 +87,30 @@ class DebtsViewModel @Inject constructor(
     /** [amount] > 0: they owe you more. < 0: they owe you less, or you owe them. */
     fun addDebtEntry(personId: Int, amount: Double, note: String) {
         viewModelScope.launch { debtRepository.addDebtEntry(personId, amount, note) }
+    }
+
+    /** Changes an entry added by hand. [amount] is signed like [addDebtEntry]. */
+    fun updateDebtEntry(id: Int, amount: Double, note: String, entryDate: String) {
+        viewModelScope.launch { debtRepository.updateDebtEntry(id, amount, note, entryDate) }
+    }
+
+    /**
+     * Opens the transaction a debt entry came from. Back from it returns here,
+     * since the open person stays set.
+     */
+    fun openLinkedTransaction(transactionSyncId: String) {
+        viewModelScope.launch {
+            val id = debtRepository.transactionIdForSyncId(transactionSyncId)
+            if (id != null) navigator.openTransaction(id) else snackbarManager.show("That transaction is gone")
+        }
+    }
+
+    /** A bill split with no transaction. [shares] are signed: > 0 they owe you. */
+    fun recordBillSplit(shares: List<DebtShare>, note: String, entryDate: String) {
+        viewModelScope.launch {
+            debtRepository.recordBillSplit(shares, note, entryDate)
+            snackbarManager.show("Split recorded")
+        }
     }
 
     fun deleteDebtEntry(id: Int) {
