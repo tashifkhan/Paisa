@@ -15,6 +15,6 @@ val webPlatformModule = module {
 }
 
 val webModules = listOf(
-    webPlatformModule, daoModule, coreModule, aiServicesModule,
+    webPlatformModule, daoModule, coreModule, aiServicesModule, cloudModule,
     aiWebModule, backupWebModule, smsWebModule, viewModelModule
 )

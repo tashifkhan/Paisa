@@ -1,12 +1,15 @@
 package codes.tashif.paisa.sync
 
 import android.content.Context
+import codes.tashif.paisa.backup.BackupConfig
+import codes.tashif.paisa.backup.BackupStore
+import codes.tashif.paisa.backup.CloudPlatform
+import codes.tashif.paisa.backup.testBackupPrefs
 import codes.tashif.paisa.testing.inMemoryDatabase
 import codes.tashif.paisa.testing.long
 import codes.tashif.paisa.testing.sql
 import androidx.test.core.app.ApplicationProvider
 import codes.tashif.paisa.backup.BackupPrefs
-import codes.tashif.paisa.backup.BackupStore
 import codes.tashif.paisa.backup.RemoteBackup
 import codes.tashif.paisa.data.AppDatabase
 import codes.tashif.paisa.data.Transaction
@@ -57,8 +60,8 @@ class SyncManagerTest {
 
     private inner class Device(name: String) {
         val db: AppDatabase = inMemoryDatabase().also { dbs += it }
-        val prefs = BackupPrefs(context, "sync-test-$name")
-        val sync = SyncManager(context, db, prefs, cloud)
+        val prefs = testBackupPrefs(context, "sync-test-$name")
+        val sync = SyncManager(db, prefs, TestPlatform(name), cloud)
         val accountRepo = AccountRepository(db)
         val debtRepo = DebtRepository(db)
         val transactionRepo = TransactionRepository(db, accountRepo, debtRepo)
@@ -236,4 +239,12 @@ class SyncManagerTest {
         late.sync.syncNow()
         assertEquals(45, late.notes().size)
     }
+}
+
+/** No scheduling or widgets in tests; the store comes from the test itself. */
+private class TestPlatform(override val deviceName: String) : CloudPlatform {
+    override val appVersion = "test"
+    override fun storeFor(config: BackupConfig): BackupStore? = null
+    override fun reschedule() = Unit
+    override suspend fun onDataReplaced() = Unit
 }

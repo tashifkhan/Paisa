@@ -74,6 +74,14 @@ interface BackupService {
 
     fun setNextcloud(account: NextcloudAccount)
 
+    /** True where Nextcloud can only be reached through a CORS proxy: the browser. */
+    val nextcloudNeedsProxy: Boolean get() = false
+
+    /** The CORS proxy address for Nextcloud, where one is used. */
+    fun nextcloudProxy(): String? = null
+
+    fun setNextcloudProxy(url: String?) = Unit
+
     /** Signs out of [provider], forgets the account and reschedules backup and sync. */
     suspend fun disconnect(provider: BackupProvider)
 

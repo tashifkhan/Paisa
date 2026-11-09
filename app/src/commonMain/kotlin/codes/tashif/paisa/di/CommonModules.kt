@@ -103,3 +103,12 @@ val viewModelModule = module {
     viewModelOf(::AiProviderViewModel)
     viewModelOf(::AiLadderViewModel)
 }
+
+/** Backup and sync. Each platform binds BackupPrefs, CloudPlatform and BackupServiceHooks. */
+val cloudModule = module {
+    single { codes.tashif.paisa.backup.BackupManager(get(), get(), get()) }
+    single { codes.tashif.paisa.sync.SyncManager(get(), get(), get()) }
+    single<codes.tashif.paisa.ui.backup.BackupService> {
+        codes.tashif.paisa.ui.backup.CloudBackupService(get(), get(), get())
+    }
+}

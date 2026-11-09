@@ -82,6 +82,12 @@ class BackupViewModel(
     /** Shows [message] in the screen's snackbar. */
     fun showMessage(message: String) = say(message)
 
+    val nextcloudNeedsProxy: Boolean get() = service.nextcloudNeedsProxy
+
+    fun nextcloudProxy(): String? = service.nextcloudProxy()
+
+    fun setNextcloudProxy(url: String) = service.setNextcloudProxy(url)
+
     fun nextcloudServerError(server: String): String? = service.nextcloudServerError(server)
 
     private fun say(message: String) {

@@ -21,9 +21,24 @@ actual fun urlHost(url: String): String? = jsUrlHost(url)
 
 @Composable
 actual fun rememberBackupLaunchers(viewModel: BackupViewModel): BackupLaunchers = remember(viewModel) {
+    // Load Google sign-in ahead of the click, so its popup isn't blocked.
+    jsGoogleClientId()?.takeIf { it.isNotBlank() }?.let { jsLoadGoogle() }
     BackupLaunchers(
-        // BackupScreen shows cloudUnavailableMessage before it gets here.
-        connectGoogle = { viewModel.showMessage(WebBackupService.CLOUD_UNAVAILABLE) },
+        connectGoogle = {
+            val clientId = jsGoogleClientId()
+            if (clientId.isNullOrBlank()) {
+                viewModel.showMessage(
+                    "Google Drive on the web needs a Google OAuth client ID. " +
+                        "Put it in the paisa-google-client-id meta tag in index.html."
+                )
+            } else {
+                jsGoogleToken(
+                    clientId,
+                    onToken = { token -> viewModel.onGoogleAuthorized(token) },
+                    onError = { message -> viewModel.showMessage(message) }
+                )
+            }
+        },
         saveToFile = { viewModel.exportToFile(BackupFile(BackupNames.forTime(nowMillis()))) },
         restoreFromFile = {
             jsPickFile(BackupNames.EXTENSION) { file -> viewModel.restoreFromFile(BackupFile(file.name, file)) }
@@ -80,3 +95,46 @@ private fun jsDownload(name: String, data: Int8Array, mime: String): Unit = js(
 
 private fun jsReadFile(file: File): Promise<Int8Array> =
     js("file.arrayBuffer().then(b => new Int8Array(b))")
+
+/** The web OAuth client ID, from `<meta name="paisa-google-client-id">`. */
+private fun jsGoogleClientId(): String? =
+    js("document.querySelector('meta[name=\"paisa-google-client-id\"]')?.content || null")
+
+/**
+ * Google Identity Services token flow: loads the library once, then shows
+ * Google's popup for `drive.appdata` and `email`. Must run from a click.
+ */
+private fun jsGoogleToken(clientId: String, onToken: (String) -> Unit, onError: (String) -> Unit): Unit = js(
+    """{
+    const request = () => {
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: 'https://www.googleapis.com/auth/drive.appdata email',
+        callback: (r) => {
+          if (r && r.access_token) onToken(r.access_token);
+          else onError((r && (r.error_description || r.error)) || 'Google sign-in was cancelled');
+        },
+        error_callback: (e) => onError((e && e.message) || 'Google sign-in was cancelled'),
+      });
+      client.requestAccessToken({ prompt: '' });
+    };
+    if (window.google && google.accounts && google.accounts.oauth2) { request(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.onload = request;
+    s.onerror = () => onError("Couldn't load Google sign-in");
+    document.head.appendChild(s);
+    }"""
+)
+
+private fun jsLoadGoogle(): Unit = js(
+    """{
+    if (!document.getElementById('paisa-gsi')) {
+      const s = document.createElement('script');
+      s.id = 'paisa-gsi';
+      s.src = 'https://accounts.google.com/gsi/client';
+      s.async = true;
+      document.head.appendChild(s);
+    }
+    }"""
+)

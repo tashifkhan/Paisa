@@ -1,16 +1,16 @@
 package codes.tashif.paisa.di
 
-import codes.tashif.paisa.ui.backup.BackupService
-import codes.tashif.paisa.ui.backup.BackupViewModel
-import codes.tashif.paisa.ui.backup.WebBackupService
-import codes.tashif.paisa.ui.onboarding.OnboardingViewModel
-import org.koin.core.module.dsl.viewModelOf
+import codes.tashif.paisa.backup.BackupPrefs
+import codes.tashif.paisa.backup.CloudPlatform
+import codes.tashif.paisa.backup.WebBackupHooks
+import codes.tashif.paisa.backup.WebCloudPlatform
+import codes.tashif.paisa.platform.LocalStorageSettingsStore
+import codes.tashif.paisa.ui.backup.BackupServiceHooks
 import org.koin.dsl.module
 
-/**
- * Local `.paisa` file backup on the web, plus the onboarding viewmodel.
- * Needs AppDatabase, SettingsRepository and AppLockGuard bound elsewhere.
- */
+/** The browser's side of backup and sync: localStorage settings, downloads, a CORS proxy for Nextcloud. */
 val backupWebModule = module {
-    single<BackupService> { WebBackupService(get()) }
+    single { BackupPrefs(LocalStorageSettingsStore(BackupPrefs.PREFS_NAME)) }
+    single<CloudPlatform> { WebCloudPlatform(get()) }
+    single<BackupServiceHooks> { WebBackupHooks(get()) }
 }

@@ -75,9 +75,6 @@ val appModule = module {
     single { AiConfigStore(codes.tashif.paisa.ai.store.SharedPrefsAiStore.aiConfig(androidContext())) }
     single { AiCredentialsStore(codes.tashif.paisa.ai.store.SharedPrefsAiStore.aiCredentials(androidContext())) }
 
-    single { BackupPrefs(androidContext()) }
-    singleOf(::BackupManager)
-    single { SyncManager(androidContext(), get(), get()) }
 
     factory { TransactionExporter(get(), get(), getOrNull()) }
     single<PdfStatementRenderer> { AndroidPdfStatementRenderer() }
@@ -92,5 +89,5 @@ val workerModule = module {
 }
 
 val paisaModules = listOf(
-    databaseModule, daoModule, coreModule, aiServicesModule, appModule, viewModelModule, workerModule
+    databaseModule, daoModule, coreModule, aiServicesModule, cloudModule, appModule, viewModelModule, workerModule
 )

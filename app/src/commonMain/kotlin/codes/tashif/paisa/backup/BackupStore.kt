@@ -1,6 +1,6 @@
 package codes.tashif.paisa.backup
 
-import java.io.IOException
+import kotlinx.io.IOException
 
 /** The provider rejected our credentials; the user has to sign in again in the app. */
 class BackupAuthException(message: String) : IOException(message)

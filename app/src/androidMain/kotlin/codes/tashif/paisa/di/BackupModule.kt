@@ -1,11 +1,17 @@
 package codes.tashif.paisa.di
 
-import codes.tashif.paisa.ui.backup.AndroidBackupService
-import codes.tashif.paisa.ui.backup.BackupService
+import codes.tashif.paisa.backup.AndroidCloudPlatform
+import codes.tashif.paisa.backup.BackupPrefs
+import codes.tashif.paisa.backup.CloudPlatform
+import codes.tashif.paisa.backup.androidBackupPrefs
+import codes.tashif.paisa.ui.backup.AndroidBackupHooks
+import codes.tashif.paisa.ui.backup.BackupServiceHooks
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
-/** Backup and sync for BackupViewModel, backed by BackupManager and SyncManager. */
+/** Android's side of backup and sync: encrypted prefs, WorkManager, Play sign-in, content files. */
 val backupModule = module {
-    single<BackupService> { AndroidBackupService(androidContext(), get(), get()) }
+    single<BackupPrefs> { androidBackupPrefs(androidContext()) }
+    single<CloudPlatform> { AndroidCloudPlatform(androidContext(), get()) }
+    single<BackupServiceHooks> { AndroidBackupHooks(androidContext()) }
 }

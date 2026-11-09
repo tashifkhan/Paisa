@@ -277,7 +277,9 @@ fun BackupScreen(
             onManualLogin = { server, user, pw ->
                 showNextcloud = false
                 backup.connectNextcloudManual(server, user, pw)
-            }
+            },
+            initialProxy = backup.nextcloudProxy(),
+            onProxyChange = if (backup.nextcloudNeedsProxy) backup::setNextcloudProxy else null
         )
     }
 

@@ -32,9 +32,12 @@ internal fun NextcloudSheet(
     serverError: (String) -> String?,
     onDismiss: () -> Unit,
     onBrowserLogin: (server: String) -> Unit,
-    onManualLogin: (server: String, user: String, appPassword: String) -> Unit
+    onManualLogin: (server: String, user: String, appPassword: String) -> Unit,
+    initialProxy: String? = null,
+    onProxyChange: ((String) -> Unit)? = null
 ) {
     var server by remember { mutableStateOf(initialServer) }
+    var proxy by remember { mutableStateOf(initialProxy.orEmpty()) }
     var manual by remember { mutableStateOf(false) }
     var user by remember { mutableStateOf("") }
     var appPassword by remember { mutableStateOf("") }
@@ -76,6 +79,27 @@ internal fun NextcloudSheet(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                 modifier = Modifier.fillMaxWidth()
             )
+            // Browsers can't call Nextcloud directly: it sends no CORS headers.
+            if (onProxyChange != null) {
+                OutlinedTextField(
+                    value = proxy,
+                    onValueChange = {
+                        proxy = it
+                        onProxyChange(it)
+                    },
+                    label = { Text("CORS proxy") },
+                    supportingText = {
+                        Text(
+                            "Browsers can't reach Nextcloud directly. Deploy tools/nextcloud-proxy " +
+                                "from the Paisa repo and paste its address."
+                        )
+                    },
+                    placeholder = { Text("https://paisa-proxy.you.workers.dev") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
             if (!manual) {
                 Button(
                     onClick = { withSafeServer { onBrowserLogin(server) } },

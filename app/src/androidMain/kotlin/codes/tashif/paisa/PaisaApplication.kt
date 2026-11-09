@@ -6,7 +6,7 @@ import codes.tashif.paisa.di.aiModule
 import codes.tashif.paisa.di.backupModule
 import codes.tashif.paisa.di.paisaModules
 import codes.tashif.paisa.di.smsModule
-import codes.tashif.paisa.sync.SyncManager
+import codes.tashif.paisa.sync.SyncScheduling
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.workmanager.factory.KoinWorkerFactory
 import org.koin.core.context.GlobalContext
@@ -33,6 +33,6 @@ class PaisaApplication : Application(), Configuration.Provider {
         }
         // Local edits from anywhere in the process (UI, SMS receiver, workers)
         // schedule an upload when sync is on.
-        SyncManager.watchLocalChanges(this)
+        SyncScheduling.watchLocalChanges(this)
     }
 }

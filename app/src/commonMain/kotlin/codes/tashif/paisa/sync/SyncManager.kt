@@ -1,38 +1,20 @@
 package codes.tashif.paisa.sync
 
-import codes.tashif.paisa.data.sql.sqlRead
-import codes.tashif.paisa.data.sql.sqlTransaction
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
-import android.content.Context
-import android.os.Build
-import androidx.work.BackoffPolicy
-import androidx.work.Constraints
-import androidx.work.CoroutineWorker
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.ExistingWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.work.WorkerParameters
-import codes.tashif.paisa.backup.BackupAuthException
 import codes.tashif.paisa.backup.BackupCrypto
-import codes.tashif.paisa.backup.BackupManager
+import codes.tashif.paisa.backup.BackupLock
 import codes.tashif.paisa.backup.BackupPrefs
 import codes.tashif.paisa.backup.BackupProvider
 import codes.tashif.paisa.backup.BackupStore
+import codes.tashif.paisa.backup.CloudPlatform
 import codes.tashif.paisa.backup.RemoteBackup
 import codes.tashif.paisa.data.AppDatabase
-import codes.tashif.paisa.data.PaisaDatabase
-import codes.tashif.paisa.widget.PaisaWidgets
-import kotlinx.coroutines.Dispatchers
+import codes.tashif.paisa.data.sql.sqlRead
+import codes.tashif.paisa.data.sql.sqlTransaction
+import codes.tashif.paisa.platform.nowMillis
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.io.IOException
-import java.util.concurrent.TimeUnit
+import kotlinx.io.IOException
 
 data class SyncReport(val received: Int, val sent: Int, val devices: Int)
 
@@ -48,30 +30,25 @@ data class SyncReport(val received: Int, val sent: Int, val devices: Int)
  * Every file is encrypted with a key derived from the sync password, so the
  * cloud provider only ever stores ciphertext.
  */
-class SyncManager internal constructor(
-    context: Context,
+class SyncManager(
     private val db: AppDatabase,
     private val prefs: BackupPrefs,
-    private val storeOverride: BackupStore?
+    private val platform: CloudPlatform,
+    private val storeOverride: BackupStore? = null
 ) {
-    constructor(
-        context: Context,
-        db: AppDatabase,
-        prefs: BackupPrefs
-    ) : this(context, db, prefs, null)
-
-    private val app = context.applicationContext
-
     private fun store(): BackupStore = storeOverride
-        ?: BackupManager.storeFor(app, prefs.load())
+        ?: platform.storeFor(prefs.load())
         ?: throw IOException("Connect Google Drive or Nextcloud first")
+
+    /** On, with a cloud account to sync through. */
+    fun isEnabled(): Boolean = prefs.syncEnabled() && prefs.load().provider != BackupProvider.NONE
 
     /**
      * Turns sync on. If other devices already sync, [password] must match
      * theirs; it is checked by decrypting one of their files.
      */
-    suspend fun enable(password: CharArray) = BackupManager.lock.withLock {
-        withContext(Dispatchers.IO) {
+    suspend fun enable(password: CharArray) = BackupLock.mutex.withLock {
+        run {
             val store = store()
             val existing = store.listSync()
                 .filter { SyncFileNames.parse(it.name)?.deviceId != prefs.syncDeviceId() }
@@ -91,22 +68,20 @@ class SyncManager internal constructor(
                 BackupCrypto.deriveKey(password, BackupCrypto.newSalt())
             }
             prefs.enableSync(key)
-            enabledCache = true
         }
-        if (storeOverride == null) schedule(app)
+        if (storeOverride == null) platform.reschedule()
     }
 
     fun disable() {
         prefs.disableSync()
-        enabledCache = false
-        if (storeOverride == null) schedule(app)
+        if (storeOverride == null) platform.reschedule()
     }
 
-    suspend fun syncNow(): SyncReport = BackupManager.lock.withLock {
-        withContext(Dispatchers.IO) {
+    suspend fun syncNow(): SyncReport = BackupLock.mutex.withLock {
+        run {
             try {
                 val report = runSync()
-                prefs.recordSyncSuccess(System.currentTimeMillis())
+                prefs.recordSyncSuccess(nowMillis())
                 report
             } catch (e: IOException) {
                 prefs.recordSyncError(e.message ?: "Sync failed")
@@ -125,7 +100,7 @@ class SyncManager internal constructor(
         val problems = mutableListOf<String>()
         val received = pull(store, key, me, files, problems)
         val sent = push(store, key, me, files)
-        if (received > 0) PaisaWidgets.refresh(app)
+        if (received > 0) platform.onDataReplaced()
         // Our own changes went up; still tell the user why a device was skipped.
         problems.firstOrNull()?.let { throw IOException(it) }
         val devices = files.map { it.first.deviceId }.filter { it != me }.toSet().size
@@ -199,7 +174,7 @@ class SyncManager internal constructor(
         } catch (e: BackupCrypto.WrongPasswordException) {
             throw SkipDevice(WRONG_PASSWORD)
         }
-        // Apply and record progress together, even if WorkManager cancels us.
+        // Apply and record progress together, even if the scheduler cancels us.
         return withContext(NonCancellable) {
             val result = try {
                 // Through Room, not the raw handle: Room only tells open queries
@@ -254,7 +229,7 @@ class SyncManager internal constructor(
     ): Pair<Long, Int> {
         val seq = prefs.syncSeq() + 1
         val result = db.sqlTransaction {
-            SyncEngine.export(it, SyncEngine.Header(me, deviceName(), seq, full, System.currentTimeMillis()))
+            SyncEngine.export(it, SyncEngine.Header(me, platform.deviceName, seq, full, nowMillis()))
         }
         val sealed = BackupCrypto.seal(result.payload, key)
         // A cancel between the upload and the bookkeeping would re-send the same
@@ -271,104 +246,7 @@ class SyncManager internal constructor(
     companion object {
         /** Deltas before a device folds its history into one full file. */
         private const val COMPACT_AFTER = 40
-        private const val PERIODIC_WORK = "paisa_sync_periodic"
-        private const val SOON_WORK = "paisa_sync_soon"
         private const val WRONG_PASSWORD =
             "A device syncs with a different password. Use the same one everywhere."
-
-        /** Read on every database change, so cached instead of opening encrypted prefs. */
-        @Volatile
-        private var enabledCache: Boolean? = null
-
-        fun isEnabled(context: Context): Boolean =
-            enabledCache ?: BackupPrefs(context.applicationContext).let {
-                val on = it.syncEnabled() && it.load().provider != BackupProvider.NONE
-                enabledCache = on
-                on
-            }
-
-        fun invalidateCache() {
-            enabledCache = null
-        }
-
-        fun deviceName(): String =
-            listOfNotNull(Build.MANUFACTURER?.replaceFirstChar { it.uppercase() }, Build.MODEL)
-                .distinct()
-                .joinToString(" ")
-                .ifBlank { "Android device" }
-
-        private val network = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
-
-        /** Hourly catch-up, so a device left closed still picks changes up. */
-        fun schedule(context: Context) {
-            val wm = WorkManager.getInstance(context)
-            if (!isEnabled(context)) {
-                wm.cancelUniqueWork(PERIODIC_WORK)
-                wm.cancelUniqueWork(SOON_WORK)
-                return
-            }
-            val request = PeriodicWorkRequestBuilder<SyncWorker>(1, TimeUnit.HOURS)
-                .setConstraints(network)
-                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.MINUTES)
-                .build()
-            wm.enqueueUniquePeriodicWork(PERIODIC_WORK, ExistingPeriodicWorkPolicy.KEEP, request)
-        }
-
-        /**
-         * Sync shortly. Called after local edits (debounced: each call restarts
-         * the delay, so a burst of edits or an SMS rescan uploads once) and when
-         * the app comes to the foreground.
-         */
-        fun requestSoon(context: Context, delaySeconds: Long = 20) {
-            if (!isEnabled(context)) return
-            val request = OneTimeWorkRequestBuilder<SyncWorker>()
-                .setInitialDelay(delaySeconds, TimeUnit.SECONDS)
-                .setConstraints(network)
-                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 1, TimeUnit.MINUTES)
-                .build()
-            WorkManager.getInstance(context)
-                .enqueueUniqueWork(SOON_WORK, ExistingWorkPolicy.REPLACE, request)
-        }
-
-        /** Hooks local database changes to [requestSoon]. Call once per process. */
-        fun watchLocalChanges(context: Context) {
-            val app = context.applicationContext
-            val db = PaisaDatabase.get(app)
-            CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-                db.invalidationTracker.createFlow(*SyncSchema.TABLE_NAMES, emitInitialState = false)
-                    .collect {
-                        if (!isEnabled(app)) return@collect
-                        // Changes pulled from other devices also invalidate these tables
-                        // but never reach the outbox; only real local edits do.
-                        val pending = try {
-                            db.sqlRead { SyncEngine.hasPendingChanges(it) }
-                        } catch (e: Exception) {
-                            false
-                        }
-                        if (pending) requestSoon(app)
-                    }
-            }
-        }
-    }
-}
-
-class SyncWorker(
-    context: Context,
-    params: WorkerParameters,
-    private val syncManager: SyncManager
-) : CoroutineWorker(context, params) {
-    override suspend fun doWork(): Result {
-        if (!SyncManager.isEnabled(applicationContext)) return Result.success()
-        return try {
-            syncManager.syncNow()
-            Result.success()
-        } catch (e: BackupAuthException) {
-            // The user has to sign in again; retrying won't help. The backup screen shows it.
-            Result.failure()
-        } catch (e: SyncEngine.NewerVersionException) {
-            Result.failure()
-        } catch (e: IOException) {
-            if (runAttemptCount < 5) Result.retry() else Result.failure()
-        }
     }
 }

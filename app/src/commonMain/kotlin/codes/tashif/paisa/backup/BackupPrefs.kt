@@ -1,37 +1,27 @@
 package codes.tashif.paisa.backup
 
-import android.content.Context
-import android.content.SharedPreferences
-import android.util.Base64
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
+import codes.tashif.paisa.platform.SettingsStore
+import codes.tashif.paisa.platform.randomHexId
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
+import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.put
+import kotlin.io.encoding.Base64
 
 /**
- * Backup settings, the Nextcloud app password, and the derived encryption key.
+ * Backup settings, the Nextcloud app password, the derived encryption key and
+ * sync progress.
  *
- * Stored in EncryptedSharedPreferences and excluded from Android Auto Backup
- * (see res/xml/backup_rules.xml) so none of it leaves the device.
+ * On Android the store is EncryptedSharedPreferences, excluded from Auto
+ * Backup (see res/xml/backup_rules.xml), so none of it leaves the device. On
+ * the web it is localStorage.
  */
-class BackupPrefs internal constructor(context: Context, testName: String?) {
-
-    constructor(context: Context) : this(context, null)
-
-    val prefs: SharedPreferences = if (testName != null) {
-        context.applicationContext.getSharedPreferences(testName, Context.MODE_PRIVATE)
-    } else try {
-        val masterKey = MasterKey.Builder(context.applicationContext)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-        EncryptedSharedPreferences.create(
-            context.applicationContext,
-            PREFS_NAME,
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
-    } catch (e: Exception) {
-        context.applicationContext.getSharedPreferences(PREFS_NAME_FALLBACK, Context.MODE_PRIVATE)
-    }
+class BackupPrefs(val store: SettingsStore) {
+    private val prefs get() = store
 
     fun load(): BackupConfig {
         val ncServer = prefs.getString(K_NC_SERVER, null)
@@ -109,8 +99,8 @@ class BackupPrefs internal constructor(context: Context, testName: String?) {
         val key = prefs.getString(K_KEY, null) ?: return null
         val salt = prefs.getString(K_SALT, null) ?: return null
         return BackupCrypto.DerivedKey(
-            key = Base64.decode(key, Base64.NO_WRAP),
-            salt = Base64.decode(salt, Base64.NO_WRAP),
+            key = Base64.decode(key),
+            salt = Base64.decode(salt),
             iterations = prefs.getInt(K_ITERATIONS, BackupCrypto.DEFAULT_ITERATIONS)
         )
     }
@@ -120,8 +110,8 @@ class BackupPrefs internal constructor(context: Context, testName: String?) {
         if (key == null) {
             edit.remove(K_KEY).remove(K_SALT).remove(K_ITERATIONS)
         } else {
-            edit.putString(K_KEY, Base64.encodeToString(key.key, Base64.NO_WRAP))
-                .putString(K_SALT, Base64.encodeToString(key.salt, Base64.NO_WRAP))
+            edit.putString(K_KEY, Base64.encode(key.key))
+                .putString(K_SALT, Base64.encode(key.salt))
                 .putInt(K_ITERATIONS, key.iterations)
         }
         edit.apply()
@@ -150,7 +140,7 @@ class BackupPrefs internal constructor(context: Context, testName: String?) {
     /** This install's id in sync file names. New on every install. */
     fun syncDeviceId(): String {
         prefs.getString(K_SYNC_DEVICE, null)?.let { return it }
-        val id = java.util.UUID.randomUUID().toString().replace("-", "").take(16)
+        val id = randomHexId().take(16)
         prefs.edit().putString(K_SYNC_DEVICE, id).commit()
         return id
     }
@@ -159,8 +149,8 @@ class BackupPrefs internal constructor(context: Context, testName: String?) {
         val key = prefs.getString(K_SYNC_KEY, null) ?: return null
         val salt = prefs.getString(K_SYNC_SALT, null) ?: return null
         return BackupCrypto.DerivedKey(
-            key = Base64.decode(key, Base64.NO_WRAP),
-            salt = Base64.decode(salt, Base64.NO_WRAP),
+            key = Base64.decode(key),
+            salt = Base64.decode(salt),
             iterations = prefs.getInt(K_SYNC_ITERATIONS, BackupCrypto.DEFAULT_ITERATIONS)
         )
     }
@@ -168,8 +158,8 @@ class BackupPrefs internal constructor(context: Context, testName: String?) {
     /** Turns sync on with [key]. The next sync pulls everything and sends a full copy. */
     fun enableSync(key: BackupCrypto.DerivedKey) {
         prefs.edit()
-            .putString(K_SYNC_KEY, Base64.encodeToString(key.key, Base64.NO_WRAP))
-            .putString(K_SYNC_SALT, Base64.encodeToString(key.salt, Base64.NO_WRAP))
+            .putString(K_SYNC_KEY, Base64.encode(key.key))
+            .putString(K_SYNC_SALT, Base64.encode(key.salt))
             .putInt(K_SYNC_ITERATIONS, key.iterations)
             .putBoolean(K_SYNC_ENABLED, true)
             .putBoolean(K_SYNC_NEEDS_FULL, true)
@@ -218,15 +208,15 @@ class BackupPrefs internal constructor(context: Context, testName: String?) {
     fun syncCursors(): Map<String, Long> {
         val raw = prefs.getString(K_SYNC_CURSORS, null) ?: return emptyMap()
         return try {
-            val json = org.json.JSONObject(raw)
-            json.keys().asSequence().associateWith { json.getLong(it) }
-        } catch (e: org.json.JSONException) {
+            Json.parseToJsonElement(raw).jsonObject.mapValues { it.value.jsonPrimitive.long }
+        } catch (e: Exception) {
             emptyMap()
         }
     }
 
     fun setSyncCursor(deviceId: String, seq: Long) {
-        val json = org.json.JSONObject(syncCursors().toMutableMap().apply { put(deviceId, seq) } as Map<*, *>)
+        val all = syncCursors() + (deviceId to seq)
+        val json = buildJsonObject { all.forEach { (k, v) -> put(k, v) } }
         prefs.edit().putString(K_SYNC_CURSORS, json.toString()).commit()
     }
 
@@ -234,23 +224,22 @@ class BackupPrefs internal constructor(context: Context, testName: String?) {
     fun syncPeers(): Map<String, Pair<String, Long>> {
         val raw = prefs.getString(K_SYNC_PEERS, null) ?: return emptyMap()
         return try {
-            val json = org.json.JSONObject(raw)
-            json.keys().asSequence().associateWith {
-                val o = json.getJSONObject(it)
-                o.optString("name") to o.optLong("at")
+            Json.parseToJsonElement(raw).jsonObject.mapValues { (_, v) ->
+                val o = v.jsonObject
+                (o["name"]?.jsonPrimitive?.content ?: "") to (o["at"]?.jsonPrimitive?.longOrNull ?: 0L)
             }
-        } catch (e: org.json.JSONException) {
+        } catch (e: Exception) {
             emptyMap()
         }
     }
 
     fun setSyncPeer(deviceId: String, name: String, at: Long) {
-        val json = try {
-            org.json.JSONObject(prefs.getString(K_SYNC_PEERS, null) ?: "{}")
-        } catch (e: org.json.JSONException) {
-            org.json.JSONObject()
+        val existing = try {
+            Json.parseToJsonElement(prefs.getString(K_SYNC_PEERS, null) ?: "{}").jsonObject
+        } catch (e: Exception) {
+            JsonObject(emptyMap())
         }
-        json.put(deviceId, org.json.JSONObject().put("name", name).put("at", at))
+        val json = JsonObject(existing + (deviceId to buildJsonObject { put("name", name); put("at", at) }))
         prefs.edit().putString(K_SYNC_PEERS, json.toString()).apply()
     }
 

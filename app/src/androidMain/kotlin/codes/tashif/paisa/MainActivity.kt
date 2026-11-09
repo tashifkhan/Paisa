@@ -9,7 +9,7 @@ import org.koin.androidx.viewmodel.ext.android.viewModel
 import androidx.fragment.app.FragmentActivity
 import codes.tashif.paisa.data.PaisaDatabase
 import codes.tashif.paisa.data.demo.DemoData
-import codes.tashif.paisa.sync.SyncManager
+import codes.tashif.paisa.sync.SyncScheduling
 import kotlinx.coroutines.runBlocking
 import codes.tashif.paisa.ui.app.AppViewModel
 import codes.tashif.paisa.ui.app.PaisaApp
@@ -64,7 +64,7 @@ class MainActivity : FragmentActivity() {
         // broadcast was delayed by the device). The worker deduplicates rows.
         smsViewModel.scanSmsOnAppForeground()
         // Pick up what other devices changed while this one was closed.
-        SyncManager.requestSoon(this, delaySeconds = 1)
+        SyncScheduling.requestSoon(this, delaySeconds = 1)
     }
 
     override fun onStop() {

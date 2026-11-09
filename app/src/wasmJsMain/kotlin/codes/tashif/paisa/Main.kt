@@ -2,7 +2,9 @@ package codes.tashif.paisa
 
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport
+import codes.tashif.paisa.backup.WebSyncScheduler
 import codes.tashif.paisa.data.AppDatabase
+import codes.tashif.paisa.sync.SyncManager
 import codes.tashif.paisa.data.demo.DemoData
 import codes.tashif.paisa.di.webModules
 import codes.tashif.paisa.ui.app.PaisaApp
@@ -24,6 +26,8 @@ fun main() {
     startKoin { modules(webModules) }
     requestPersistentStorage()
     val start = {
+        val koin = KoinPlatform.getKoin()
+        WebSyncScheduler.start(koin.get<SyncManager>(), koin.get<AppDatabase>())
         ComposeViewport(document.body!!) { PaisaApp() }
     }
     if (wantsDemo()) {
