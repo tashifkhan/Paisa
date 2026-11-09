@@ -8,12 +8,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import java.util.concurrent.atomic.AtomicInteger
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Uses the user's BYOK credentials to extract structured transactions from a statement.
  */
-class StatementExtractionService(
-    private val llmClient: LlmClient = LlmClient()
+@Singleton
+class StatementExtractionService @Inject constructor(
+    private val llmClient: LlmClient
 ) {
     suspend fun extractFromUri(
         context: Context,

@@ -2,7 +2,7 @@ package codes.tashif.paisa.widget
 
 import android.content.Context
 import codes.tashif.paisa.data.Account
-import codes.tashif.paisa.data.AppDatabase
+import codes.tashif.paisa.di.WidgetEntryPoint
 import codes.tashif.paisa.ui.theme.PaisaPalette
 import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
@@ -25,12 +25,12 @@ internal data class WidgetSnapshot(
 )
 
 internal suspend fun loadWidgetSnapshot(context: Context): WidgetSnapshot {
-    val db = AppDatabase.getDatabase(context)
-    val settings = db.settingsDao().getSettingsDirect()
-    val accounts = db.accountDao().getAllAccounts().first()
-    val transactions = db.transactionDao().getAllTransactions().first()
+    val deps = WidgetEntryPoint.get(context)
+    val settings = deps.settingsRepository().getSettings()
+    val accounts = deps.accountRepository().allAccounts.first()
+    val transactions = deps.transactionRepository().allTransactions.first()
 
-    // Mirrors PaisaViewModel.homeSummary: cards are debt, not spendable balance.
+    // Mirrors HomeViewModel.homeSummary: cards are debt, not spendable balance.
     val (creditCards, bankAccounts) = accounts.partition { it.type == "Credit Card" }
     val monthPrefix = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date())
     val monthTx = transactions.filter { it.transactionDate.startsWith(monthPrefix) }

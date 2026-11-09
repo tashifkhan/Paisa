@@ -13,6 +13,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 import java.io.IOException
 import java.io.InputStream
 import java.util.concurrent.TimeUnit
@@ -22,17 +25,16 @@ class PasswordRequiredException : IOException("This backup is encrypted. Enter i
 
 data class RestoreResult(val transactions: Int, val backupCreatedAt: Long)
 
-class BackupManager(context: Context) {
+@Singleton
+class BackupManager @Inject constructor(
+    @ApplicationContext context: Context,
+    val prefs: BackupPrefs,
+    private val db: AppDatabase
+) {
 
     private val app = context.applicationContext
-    val prefs = BackupPrefs(app)
-    private val db = AppDatabase.getDatabase(app)
 
-    fun store(config: BackupConfig = prefs.load()): BackupStore? = when (config.provider) {
-        BackupProvider.GOOGLE_DRIVE -> GoogleDriveStore(app)
-        BackupProvider.NEXTCLOUD -> config.nextcloud?.let { NextcloudStore(it) }
-        BackupProvider.NONE -> null
-    }
+    fun store(config: BackupConfig = prefs.load()): BackupStore? = storeFor(app, config)
 
     /** Snapshot of the whole database as a sealed `.paisa` file. */
     suspend fun createArchive(): ByteArray = withContext(Dispatchers.IO) {
@@ -123,6 +125,13 @@ class BackupManager(context: Context) {
 
         /** One backup, restore or sync at a time, across the UI and WorkManager. */
         val lock = Mutex()
+
+        /** The remote store [config] points at, or null when no provider is set up. */
+        fun storeFor(context: Context, config: BackupConfig): BackupStore? = when (config.provider) {
+            BackupProvider.GOOGLE_DRIVE -> GoogleDriveStore(context.applicationContext)
+            BackupProvider.NEXTCLOUD -> config.nextcloud?.let { NextcloudStore(it) }
+            BackupProvider.NONE -> null
+        }
 
         fun schedule(context: Context, config: BackupConfig) {
             val wm = WorkManager.getInstance(context)

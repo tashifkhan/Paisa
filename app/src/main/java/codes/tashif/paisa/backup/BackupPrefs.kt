@@ -5,6 +5,9 @@ import android.content.SharedPreferences
 import android.util.Base64
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
 enum class BackupProvider(val id: String, val label: String) {
     NONE("none", "Not set up"),
@@ -62,9 +65,10 @@ data class SyncStatus(
  * Stored in EncryptedSharedPreferences and excluded from Android Auto Backup
  * (see res/xml/backup_rules.xml) so none of it leaves the device.
  */
+@Singleton
 class BackupPrefs internal constructor(context: Context, testName: String?) {
 
-    constructor(context: Context) : this(context, null)
+    @Inject constructor(@ApplicationContext context: Context) : this(context, null)
 
     val prefs: SharedPreferences = if (testName != null) {
         context.applicationContext.getSharedPreferences(testName, Context.MODE_PRIVATE)

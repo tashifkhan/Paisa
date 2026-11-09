@@ -25,6 +25,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
+import androidx.hilt.work.HiltWorker
+import javax.inject.Inject
+import javax.inject.Singleton
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
@@ -42,24 +48,24 @@ data class SyncReport(val received: Int, val sent: Int, val devices: Int)
  * Every file is encrypted with a key derived from the sync password, so the
  * cloud provider only ever stores ciphertext.
  */
+@Singleton
 class SyncManager internal constructor(
     context: Context,
     private val db: AppDatabase,
     private val prefs: BackupPrefs,
     private val storeOverride: BackupStore?
 ) {
-    constructor(context: Context) : this(
-        context,
-        AppDatabase.getDatabase(context.applicationContext),
-        BackupPrefs(context.applicationContext),
-        null
-    )
+    @Inject constructor(
+        @ApplicationContext context: Context,
+        db: AppDatabase,
+        prefs: BackupPrefs
+    ) : this(context, db, prefs, null)
 
     private val app = context.applicationContext
     private val sql get() = db.openHelper.writableDatabase
 
     private fun store(): BackupStore = storeOverride
-        ?: BackupManager(app).store()
+        ?: BackupManager.storeFor(app, prefs.load())
         ?: throw IOException("Connect Google Drive or Nextcloud first")
 
     /**
@@ -353,11 +359,16 @@ class SyncManager internal constructor(
     }
 }
 
-class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+@HiltWorker
+class SyncWorker @AssistedInject constructor(
+    @Assisted context: Context,
+    @Assisted params: WorkerParameters,
+    private val syncManager: SyncManager
+) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         if (!SyncManager.isEnabled(applicationContext)) return Result.success()
         return try {
-            SyncManager(applicationContext).syncNow()
+            syncManager.syncNow()
             Result.success()
         } catch (e: BackupAuthException) {
             // The user has to sign in again; retrying won't help. The backup screen shows it.

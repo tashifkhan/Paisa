@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.devtools.ksp)
+    alias(libs.plugins.hilt.android)
 }
 
 android {
@@ -77,6 +78,9 @@ dependencies {
     implementation(libs.pdfbox.android)
     // Google Drive backup sign-in (AuthorizationClient)
     implementation(libs.play.services.auth)
+    implementation(libs.hilt.android)
+    implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.hilt.work)
 
     testImplementation(libs.androidx.compose.ui.test.junit4)
     testImplementation(libs.androidx.core)
@@ -96,4 +100,6 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     "ksp"(libs.androidx.room.compiler)
+    "ksp"(libs.hilt.compiler)
+    "ksp"(libs.androidx.hilt.compiler)
 }
