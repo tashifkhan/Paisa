@@ -42,6 +42,7 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.io.core)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.ktor.client.core)
             implementation(libs.room3.runtime)
             implementation(libs.kotlinx.datetime)
             implementation(libs.koin.core)
@@ -84,6 +85,7 @@ kotlin {
             implementation(libs.androidx.graphics.shapes)
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.okhttp)
+            implementation(libs.ktor.client.okhttp)
             implementation(libs.androidx.security.crypto)
             implementation(libs.pdfbox.android)
             // Google Drive backup sign-in (AuthorizationClient)
@@ -102,6 +104,7 @@ kotlin {
         }
         wasmJsMain.dependencies {
             implementation(libs.kotlinx.browser)
+            implementation(libs.ktor.client.js)
             implementation(libs.sqlite.web)
             // SQLite compiled to Wasm, run by sqlite-worker/worker.js.
             // webpack.config.d/sqlite-worker.js points webpack at that file.
