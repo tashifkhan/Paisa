@@ -62,13 +62,19 @@ fun PaisaApp(viewModel: AppViewModel = hiltViewModel()) {
             when {
                 needsOnboarding && restoringFromOnboarding -> {
                     // A successful restore sets onboardingCompleted, which leaves this branch.
-                    BackupScreen(onBack = { restoringFromOnboarding = false })
+                    CenteredContent {
+                        BackupScreen(onBack = { restoringFromOnboarding = false })
+                    }
                 }
                 needsOnboarding -> {
                     // OnboardingScreen marks onboarding done itself.
-                    OnboardingScreen(onRestoreBackup = { restoringFromOnboarding = true })
+                    CenteredContent {
+                        OnboardingScreen(onRestoreBackup = { restoringFromOnboarding = true })
+                    }
                 }
-                appLockOn && isLocked -> LockGate(onUnlocked = viewModel::unlockApp)
+                appLockOn && isLocked -> CenteredContent {
+                    LockGate(onUnlocked = viewModel::unlockApp)
+                }
                 else -> AppShell(viewModel = viewModel)
             }
         }
