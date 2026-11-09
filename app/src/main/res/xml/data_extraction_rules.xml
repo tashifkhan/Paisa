@@ -4,12 +4,14 @@
     <cloud-backup>
         <exclude domain="sharedpref" path="paisa_ai_credentials.xml" />
         <exclude domain="sharedpref" path="paisa_ai_credentials_plain.xml" />
+        <exclude domain="sharedpref" path="paisa_ai_config.xml" />
         <exclude domain="sharedpref" path="paisa_backup.xml" />
         <exclude domain="sharedpref" path="paisa_backup_plain.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="paisa_ai_credentials.xml" />
         <exclude domain="sharedpref" path="paisa_ai_credentials_plain.xml" />
+        <exclude domain="sharedpref" path="paisa_ai_config.xml" />
         <exclude domain="sharedpref" path="paisa_backup.xml" />
         <exclude domain="sharedpref" path="paisa_backup_plain.xml" />
     </device-transfer>

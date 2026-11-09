@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ai
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -8,27 +9,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Stores BYOK API keys in EncryptedSharedPreferences (Android Keystore-backed).
- * Never write keys into Room or logs.
+ * The EncryptedSharedPreferences file (Android Keystore-backed) that holds AI
+ * keys. [load] reads the old single-provider settings, which are only used to
+ * migrate to per-provider keys; [prefs] is shared with
+ * [codes.tashif.paisa.ai.store.AiKeyStore]. Never write keys into Room or logs.
  */
 @Singleton
-class AiCredentialsStore @Inject constructor(@ApplicationContext context: Context) {
+class AiCredentialsStore internal constructor(internal val prefs: SharedPreferences) {
 
-    private val prefs = try {
-        val masterKey = MasterKey.Builder(context.applicationContext)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-        EncryptedSharedPreferences.create(
-            context.applicationContext,
-            PREFS_NAME,
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
-    } catch (e: Exception) {
-        // Fallback for devices where crypto fails (rare); still app-private
-        context.applicationContext.getSharedPreferences(PREFS_NAME_FALLBACK, Context.MODE_PRIVATE)
-    }
+    @Inject
+    constructor(@ApplicationContext context: Context) : this(openPrefs(context))
 
     fun load(): AiCredentials {
         val provider = AiProvider.fromId(prefs.getString(KEY_PROVIDER, null))
@@ -42,20 +32,44 @@ class AiCredentialsStore @Inject constructor(@ApplicationContext context: Contex
         )
     }
 
-    fun save(credentials: AiCredentials) {
-        prefs.edit()
-            .putString(KEY_PROVIDER, credentials.provider.id)
-            .putString(KEY_API_KEY, credentials.apiKey.trim())
-            .putString(KEY_BASE_URL, credentials.baseUrl.trim().trimEnd('/'))
-            .putString(KEY_MODEL, credentials.model.trim())
-            .apply()
-    }
+    /** True when the old single-provider entries are still on disk. */
+    fun hasLegacy(): Boolean = prefs.contains(KEY_PROVIDER) || prefs.contains(KEY_API_KEY)
 
-    fun clear() {
-        prefs.edit().clear().apply()
-    }
+    /** Removes the old single-provider entries, leaving per-provider keys alone. Returns whether it saved. */
+    fun clearLegacy(): Boolean =
+        prefs.edit()
+            .remove(KEY_PROVIDER)
+            .remove(KEY_API_KEY)
+            .remove(KEY_BASE_URL)
+            .remove(KEY_MODEL)
+            .commit()
+
+    /** Writes old single-provider settings. Only tests need this. */
+    internal fun saveLegacy(creds: AiCredentials): Boolean =
+        prefs.edit()
+            .putString(KEY_PROVIDER, creds.provider.id)
+            .putString(KEY_API_KEY, creds.apiKey)
+            .putString(KEY_BASE_URL, creds.baseUrl)
+            .putString(KEY_MODEL, creds.model)
+            .commit()
 
     companion object {
+        private fun openPrefs(context: Context): SharedPreferences = try {
+            val masterKey = MasterKey.Builder(context.applicationContext)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+            EncryptedSharedPreferences.create(
+                context.applicationContext,
+                PREFS_NAME,
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+        } catch (e: Exception) {
+            // Fallback for devices where crypto fails (rare); still app-private
+            context.applicationContext.getSharedPreferences(PREFS_NAME_FALLBACK, Context.MODE_PRIVATE)
+        }
+
         private const val PREFS_NAME = "paisa_ai_credentials"
         private const val PREFS_NAME_FALLBACK = "paisa_ai_credentials_plain"
         private const val KEY_PROVIDER = "provider"

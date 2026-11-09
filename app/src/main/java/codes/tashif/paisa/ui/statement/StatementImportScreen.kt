@@ -25,7 +25,7 @@ fun StatementImportScreen(
     viewModel: StatementImportViewModel = hiltViewModel()
 ) {
     val state by viewModel.statementUiState.collectAsState()
-    val credentials by viewModel.aiCredentials.collectAsState()
+    val ai by viewModel.aiSummary.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
     val settings by viewModel.settings.collectAsState()
     val currency = settings?.currency ?: "₹"
@@ -82,8 +82,8 @@ fun StatementImportScreen(
 
         when (val s = state) {
             StatementUiState.Idle -> StatementIdleContent(
-                providerLabel = if (credentials.isConfigured) {
-                    "${credentials.provider.label} · ${credentials.model}"
+                providerLabel = if (ai.ready) {
+                    "${ai.providerName} · ${ai.modelName}"
                 } else {
                     null
                 },
@@ -92,7 +92,7 @@ fun StatementImportScreen(
                     viewModel.onExternalActivityLaunched()
                     picker.launch(STATEMENT_MIME_TYPES)
                 },
-                canChooseFile = credentials.isConfigured
+                canChooseFile = ai.ready
             )
 
             is StatementUiState.Extracting -> StatementExtractingContent(
@@ -131,7 +131,7 @@ fun StatementImportScreen(
 
             is StatementUiState.Error -> StatementErrorContent(
                 message = s.message,
-                showAiSettings = !credentials.isConfigured,
+                showAiSettings = !ai.ready,
                 onRetry = { viewModel.resetStatementUi() },
                 onOpenAiSettings = onOpenAiSettings
             )

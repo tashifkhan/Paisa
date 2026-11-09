@@ -144,7 +144,7 @@ fun AppShell(
                         onOpenTab = viewModel::selectTab,
                         onOpenSmsSetup = { state.open(FullScreen.SMS_SETUP) },
                         onOpenAppearance = { state.open(FullScreen.APPEARANCE) },
-                        onOpenAiSettings = { state.open(FullScreen.AI_SETTINGS) },
+                        onOpenAiSettings = { state.open(FullScreen.AI) },
                         onOpenStatementImport = { state.open(FullScreen.STATEMENT_IMPORT) },
                         onOpenMerchantMappings = { state.open(FullScreen.MERCHANT_MAPPINGS) },
                         onOpenCategories = { state.open(FullScreen.CATEGORIES) },

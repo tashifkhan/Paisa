@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cleartext is allowed so an AI gateway such as RelayRoom can run on a laptop
+  on the same network. Code guards every AI base URL (BaseUrlSafety): https
+  anywhere, http only to loopback, the emulator host (10.0.2.2) or private
+  network ranges, and never with credentials in the URL.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

@@ -3,7 +3,7 @@ package codes.tashif.paisa.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
-import codes.tashif.paisa.ai.AiCredentials
+import codes.tashif.paisa.ai.AiRepository
 import codes.tashif.paisa.core.PrivacySession
 import codes.tashif.paisa.core.SnackbarManager
 import codes.tashif.paisa.data.AppTab
@@ -15,12 +15,13 @@ import codes.tashif.paisa.data.repository.SmsInboxRepository
 import codes.tashif.paisa.data.repository.TransactionRepository
 import codes.tashif.paisa.ui.sms.SmsScanProgress
 import codes.tashif.paisa.ui.sms.smsScanProgress
-import codes.tashif.paisa.ui.statement.AiCredentialsHolder
+import codes.tashif.paisa.ui.ai.AiSummary
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -32,7 +33,7 @@ class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val privacySession: PrivacySession,
     private val snackbarManager: SnackbarManager,
-    aiCredentialsHolder: AiCredentialsHolder,
+    aiRepository: AiRepository,
     private val exporter: TransactionExporter,
     categoryRepository: CategoryRepository,
     transactionRepository: TransactionRepository,
@@ -61,8 +62,10 @@ class SettingsViewModel @Inject constructor(
     val smsScanProgress: StateFlow<SmsScanProgress> = workManager.smsScanProgress()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SmsScanProgress())
 
-    /** Live AI credentials, shared with the AI settings and statement import screens. */
-    val aiCredentials: StateFlow<AiCredentials> = aiCredentialsHolder.credentials
+    /** The model statement import would run first, for the AI and import rows. */
+    val aiSummary: StateFlow<AiSummary> = combine(
+        aiRepository.ladders, aiRepository.providers, aiRepository.catalog, AiSummary::of
+    ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AiSummary())
 
     fun showSnackbar(
         message: String,
