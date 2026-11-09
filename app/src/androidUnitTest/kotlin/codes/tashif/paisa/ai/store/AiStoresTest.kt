@@ -59,10 +59,10 @@ class AiStoresTest {
     @Test
     fun aFailedKeyWriteKeepsTheOldSetupForNextLaunch() = runBlocking {
         val keyPrefs = FlakyPrefs(prefs("migr-keys-1"))
-        val credentials = AiCredentialsStore(keyPrefs)
+        val credentials = AiCredentialsStore(SharedPrefsAiStore(keyPrefs))
         assertTrue(credentials.saveLegacy(legacy))
         keyPrefs.failing = true
-        val config = AiConfigStore(prefs("migr-config-1"))
+        val config = AiConfigStore(SharedPrefsAiStore(prefs("migr-config-1")))
         val migrator = LegacyMigrator(AiKeyStore(credentials), config, credentials)
 
         assertFalse(migrator.run())
@@ -79,10 +79,10 @@ class AiStoresTest {
 
     @Test
     fun aFailedConfigWriteKeepsTheOldSetup() = runBlocking {
-        val credentials = AiCredentialsStore(prefs("migr-keys-2"))
+        val credentials = AiCredentialsStore(SharedPrefsAiStore(prefs("migr-keys-2")))
         assertTrue(credentials.saveLegacy(legacy))
         val configPrefs = FlakyPrefs(prefs("migr-config-2")).apply { failing = true }
-        val config = AiConfigStore(configPrefs)
+        val config = AiConfigStore(SharedPrefsAiStore(configPrefs))
 
         assertFalse(LegacyMigrator(AiKeyStore(credentials), config, credentials).run())
         assertTrue(credentials.hasLegacy())
@@ -93,7 +93,7 @@ class AiStoresTest {
 
     @Test
     fun parallelLadderEditsAllLand() = runBlocking {
-        val store = AiConfigStore(prefs("ladder-config"))
+        val store = AiConfigStore(SharedPrefsAiStore(prefs("ladder-config")))
         (1..40).map { i ->
             async(Dispatchers.Default) {
                 store.update { c -> LadderConfig.edit(c, AiService.STATEMENT_PHOTOS) { it + Rung("openai", "m$i") } }

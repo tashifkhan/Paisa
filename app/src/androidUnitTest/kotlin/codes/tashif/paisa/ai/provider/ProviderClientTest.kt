@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ai.provider
 
 import codes.tashif.paisa.ai.LlmException
+import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -25,7 +26,7 @@ class ProviderClientTest {
         val bodies = mutableListOf<String>()
         var index = 0
         val client = ProviderClient()
-        client.http = OkHttpClient.Builder().addInterceptor { chain ->
+        val stub = OkHttpClient.Builder().addInterceptor { chain ->
             val req = chain.request()
             val buffer = okio.Buffer()
             req.body?.writeTo(buffer)
@@ -39,6 +40,7 @@ class ProviderClientTest {
                 .body(body.toResponseBody("application/json".toMediaType()))
                 .build()
         }.build()
+        client.http = ProviderClient.client(OkHttp.create { preconfigured = stub })
         return client to bodies
     }
 

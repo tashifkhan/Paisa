@@ -2,6 +2,7 @@ package codes.tashif.paisa
 
 import android.app.Application
 import androidx.work.Configuration
+import codes.tashif.paisa.di.aiModule
 import codes.tashif.paisa.di.backupModule
 import codes.tashif.paisa.di.paisaModules
 import codes.tashif.paisa.di.smsModule
@@ -28,7 +29,7 @@ class PaisaApplication : Application(), Configuration.Provider {
         if (GlobalContext.getOrNull() != null) stopKoin()
         startKoin {
             androidContext(this@PaisaApplication)
-            modules(paisaModules + smsModule + backupModule)
+            modules(paisaModules + smsModule + backupModule + aiModule)
         }
         // Local edits from anywhere in the process (UI, SMS receiver, workers)
         // schedule an upload when sync is on.

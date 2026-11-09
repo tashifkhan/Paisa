@@ -89,8 +89,8 @@ val appModule = module {
     singleOf(::TransactionRepository)
     singleOf(::SmsTransactionProcessor)
 
-    single { AiConfigStore(androidContext()) }
-    single { AiCredentialsStore(androidContext()) }
+    single { AiConfigStore(codes.tashif.paisa.ai.store.SharedPrefsAiStore.aiConfig(androidContext())) }
+    single { AiCredentialsStore(codes.tashif.paisa.ai.store.SharedPrefsAiStore.aiCredentials(androidContext())) }
     singleOf(::AiKeyStore)
     singleOf(::LegacyMigrator)
     singleOf(::ModelCatalog)
