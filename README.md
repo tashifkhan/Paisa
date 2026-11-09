@@ -62,25 +62,40 @@ when it breaks:
 
 ## the web version
 
+the whole app also runs in a browser. it's the same kotlin as the phone (compose multiplatform compiled to wasm), so same screens, same database, same sync. nothing gets rewritten in typescript.
+
 ```bash
 ./gradlew :app:wasmJsBrowserDevelopmentRun        # dev server
 ./gradlew :app:wasmJsBrowserDistribution          # static files in app/build/dist/wasmJs/productionExecutable
 ```
 
-open it with `?demo` on the end of the url to get three months of sample data.
+open it with `?demo` on the end of the url to get three months of sample data. without it you get the first-run setup, same as a fresh install on the phone: currency, theme, then shortcuts to add something or set up backup.
 
-it's the same screens, viewmodels and database as the phone. the database lives in the browser's origin private file system, so nothing leaves the tab unless you turn on backup or sync.
+the database is sqlite in a web worker, stored in the browser's origin private file system. nothing leaves the tab unless you turn on backup, sync or ai. it needs a recent chrome, edge, firefox or safari, and no special server headers.
+
+### hosting it
+
+the build is a folder of static files, so any static host works. on vercel:
+
+```bash
+./gradlew :app:wasmJsBrowserDistribution
+npx vercel deploy app/build/dist/wasmJs/productionExecutable --prod
+```
+
+vercel's build machines have no jdk, so build on your machine or in ci and deploy the folder, rather than letting vercel run gradle. cloudflare pages, netlify and github pages work the same way. serve it over https, since the browser only gives origin private storage to secure pages.
 
 ### big screens
 
 the layout follows the window, not the platform, so a tablet and a browser get the same thing at the same width:
 
-- **under 600dp (phones):** bottom bar and bottom sheets, as before
-- **600 to 840dp (small tablets, phones in landscape):** a side rail with the add button at its top
+- **under 600dp (phones):** bottom bar and bottom sheets
+- **600 to 840dp (small tablets, phones in landscape):** a side rail
 - **840 to 1200dp (tablets in landscape):** a transaction opens beside the list. debts and settings become a list on the left with the open item on the right. analytics goes to two columns, budgets and accounts to grids, and sheets open as centered dialogs
 - **1200dp and up (laptops, desktops):** a drawer with every tab, and home's balances move to a pane beside the transactions
 
-with a keyboard: `n` adds, `/` or `ctrl k` searches, `1` to `6` switch tabs, `esc` closes things and `?` lists all of it. right click a transaction to open or delete it. charts show their tooltip on hover, lists get a scrollbar on the web, and the browser tab title follows the screen.
+in a browser the add and rescan buttons sit at the top of the rail or drawer, near the mouse. on android tablets they stay floating in the corner, near your thumb. a phone browser with "desktop site" turned on still gets the phone layout, because the app sizes itself to the part of the page you can see.
+
+with a keyboard: `n` adds, `/` or `ctrl k` searches, `1` to `6` switch tabs, `esc` closes things and `?` lists all of it. right click a transaction to open or delete it. charts show their tooltip on hover, lists get a scrollbar, and the browser tab title follows the screen.
 
 ### backup and sync on the web
 
@@ -89,13 +104,17 @@ backup and sync are the same code as on the phone, so a browser and a phone can 
 - **nextcloud:** nextcloud sends no cors headers, so browsers need a small proxy. deploy [tools/nextcloud-proxy](tools/nextcloud-proxy) to your own cloudflare account (one command) and paste its address into the nextcloud sheet. it only forwards to your server and stores nothing. if you run the server and add cors headers yourself, leave the proxy empty
 - **google drive:** needs a "web application" oauth client id from google cloud. put it in the `paisa-google-client-id` meta tag in `app/src/wasmJsMain/resources/index.html`. browsers get no refresh token, so after about an hour you tap connect again
 
+### ai on the web
+
+add with ai and statement import work in the browser too, as long as the provider answers browser requests (cors). anything that speaks the openai chat completions format and allows browsers works, including a relayroom gateway added as an openai-compatible custom provider. if a provider blocks the browser, the sheet tells you so in a couple of seconds instead of spinning.
+
 what the web can't do yet:
 
 - read sms. browsers can't, so the sms screen says so
-- pdf export and pdf statement import. csv export works
+- pdfs. no pdf export, and statement import and add with ai can't read pdf text in the browser yet. csv, text and images work
 - app lock
-- most ai providers block browser requests (cors), so statement import with ai may fail until something proxies it
-- the aed and sar currency symbols and the → arrow show as boxes, because the web build has no font for them
+- a camera button. on a phone, the photos button offers the camera itself
+- some currency symbols (aed, sar, bdt, npr) and the → arrow have no font in the web build. setup shows those currencies by code instead
 
 ## where stuff lives
 
