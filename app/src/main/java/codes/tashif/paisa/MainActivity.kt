@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.AccountBalance
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.DonutLarge
+import androidx.compose.material.icons.rounded.Handshake
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Sync
@@ -39,6 +40,10 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import codes.tashif.paisa.ui.components.FloatingNavBar
 import codes.tashif.paisa.ui.components.NavTab
+import codes.tashif.paisa.data.AppTab
+import codes.tashif.paisa.data.NavTabs
+import codes.tashif.paisa.ui.screens.AddDebtPersonSheet
+import codes.tashif.paisa.ui.screens.DebtsScreen
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
@@ -203,13 +208,15 @@ class MainActivity : FragmentActivity() {
     }
 }
 
-private val tabs = listOf(
-    NavTab("Home", Icons.Rounded.Home),
-    NavTab("Analytics", Icons.Rounded.BarChart),
-    NavTab("Budgets", Icons.Rounded.DonutLarge),
-    NavTab("Accounts", Icons.Rounded.AccountBalance),
-    NavTab("More", Icons.Rounded.MoreHoriz)
-)
+internal val AppTab.icon: androidx.compose.ui.graphics.vector.ImageVector
+    get() = when (this) {
+        AppTab.HOME -> Icons.Rounded.Home
+        AppTab.ANALYTICS -> Icons.Rounded.BarChart
+        AppTab.BUDGETS -> Icons.Rounded.DonutLarge
+        AppTab.ACCOUNTS -> Icons.Rounded.AccountBalance
+        AppTab.DEBTS -> Icons.Rounded.Handshake
+        AppTab.MORE -> Icons.Rounded.MoreHoriz
+    }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -221,6 +228,10 @@ fun MainAppContent(viewModel: PaisaViewModel) {
     val appSettings by viewModel.settings.collectAsState()
     val floatingNavBar = appSettings?.floatingNavBar == true
     val navBarLabels = appSettings?.navBarLabels != false
+    val navTabs = NavTabs.parse(appSettings?.navTabs)
+    val openDebtPersonId by viewModel.openDebtPersonId.collectAsState()
+    val tabs = navTabs.map { NavTab(it.label, it.icon) }
+    var showAddDebtPerson by remember { mutableStateOf(false) }
     var showAddSheet by remember { mutableStateOf(false) }
     var showAddBudget by remember { mutableStateOf(false) }
     var showAddAccount by remember { mutableStateOf(false) }
@@ -244,8 +255,8 @@ fun MainAppContent(viewModel: PaisaViewModel) {
             WidgetDeepLink.DEST_ADD_TRANSACTION -> showAddSheet = true
             WidgetDeepLink.DEST_STATEMENT_IMPORT -> showStatementImport = true
             WidgetDeepLink.DEST_SMS_SETUP -> showSmsSetup = true
-            WidgetDeepLink.DEST_ACCOUNTS -> viewModel.selectTab(3)
-            WidgetDeepLink.DEST_HOME -> viewModel.selectTab(0)
+            WidgetDeepLink.DEST_ACCOUNTS -> viewModel.selectTab(AppTab.ACCOUNTS)
+            WidgetDeepLink.DEST_HOME -> viewModel.selectTab(AppTab.HOME)
         }
         if (widgetDestination != null) viewModel.consumeWidgetDestination()
     }
@@ -348,12 +359,19 @@ fun MainAppContent(viewModel: PaisaViewModel) {
         }
     }
 
+    // A screen opened from More (its tab is hidden from the bar) goes back to More.
+    androidx.activity.compose.BackHandler(enabled = currentTab !in navTabs) {
+        viewModel.selectTab(AppTab.MORE)
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButtonPosition = FabPosition.End,
         floatingActionButton = {
             AnimatedVisibility(
-                visible = currentTab == 0 || currentTab == 2 || currentTab == 3,
+                // On a person's page in Debts, their own buttons add entries instead.
+                visible = currentTab in setOf(AppTab.HOME, AppTab.BUDGETS, AppTab.ACCOUNTS) ||
+                    (currentTab == AppTab.DEBTS && openDebtPersonId == null),
                 enter = scaleIn() + fadeIn(),
                 exit = scaleOut() + fadeOut()
             ) {
@@ -361,7 +379,7 @@ fun MainAppContent(viewModel: PaisaViewModel) {
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
                 ) {
-                    if (currentTab == 0) {
+                    if (currentTab == AppTab.HOME) {
                         SmallFloatingActionButton(
                             onClick = {
                                 if (!scanProgress.isRunning) {
@@ -392,8 +410,9 @@ fun MainAppContent(viewModel: PaisaViewModel) {
                         onClick = {
                             haptics.click()
                             when (currentTab) {
-                                2 -> showAddBudget = true
-                                3 -> showAddAccount = true
+                                AppTab.BUDGETS -> showAddBudget = true
+                                AppTab.ACCOUNTS -> showAddAccount = true
+                                AppTab.DEBTS -> showAddDebtPerson = true
                                 else -> showAddSheet = true
                             }
                         }
@@ -401,8 +420,9 @@ fun MainAppContent(viewModel: PaisaViewModel) {
                         Icon(
                             Icons.Rounded.Add,
                             contentDescription = when (currentTab) {
-                                2 -> "Add budget"
-                                3 -> "Add account"
+                                AppTab.BUDGETS -> "Add budget"
+                                AppTab.ACCOUNTS -> "Add account"
+                                AppTab.DEBTS -> "Add person"
                                 else -> "Add transaction"
                             }
                         )
@@ -411,17 +431,19 @@ fun MainAppContent(viewModel: PaisaViewModel) {
             }
         },
         bottomBar = {
+            // A tab opened from More isn't in the bar; nothing shows as selected then.
+            val selectedIndex = navTabs.indexOf(currentTab)
             val select: (Int) -> Unit = { index ->
-                if (currentTab != index) haptics.tick()
-                viewModel.selectTab(index)
+                if (selectedIndex != index) haptics.tick()
+                viewModel.selectTab(navTabs[index])
             }
             if (floatingNavBar) {
-                FloatingNavBar(tabs = tabs, selected = currentTab, onSelect = select)
+                FloatingNavBar(tabs = tabs, selected = selectedIndex, onSelect = select)
             } else {
                 NavigationBar {
                     tabs.forEachIndexed { index, tab ->
                         NavigationBarItem(
-                            selected = currentTab == index,
+                            selected = selectedIndex == index,
                             onClick = { select(index) },
                             // A hidden label isn't composed, so name the icon or
                             // TalkBack reads an unlabeled button.
@@ -453,12 +475,15 @@ fun MainAppContent(viewModel: PaisaViewModel) {
                 label = "tab_content"
             ) { page ->
                 when (page) {
-                    0 -> RecordsScreen(viewModel)
-                    1 -> AnalysisScreen(viewModel)
-                    2 -> BudgetsScreen(viewModel)
-                    3 -> AccountsScreen(viewModel)
-                    else -> MoreScreen(
+                    AppTab.HOME -> RecordsScreen(viewModel)
+                    AppTab.ANALYTICS -> AnalysisScreen(viewModel)
+                    AppTab.BUDGETS -> BudgetsScreen(viewModel)
+                    AppTab.ACCOUNTS -> AccountsScreen(viewModel)
+                    AppTab.DEBTS -> DebtsScreen(viewModel)
+                    AppTab.MORE -> MoreScreen(
                         viewModel = viewModel,
+                        hiddenTabs = AppTab.entries.filter { it !in navTabs },
+                        onOpenTab = { viewModel.selectTab(it) },
                         onOpenSmsSetup = { showSmsSetup = true },
                         onOpenAppearance = { showAppearance = true },
                         onOpenAiSettings = { showAiSettings = true },
@@ -490,6 +515,12 @@ fun MainAppContent(viewModel: PaisaViewModel) {
         AddAccountSheetHost(
             viewModel = viewModel,
             onDismiss = { showAddAccount = false }
+        )
+    }
+    if (showAddDebtPerson) {
+        AddDebtPersonSheet(
+            viewModel = viewModel,
+            onDismiss = { showAddDebtPerson = false }
         )
     }
 }

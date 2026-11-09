@@ -56,6 +56,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
+import codes.tashif.paisa.data.AppTab
+import codes.tashif.paisa.icon
 import codes.tashif.paisa.data.PaisaViewModel
 import codes.tashif.paisa.security.BiometricAuth
 import codes.tashif.paisa.security.BiometricStatus
@@ -84,7 +86,10 @@ fun MoreScreen(
     onOpenCategories: () -> Unit = {},
     onOpenCurrency: () -> Unit = {},
     onOpenBackup: () -> Unit = {},
-    onOpenAbout: () -> Unit = {}
+    onOpenAbout: () -> Unit = {},
+    /** Screens not in the bottom bar; listed here so they stay reachable. */
+    hiddenTabs: List<AppTab> = emptyList(),
+    onOpenTab: (AppTab) -> Unit = {}
 ) {
     val settings by viewModel.settings.collectAsState()
     val categories by viewModel.categories.collectAsState()
@@ -159,6 +164,29 @@ fun MoreScreen(
                 .padding(horizontal = MaterialTheme.spacing.medium)
                 .padding(bottom = MaterialTheme.spacing.large)
         ) {
+            if (hiddenTabs.isNotEmpty()) {
+                SettingsSectionLabel("Screens")
+                SettingsGroup {
+                    hiddenTabs.forEachIndexed { index, tab ->
+                        SettingsItem(
+                            title = tab.label,
+                            subtitle = when (tab) {
+                                AppTab.ANALYTICS -> "Spending by category and month"
+                                AppTab.BUDGETS -> "Monthly limits per category"
+                                AppTab.ACCOUNTS -> "Banks, cards, cash and wallets"
+                                AppTab.DEBTS -> "Who owes you, and whom you owe"
+                                else -> null
+                            },
+                            icon = tab.icon,
+                            position = groupPositionOf(index, hiddenTabs.size),
+                            iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            iconContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                            onClick = { onOpenTab(tab) }
+                        )
+                    }
+                }
+            }
+
             SettingsSectionLabel("Import")
             SettingsGroup {
                 SettingsItem(
