@@ -1,7 +1,9 @@
 package codes.tashif.paisa.sync
 
 import android.content.Context
-import androidx.room.Room
+import codes.tashif.paisa.testing.inMemoryDatabase
+import codes.tashif.paisa.testing.long
+import codes.tashif.paisa.testing.sql
 import androidx.test.core.app.ApplicationProvider
 import codes.tashif.paisa.backup.BackupPrefs
 import codes.tashif.paisa.backup.BackupStore
@@ -9,6 +11,7 @@ import codes.tashif.paisa.backup.RemoteBackup
 import codes.tashif.paisa.data.AppDatabase
 import codes.tashif.paisa.data.Transaction
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -53,11 +56,7 @@ class SyncManagerTest {
     private val dbs = mutableListOf<AppDatabase>()
 
     private inner class Device(name: String) {
-        val db: AppDatabase = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
-            .addCallback(AppDatabase.callback)
-            .allowMainThreadQueries()
-            .build()
-            .also { dbs += it; it.openHelper.writableDatabase }
+        val db: AppDatabase = inMemoryDatabase().also { dbs += it }
         val prefs = BackupPrefs(context, "sync-test-$name")
         val sync = SyncManager(context, db, prefs, cloud)
         val accountRepo = AccountRepository(db)
@@ -66,9 +65,7 @@ class SyncManagerTest {
         val settingsRepo = SettingsRepository(db)
 
         fun add(amount: Double, note: String) = runBlocking {
-            val cat = db.openHelper.writableDatabase
-                .query("SELECT id FROM categories WHERE type = 'expense' LIMIT 1")
-                .use { it.moveToFirst(); it.getInt(0) }
+            val cat = db.long("SELECT id FROM categories WHERE type = 'expense' LIMIT 1").toInt()
             transactionRepo.insertTransaction(
                 Transaction(
                     amount = amount, type = "expense", categoryId = cat, accountId = 1, note = note,
@@ -77,10 +74,7 @@ class SyncManagerTest {
             )
         }
 
-        fun notes(): Set<String> = db.openHelper.writableDatabase
-            .query("SELECT note FROM transactions").use { c ->
-                buildSet { while (c.moveToNext()) add(c.getString(0)) }
-            }
+        fun notes(): Set<String> = db.sql { sql -> sql.rows("SELECT note FROM transactions").map { it.getString(0) }.toSet() }
     }
 
     @After
@@ -126,18 +120,19 @@ class SyncManagerTest {
 
         // Room re-runs Flows (the transaction list, balances) only when its
         // invalidation tracker hears about the write.
-        val invalidated = java.util.concurrent.CountDownLatch(1)
-        tablet.db.invalidationTracker.addObserver(object :
-            androidx.room.InvalidationTracker.Observer(arrayOf("transactions")) {
-            override fun onInvalidated(tables: Set<String>) = invalidated.countDown()
-        })
+        val invalidated = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val watcher = launch(kotlinx.coroutines.Dispatchers.IO) {
+            tablet.db.invalidationTracker.createFlow("transactions", emitInitialState = false)
+                .collect { invalidated.complete(Unit) }
+        }
+        // Let the flow register its observer before the write.
+        kotlinx.coroutines.delay(200)
         phone.add(12.0, "seen live")
         phone.sync.syncNow()
         tablet.sync.syncNow()
-        assertTrue(
-            "the UI would not see synced rows",
-            invalidated.await(5, java.util.concurrent.TimeUnit.SECONDS)
-        )
+        val seen = kotlinx.coroutines.withTimeoutOrNull(5_000) { invalidated.await() } != null
+        watcher.cancel()
+        assertTrue("the UI would not see synced rows", seen)
     }
 
     @Test
@@ -184,6 +179,9 @@ class SyncManagerTest {
             dinnerOnPhone,
             listOf(DebtShare(null, "Radhika", 400.0), DebtShare(null, "Omar", 400.0))
         )
+        // The tablet saves later. Stamps are milliseconds, so make "later" real;
+        // two saves in the same millisecond fall to the tie-break instead.
+        kotlinx.coroutines.delay(5)
         tablet.debtRepo.saveTransactionSplit(
             dinnerOnTablet,
             listOf(DebtShare(null, "Radhika", 500.0), DebtShare(null, "Omar", 300.0))

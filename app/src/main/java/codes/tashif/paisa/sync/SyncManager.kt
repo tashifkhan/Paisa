@@ -1,5 +1,10 @@
 package codes.tashif.paisa.sync
 
+import codes.tashif.paisa.data.sql.sqlRead
+import codes.tashif.paisa.data.sql.sqlTransaction
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import android.content.Context
 import android.os.Build
 import androidx.work.BackoffPolicy
@@ -55,7 +60,6 @@ class SyncManager internal constructor(
     ) : this(context, db, prefs, null)
 
     private val app = context.applicationContext
-    private val sql get() = db.openHelper.writableDatabase
 
     private fun store(): BackupStore = storeOverride
         ?: BackupManager.storeFor(app, prefs.load())
@@ -199,7 +203,7 @@ class SyncManager internal constructor(
             val result = try {
                 // Through Room, not the raw handle: Room only tells open queries
                 // (the UI, widgets) to re-run when one of its own transactions ends.
-                db.runInTransaction<SyncEngine.ApplyResult> { SyncEngine.apply(sql, payload) }
+                db.sqlTransaction { SyncEngine.apply(it, payload) }
             } catch (e: SyncEngine.NewerVersionException) {
                 throw SkipDevice(e.message.orEmpty())
             }
@@ -219,7 +223,7 @@ class SyncManager internal constructor(
         files: List<Pair<SyncFileNames.Parsed, RemoteBackup>>
     ): Int {
         val full = prefs.syncNeedsFull()
-        if (!full && !SyncEngine.hasPendingChanges(sql)) return 0
+        if (!full && !db.sqlRead { SyncEngine.hasPendingChanges(it) }) return 0
 
         var (seq, sent) = upload(store, key, me, full)
         if (!full && prefs.syncDeltasSinceFull() >= COMPACT_AFTER) {
@@ -248,21 +252,16 @@ class SyncManager internal constructor(
         full: Boolean
     ): Pair<Long, Int> {
         val seq = prefs.syncSeq() + 1
-        var export: SyncEngine.Export? = null
-        db.runInTransaction {
-            export = SyncEngine.export(
-                sql,
-                SyncEngine.Header(me, deviceName(), seq, full, System.currentTimeMillis())
-            )
+        val result = db.sqlTransaction {
+            SyncEngine.export(it, SyncEngine.Header(me, deviceName(), seq, full, System.currentTimeMillis()))
         }
-        val result = export!!
         val sealed = BackupCrypto.seal(result.payload, key)
         // A cancel between the upload and the bookkeeping would re-send the same
         // number next time, so finish the pair once the upload starts.
         withContext(NonCancellable) {
             store.uploadSync(SyncFileNames.name(me, seq, full), sealed)
             // Only after the upload: a failed upload leaves the changes queued.
-            db.runInTransaction { SyncEngine.clearOutbox(sql, result.outbox) }
+            db.sqlTransaction { SyncEngine.clearOutbox(it, result.outbox) }
             prefs.recordUpload(seq, full)
         }
         return seq to result.changes
@@ -334,20 +333,20 @@ class SyncManager internal constructor(
         fun watchLocalChanges(context: Context) {
             val app = context.applicationContext
             val db = AppDatabase.getDatabase(app)
-            db.invalidationTracker.addObserver(object :
-                androidx.room.InvalidationTracker.Observer(SyncSchema.TABLE_NAMES) {
-                override fun onInvalidated(tables: Set<String>) {
-                    if (!isEnabled(app)) return
-                    // Changes pulled from other devices also invalidate these tables
-                    // but never reach the outbox; only real local edits do.
-                    val pending = try {
-                        SyncEngine.hasPendingChanges(db.openHelper.readableDatabase)
-                    } catch (e: Exception) {
-                        false
+            CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+                db.invalidationTracker.createFlow(*SyncSchema.TABLE_NAMES, emitInitialState = false)
+                    .collect {
+                        if (!isEnabled(app)) return@collect
+                        // Changes pulled from other devices also invalidate these tables
+                        // but never reach the outbox; only real local edits do.
+                        val pending = try {
+                            db.sqlRead { SyncEngine.hasPendingChanges(it) }
+                        } catch (e: Exception) {
+                            false
+                        }
+                        if (pending) requestSoon(app)
                     }
-                    if (pending) requestSoon(app)
-                }
-            })
+            }
         }
     }
 }

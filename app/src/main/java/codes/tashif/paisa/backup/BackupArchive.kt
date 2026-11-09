@@ -1,23 +1,19 @@
 package codes.tashif.paisa.backup
 
-import android.content.ContentValues
-import android.database.Cursor
-import android.database.sqlite.SQLiteDatabase
-import android.util.Base64
-import android.util.JsonReader
-import android.util.JsonToken
-import android.util.JsonWriter
-import androidx.sqlite.db.SupportSQLiteDatabase
-import codes.tashif.paisa.BuildConfig
 import codes.tashif.paisa.data.AppDatabase
+import codes.tashif.paisa.data.sql.JsonOut
+import codes.tashif.paisa.data.sql.Sql
+import codes.tashif.paisa.data.sql.nowMillis
+import codes.tashif.paisa.data.sql.toScalar
+import codes.tashif.paisa.shared.Gzip
 import codes.tashif.paisa.sync.SyncEngine
 import codes.tashif.paisa.sync.SyncSchema
-import java.io.ByteArrayOutputStream
-import java.io.IOException
-import java.io.InputStreamReader
-import java.io.OutputStreamWriter
-import java.util.zip.GZIPInputStream
-import java.util.zip.GZIPOutputStream
+import kotlinx.io.IOException
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 
 /**
  * Logical snapshot of every Room table, written as gzip'd JSON.
@@ -51,103 +47,88 @@ object BackupArchive {
     /** Hard cap on the decompressed payload, so a crafted file can't exhaust memory. */
     private const val MAX_PAYLOAD_BYTES = 256L * 1024 * 1024
 
+    /** One table row: column name to Long, Double, String, ByteArray or null. */
+    typealias Values = Map<String, Any?>
+
     data class Snapshot(
         val dbVersion: Int,
         val createdAt: Long,
         val appVersion: String,
-        val tables: Map<String, List<ContentValues>>
+        val tables: Map<String, List<Values>>
     ) {
         val transactionCount: Int get() = tables["transactions"]?.size ?: 0
     }
 
-    fun userTables(db: SupportSQLiteDatabase): List<String> {
-        val names = mutableListOf<String>()
-        db.query(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
-        ).use { c ->
-            while (c.moveToNext()) {
-                val name = c.getString(0)
-                if (name !in INTERNAL_TABLES && name !in SyncSchema.LOCAL_ONLY_TABLES) names += name
-            }
-        }
+    suspend fun userTables(db: Sql): List<String> {
+        val names = db.rows("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
+            .map { it.getString(0) }
+            .filter { it !in INTERNAL_TABLES && it !in SyncSchema.LOCAL_ONLY_TABLES && !it.startsWith("room_") }
         return names.sortedBy { TABLE_ORDER.indexOf(it).let { i -> if (i < 0) Int.MAX_VALUE else i } }
     }
 
-    /** Dumps the live database into gzip'd JSON. Call inside a transaction for a consistent read. */
-    fun export(db: SupportSQLiteDatabase): ByteArray {
-        val bytes = ByteArrayOutputStream()
-        JsonWriter(OutputStreamWriter(GZIPOutputStream(bytes), Charsets.UTF_8)).use { w ->
-            w.beginObject()
-            w.name("format").value(FORMAT.toLong())
-            w.name("dbVersion").value(db.version.toLong())
-            w.name("createdAt").value(System.currentTimeMillis())
-            w.name("appVersion").value(BuildConfig.VERSION_NAME)
-            w.name("tables").beginObject()
-            for (table in userTables(db)) {
-                w.name(table).beginArray()
-                db.query("SELECT * FROM `$table`").use { c -> writeRows(w, c) }
-                w.endArray()
+    /**
+     * Dumps the live database into gzip'd JSON. Call inside a transaction for a
+     * consistent read. [appVersion] is the app's version name.
+     */
+    suspend fun export(db: Sql, appVersion: String): ByteArray {
+        val w = JsonOut()
+        w.beginObject()
+        w.name("format").value(FORMAT.toLong())
+        w.name("dbVersion").value(db.userVersion().toLong())
+        w.name("createdAt").value(nowMillis())
+        w.name("appVersion").value(appVersion)
+        w.name("tables").beginObject()
+        for (table in userTables(db)) {
+            w.name(table).beginArray()
+            for (row in db.rows("SELECT * FROM `$table`")) {
+                w.beginObject()
+                row.columns.forEachIndexed { i, col -> w.name(col).sqlValue(row.get(i)) }
+                w.endObject()
             }
-            w.endObject()
-            w.endObject()
+            w.endArray()
         }
-        return bytes.toByteArray()
+        w.endObject()
+        w.endObject()
+        return Gzip.compress(w.toString().encodeToByteArray())
     }
 
-    private fun writeRows(w: JsonWriter, c: Cursor) {
-        val cols = c.columnNames
-        while (c.moveToNext()) {
-            w.beginObject()
-            for (i in cols.indices) {
-                w.name(cols[i])
-                when (c.getType(i)) {
-                    Cursor.FIELD_TYPE_NULL -> w.nullValue()
-                    Cursor.FIELD_TYPE_INTEGER -> w.value(c.getLong(i))
-                    Cursor.FIELD_TYPE_FLOAT -> w.value(c.getDouble(i))
-                    Cursor.FIELD_TYPE_BLOB ->
-                        w.beginObject().name("b64")
-                            .value(Base64.encodeToString(c.getBlob(i), Base64.NO_WRAP))
-                            .endObject()
-                    else -> w.value(c.getString(i))
-                }
-            }
-            w.endObject()
-        }
-    }
+    private val json = Json { isLenient = false }
 
-    fun parse(gzipJson: ByteArray): Snapshot {
-        var dbVersion = 0
-        var createdAt = 0L
-        var appVersion = ""
-        var format = 0
-        val tables = linkedMapOf<String, List<ContentValues>>()
-        val stream = LimitedInputStream(GZIPInputStream(gzipJson.inputStream()), MAX_PAYLOAD_BYTES)
-        try {
-            JsonReader(InputStreamReader(stream, Charsets.UTF_8)).use { r ->
-                r.beginObject()
-                while (r.hasNext()) {
-                    when (r.nextName()) {
-                        "format" -> format = r.nextInt()
-                        "dbVersion" -> dbVersion = r.nextInt()
-                        "createdAt" -> createdAt = r.nextLong()
-                        "appVersion" -> appVersion = r.nextString()
-                        "tables" -> {
-                            r.beginObject()
-                            while (r.hasNext()) {
-                                val name = r.nextName()
-                                tables[name] = readRows(r)
-                            }
-                            r.endObject()
+    suspend fun parse(gzipJson: ByteArray): Snapshot {
+        val text = try {
+            Gzip.decompress(gzipJson)
+        } catch (e: Exception) {
+            throw BackupCrypto.NotABackupException("Backup file is damaged")
+        }
+        if (text.size > MAX_PAYLOAD_BYTES) throw IOException("Backup is too large")
+        val root = try {
+            json.parseToJsonElement(text.decodeToString()).jsonObject
+        } catch (e: SerializationException) {
+            throw BackupCrypto.NotABackupException("Backup file is damaged")
+        } catch (e: IllegalArgumentException) {
+            throw BackupCrypto.NotABackupException("Backup file is damaged")
+        }
+        val format: Int
+        val dbVersion: Int
+        val snapshot = try {
+            format = (root["format"]?.toScalar() as? Long)?.toInt() ?: 0
+            dbVersion = (root["dbVersion"]?.toScalar() as? Long)?.toInt() ?: 0
+            val createdAt = root["createdAt"]?.toScalar() as? Long ?: 0L
+            val appVersion = root["appVersion"]?.toScalar() as? String ?: ""
+            val tables = linkedMapOf<String, List<Values>>()
+            (root["tables"] as? JsonObject)?.forEach { (name, rows) ->
+                tables[name] = (rows as? JsonArray).orEmpty().map { row ->
+                    // Booleans from other writers become 0 or 1, as SQLite stores them.
+                    row.jsonObject.mapValues { (_, v) ->
+                        when (val x = v.toScalar()) {
+                            is Boolean -> if (x) 1L else 0L
+                            else -> x
                         }
-                        else -> r.skipValue()
                     }
                 }
-                r.endObject()
             }
-        } catch (e: IOException) {
-            throw e
+            Snapshot(dbVersion, createdAt, appVersion, tables)
         } catch (e: RuntimeException) {
-            // JsonReader throws IllegalStateException/NumberFormatException on bad input.
             throw BackupCrypto.NotABackupException("Backup file is damaged")
         }
         if (format == 0 || dbVersion == 0) {
@@ -156,44 +137,7 @@ object BackupArchive {
         if (format > FORMAT || dbVersion > AppDatabase.SCHEMA_VERSION) {
             throw BackupCrypto.NotABackupException("This backup needs a newer version of Paisa")
         }
-        return Snapshot(dbVersion, createdAt, appVersion, tables)
-    }
-
-    private fun readRows(r: JsonReader): List<ContentValues> {
-        val rows = mutableListOf<ContentValues>()
-        r.beginArray()
-        while (r.hasNext()) {
-            val cv = ContentValues()
-            r.beginObject()
-            while (r.hasNext()) {
-                val col = r.nextName()
-                when (r.peek()) {
-                    JsonToken.NULL -> { r.nextNull(); cv.putNull(col) }
-                    JsonToken.BOOLEAN -> cv.put(col, if (r.nextBoolean()) 1 else 0)
-                    JsonToken.STRING -> cv.put(col, r.nextString())
-                    JsonToken.NUMBER -> {
-                        val raw = r.nextString()
-                        val asLong = raw.toLongOrNull()
-                        if (asLong != null) cv.put(col, asLong) else cv.put(col, raw.toDouble())
-                    }
-                    JsonToken.BEGIN_OBJECT -> {
-                        r.beginObject()
-                        var blob: ByteArray? = null
-                        while (r.hasNext()) {
-                            if (r.nextName() == "b64") blob = Base64.decode(r.nextString(), Base64.NO_WRAP)
-                            else r.skipValue()
-                        }
-                        r.endObject()
-                        if (blob != null) cv.put(col, blob) else cv.putNull(col)
-                    }
-                    else -> r.skipValue()
-                }
-            }
-            r.endObject()
-            rows += cv
-        }
-        r.endArray()
-        return rows
+        return snapshot
     }
 
     /**
@@ -203,30 +147,26 @@ object BackupArchive {
      * Columns the current schema no longer has are dropped, and columns added
      * since the backup was made take their SQL defaults.
      */
-    fun restore(db: SupportSQLiteDatabase, snapshot: Snapshot) {
+    suspend fun restore(db: Sql, snapshot: Snapshot) {
         val live = userTables(db)
         // Keep each row's sync id and stamp as backed up. With the triggers on,
         // the deletes below would turn into tombstones and the inserts into
         // brand-new edits that overwrite newer changes on other devices.
         SyncSchema.setApplying(db, true)
-        db.execSQL("PRAGMA defer_foreign_keys = ON")
-        for (table in live.asReversed()) db.execSQL("DELETE FROM `$table`")
+        db.exec("PRAGMA defer_foreign_keys = ON")
+        for (table in live.asReversed()) db.exec("DELETE FROM `$table`")
         for (table in live) {
             val rows = snapshot.tables[table] ?: continue
-            val columns = columnsOf(db, table)
+            val columns = SyncSchema.columnsOf(db, table).toSet()
             for (row in rows) {
-                val cv = ContentValues()
-                for (key in row.keySet()) {
-                    if (key in columns) putValue(cv, key, row.get(key))
-                }
-                if (cv.size() == 0) continue
-                db.insert(table, SQLiteDatabase.CONFLICT_ABORT, cv)
+                val values = row.filterKeys { it in columns }
+                if (values.isEmpty()) continue
+                db.insert(table, values)
             }
         }
-        db.query("PRAGMA foreign_key_check").use { c ->
-            if (c.moveToFirst()) {
-                throw BackupCrypto.NotABackupException("Backup has broken references (${c.getString(0)})")
-            }
+        val broken = db.first("PRAGMA foreign_key_check")
+        if (broken != null) {
+            throw BackupCrypto.NotABackupException("Backup has broken references (${broken.getString(0)})")
         }
         if (SyncSchema.isInstalled(db)) {
             // Backups from before sync have no sync ids or balance anchors.
@@ -235,50 +175,5 @@ object BackupArchive {
             SyncEngine.clearAllOutbox(db)
         }
         SyncSchema.setApplying(db, false)
-    }
-
-    private fun putValue(cv: ContentValues, key: String, value: Any?) {
-        when (value) {
-            null -> cv.putNull(key)
-            is Long -> cv.put(key, value)
-            is Int -> cv.put(key, value)
-            is Double -> cv.put(key, value)
-            is String -> cv.put(key, value)
-            is ByteArray -> cv.put(key, value)
-            else -> cv.put(key, value.toString())
-        }
-    }
-
-    private fun columnsOf(db: SupportSQLiteDatabase, table: String): Set<String> {
-        val cols = mutableSetOf<String>()
-        db.query("PRAGMA table_info(`$table`)").use { c ->
-            val nameIdx = c.getColumnIndexOrThrow("name")
-            while (c.moveToNext()) cols += c.getString(nameIdx)
-        }
-        return cols
-    }
-
-    private class LimitedInputStream(
-        private val inner: java.io.InputStream,
-        private val limit: Long
-    ) : java.io.FilterInputStream(inner) {
-        private var count = 0L
-
-        override fun read(): Int {
-            val b = super.read()
-            if (b >= 0) bump(1)
-            return b
-        }
-
-        override fun read(b: ByteArray, off: Int, len: Int): Int {
-            val n = super.read(b, off, len)
-            if (n > 0) bump(n.toLong())
-            return n
-        }
-
-        private fun bump(n: Long) {
-            count += n
-            if (count > limit) throw IOException("Backup is too large")
-        }
     }
 }

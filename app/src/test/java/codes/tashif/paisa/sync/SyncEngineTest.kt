@@ -1,8 +1,9 @@
 package codes.tashif.paisa.sync
 
 import android.content.Context
-import androidx.room.Room
-import androidx.sqlite.db.SupportSQLiteDatabase
+import codes.tashif.paisa.testing.inMemoryDatabase
+import codes.tashif.paisa.testing.long
+import codes.tashif.paisa.testing.sql
 import androidx.test.core.app.ApplicationProvider
 import codes.tashif.paisa.data.Account
 import codes.tashif.paisa.data.AppDatabase
@@ -35,32 +36,31 @@ class SyncEngineTest {
         val debtRepo = DebtRepository(db)
         val transactionRepo = TransactionRepository(db, accountRepo, debtRepo)
         val settingsRepo = SettingsRepository(db)
-        val sql: SupportSQLiteDatabase get() = db.openHelper.writableDatabase
         var seq = 0L
 
         /** Exports pending changes (or everything) and clears them, like a successful upload. */
         fun push(full: Boolean = false): ByteArray {
             seq++
-            var export: SyncEngine.Export? = null
-            db.runInTransaction {
-                export = SyncEngine.export(
+            return db.sql { sql ->
+                val export = SyncEngine.export(
                     sql,
                     SyncEngine.Header(name, name, seq, full, System.currentTimeMillis())
                 )
-                SyncEngine.clearOutbox(sql, export!!.outbox)
+                SyncEngine.clearOutbox(sql, export.outbox)
+                export.payload
             }
-            return export!!.payload
         }
 
-        fun pull(file: ByteArray) = SyncEngine.apply(sql, file)
+        fun pull(file: ByteArray) = db.sql { SyncEngine.apply(it, file) }
 
-        fun count(sql: String): Int = this.sql.query(sql).use { c -> c.moveToFirst(); c.getInt(0) }
+        fun hasPending(): Boolean = db.sql { SyncEngine.hasPendingChanges(it) }
+
+        fun count(sql: String): Int = db.long(sql).toInt()
 
         fun balance(accountId: Int): Double = runBlocking { accountRepo.getAccountById(accountId)!!.currentBalance }
 
         fun categoryId(name: String, type: String = "expense"): Int =
-            sql.query("SELECT id FROM categories WHERE name = ? AND type = ?", arrayOf<Any>(name, type))
-                .use { c -> c.moveToFirst(); c.getInt(0) }
+            db.long("SELECT id FROM categories WHERE name = ? AND type = ?", name, type).toInt()
     }
 
     private lateinit var a: Device
@@ -68,11 +68,7 @@ class SyncEngineTest {
 
     private fun newDevice(name: String): Device {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
-            .addCallback(AppDatabase.callback)
-            .allowMainThreadQueries()
-            .build()
-        db.openHelper.writableDatabase // runs onCreate + onOpen
+        val db = inMemoryDatabase()
         return Device(name, db)
     }
 
@@ -154,7 +150,7 @@ class SyncEngineTest {
     fun appliedChangesAreNotSentBack() {
         tx(a, 10.0)
         b.pull(a.push(full = true))
-        assertFalse(SyncEngine.hasPendingChanges(b.sql))
+        assertFalse(b.hasPending())
     }
 
     @Test
@@ -287,7 +283,7 @@ class SyncEngineTest {
 
         // Device-only settings don't queue an upload.
         runBlocking { b.settingsRepo.update(sb.copy(themeMode = "light", lastSmsScanAt = 123L)) }
-        assertFalse(SyncEngine.hasPendingChanges(b.sql))
+        assertFalse(b.hasPending())
 
         // And currency changes flow back the other way.
         runBlocking { b.settingsRepo.update(b.settingsRepo.getSettings()!!.copy(currency = "€")) }

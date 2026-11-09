@@ -1,5 +1,7 @@
 package codes.tashif.paisa.backup
 
+import codes.tashif.paisa.BuildConfig
+import codes.tashif.paisa.data.sql.sqlTransaction
 import android.content.Context
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
@@ -34,9 +36,8 @@ class BackupManager(
 
     /** Snapshot of the whole database as a sealed `.paisa` file. */
     suspend fun createArchive(): ByteArray = withContext(Dispatchers.IO) {
-        var payload: ByteArray? = null
-        db.runInTransaction { payload = BackupArchive.export(db.openHelper.writableDatabase) }
-        BackupCrypto.seal(payload!!, prefs.encryptionKey())
+        val payload = db.sqlTransaction { BackupArchive.export(it, BuildConfig.VERSION_NAME) }
+        BackupCrypto.seal(payload, prefs.encryptionKey())
     }
 
     /** Uploads a new backup, then keeps only the newest [KEEP]. */
@@ -97,11 +98,10 @@ class BackupManager(
                 null
             }
             val snapshot = BackupArchive.parse(BackupCrypto.open(data, header, key))
-            db.runInTransaction {
-                val sdb = db.openHelper.writableDatabase
-                BackupArchive.restore(sdb, snapshot)
+            db.sqlTransaction { sql ->
+                BackupArchive.restore(sql, snapshot)
                 // Fresh device: rescan the inbox. Hashes and soft deletes stop duplicates.
-                sdb.execSQL("UPDATE settings SET lastSmsScanAt = 0, onboardingCompleted = 1")
+                sql.exec("UPDATE settings SET lastSmsScanAt = 0, onboardingCompleted = 1")
             }
             // Everything here is new to the cloud now: re-read every device and send
             // a full copy. Last-write-wins keeps whichever side changed a row last.

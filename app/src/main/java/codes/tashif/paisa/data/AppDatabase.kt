@@ -1,11 +1,12 @@
 package codes.tashif.paisa.data
 
 import android.content.Context
-import androidx.room.Database
-import androidx.room.Room
-import androidx.room.RoomDatabase
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.room3.Database
+import androidx.room3.Room
+import androidx.room3.RoomDatabase
+import androidx.room3.migration.Migration
+import androidx.sqlite.SQLiteConnection
+import codes.tashif.paisa.data.sql.Sql
 import codes.tashif.paisa.sync.SyncSchema
 
 @Database(
@@ -45,25 +46,28 @@ abstract class AppDatabase : RoomDatabase() {
         private var INSTANCE: AppDatabase? = null
 
         private val MIGRATION_2_3 = object : Migration(2, 3) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL(
+            override suspend fun migrate(connection: SQLiteConnection) {
+                val db = Sql.of(connection)
+                db.exec(
                     "ALTER TABLE settings ADD COLUMN expressiveUi INTEGER NOT NULL DEFAULT 1"
                 )
-                db.execSQL(
+                db.exec(
                     "ALTER TABLE settings ADD COLUMN amoledDark INTEGER NOT NULL DEFAULT 0"
                 )
             }
         }
 
         private val MIGRATION_3_4 = object : Migration(3, 4) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE accounts ADD COLUMN creditLimit REAL")
+            override suspend fun migrate(connection: SQLiteConnection) {
+                val db = Sql.of(connection)
+                db.exec("ALTER TABLE accounts ADD COLUMN creditLimit REAL")
             }
         }
 
         private val MIGRATION_4_5 = object : Migration(4, 5) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL(
+            override suspend fun migrate(connection: SQLiteConnection) {
+                val db = Sql.of(connection)
+                db.exec(
                     """
                     CREATE TABLE IF NOT EXISTS merchant_mappings (
                         merchantName TEXT NOT NULL PRIMARY KEY,
@@ -75,7 +79,7 @@ abstract class AppDatabase : RoomDatabase() {
                     """.trimIndent()
                 )
                 // Seed extra expense categories used by CategoryMapping
-                db.execSQL(
+                db.exec(
                     "INSERT OR IGNORE INTO categories (name, type, icon, color, isDefault, orderIndex) VALUES " +
                         "('Bank Charges', 'expense', 'account_balance', '#FFCAD4', 0, 17)," +
                         "('Credit Card Payment', 'expense', 'credit_card', '#A0C4FF', 0, 18)," +
@@ -88,57 +92,62 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         private val MIGRATION_5_6 = object : Migration(5, 6) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL(
+            override suspend fun migrate(connection: SQLiteConnection) {
+                val db = Sql.of(connection)
+                db.exec(
                     "ALTER TABLE accounts ADD COLUMN orderIndex INTEGER NOT NULL DEFAULT 0"
                 )
-                db.execSQL(
+                db.exec(
                     "ALTER TABLE accounts ADD COLUMN isDefault INTEGER NOT NULL DEFAULT 0"
                 )
             }
         }
 
         private val MIGRATION_6_7 = object : Migration(6, 7) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL(
+            override suspend fun migrate(connection: SQLiteConnection) {
+                val db = Sql.of(connection)
+                db.exec(
                     "ALTER TABLE settings ADD COLUMN hideBalancesByDefault INTEGER NOT NULL DEFAULT 1"
                 )
             }
         }
 
         private val MIGRATION_7_8 = object : Migration(7, 8) {
-            override fun migrate(db: SupportSQLiteDatabase) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                val db = Sql.of(connection)
                 // DEFAULT 1 must match Settings.onboardingCompleted @ColumnInfo(defaultValue).
                 // Existing installs skip the tour; fresh installs get 0 via onCreate seed.
-                db.execSQL(
+                db.exec(
                     "ALTER TABLE settings ADD COLUMN onboardingCompleted INTEGER NOT NULL DEFAULT 1"
                 )
             }
         }
 
         private val MIGRATION_8_9 = object : Migration(8, 9) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL(
+            override suspend fun migrate(connection: SQLiteConnection) {
+                val db = Sql.of(connection)
+                db.exec(
                     "ALTER TABLE settings ADD COLUMN highContrast INTEGER NOT NULL DEFAULT 0"
                 )
             }
         }
 
         private val MIGRATION_9_10 = object : Migration(9, 10) {
-            override fun migrate(db: SupportSQLiteDatabase) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                val db = Sql.of(connection)
                 // Only tables that existed in 9; later ones are created with these columns.
                 for (table in SyncSchema.existingTables(db)) {
-                    db.execSQL("ALTER TABLE `${table.name}` ADD COLUMN syncId TEXT")
-                    db.execSQL(
+                    db.exec("ALTER TABLE `${table.name}` ADD COLUMN syncId TEXT")
+                    db.exec(
                         "ALTER TABLE `${table.name}` ADD COLUMN syncStamp INTEGER NOT NULL DEFAULT 0"
                     )
-                    db.execSQL(
+                    db.exec(
                         "CREATE UNIQUE INDEX IF NOT EXISTS index_${table.name}_syncId " +
                             "ON `${table.name}` (syncId)"
                     )
                 }
-                db.execSQL("ALTER TABLE accounts ADD COLUMN balanceAnchor REAL NOT NULL DEFAULT 0")
-                db.execSQL("ALTER TABLE accounts ADD COLUMN balanceAnchorAt TEXT NOT NULL DEFAULT ''")
+                db.exec("ALTER TABLE accounts ADD COLUMN balanceAnchor REAL NOT NULL DEFAULT 0")
+                db.exec("ALTER TABLE accounts ADD COLUMN balanceAnchorAt TEXT NOT NULL DEFAULT ''")
                 // Stamp 1: existing data beats a fresh install's seed rows (stamp 0)
                 // and loses to any edit made from now on.
                 SyncSchema.backfillIds(db, stamp = 1)
@@ -147,25 +156,27 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         private val MIGRATION_10_11 = object : Migration(10, 11) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE settings ADD COLUMN floatingNavBar INTEGER NOT NULL DEFAULT 0")
-                db.execSQL("ALTER TABLE settings ADD COLUMN navBarLabels INTEGER NOT NULL DEFAULT 1")
+            override suspend fun migrate(connection: SQLiteConnection) {
+                val db = Sql.of(connection)
+                db.exec("ALTER TABLE settings ADD COLUMN floatingNavBar INTEGER NOT NULL DEFAULT 0")
+                db.exec("ALTER TABLE settings ADD COLUMN navBarLabels INTEGER NOT NULL DEFAULT 1")
             }
         }
 
         /** Debts (people and what they owe) and a configurable navbar. */
         private val MIGRATION_11_12 = object : Migration(11, 12) {
-            override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL(
+            override suspend fun migrate(connection: SQLiteConnection) {
+                val db = Sql.of(connection)
+                db.exec(
                     "CREATE TABLE IF NOT EXISTS `debt_people` (" +
                         "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
                         "`name` TEXT NOT NULL, `createdAt` TEXT NOT NULL, " +
                         "`syncId` TEXT, `syncStamp` INTEGER NOT NULL DEFAULT 0)"
                 )
-                db.execSQL(
+                db.exec(
                     "CREATE UNIQUE INDEX IF NOT EXISTS `index_debt_people_syncId` ON `debt_people` (`syncId`)"
                 )
-                db.execSQL(
+                db.exec(
                     "CREATE TABLE IF NOT EXISTS `debt_entries` (" +
                         "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
                         "`personId` INTEGER NOT NULL, `amount` REAL NOT NULL, `note` TEXT NOT NULL, " +
@@ -174,13 +185,13 @@ abstract class AppDatabase : RoomDatabase() {
                         "FOREIGN KEY(`personId`) REFERENCES `debt_people`(`id`) " +
                         "ON UPDATE NO ACTION ON DELETE CASCADE)"
                 )
-                db.execSQL(
+                db.exec(
                     "CREATE INDEX IF NOT EXISTS `index_debt_entries_personId` ON `debt_entries` (`personId`)"
                 )
-                db.execSQL(
+                db.exec(
                     "CREATE UNIQUE INDEX IF NOT EXISTS `index_debt_entries_syncId` ON `debt_entries` (`syncId`)"
                 )
-                db.execSQL(
+                db.exec(
                     "ALTER TABLE settings ADD COLUMN navTabs TEXT NOT NULL " +
                         "DEFAULT '${Settings.DEFAULT_NAV_TABS}'"
                 )
@@ -203,9 +214,8 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
+                val instance = Room.databaseBuilder<AppDatabase>(
                     context.applicationContext,
-                    AppDatabase::class.java,
                     "paisa_database"
                 )
                     .addCallback(callback)
@@ -221,26 +231,26 @@ abstract class AppDatabase : RoomDatabase() {
         val callback: RoomDatabase.Callback get() = DatabaseCallback
 
         private object DatabaseCallback : RoomDatabase.Callback() {
-            override fun onCreate(db: SupportSQLiteDatabase) {
-                super.onCreate(db)
-                seed(db)
+            override suspend fun onCreate(connection: SQLiteConnection) {
+                super.onCreate(connection)
+                seed(Sql.of(connection))
             }
 
-            override fun onDestructiveMigration(db: SupportSQLiteDatabase) {
-                super.onDestructiveMigration(db)
-                seed(db)
+            override suspend fun onDestructiveMigration(connection: SQLiteConnection) {
+                super.onDestructiveMigration(connection)
+                seed(Sql.of(connection))
             }
 
-            override fun onOpen(db: SupportSQLiteDatabase) {
-                super.onOpen(db)
-                SyncSchema.install(db)
+            override suspend fun onOpen(connection: SQLiteConnection) {
+                super.onOpen(connection)
+                SyncSchema.install(Sql.of(connection))
             }
 
             /**
              * Seed rows get natural sync ids with stamp 0, so a second device's fresh
              * defaults never overwrite edits the first device made to the same rows.
              */
-            private fun seed(db: SupportSQLiteDatabase) {
+            private suspend fun seed(db: Sql) {
                 SyncSchema.install(db)
                 SyncSchema.setApplying(db, true)
                 try {
@@ -251,9 +261,9 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
-            private fun seedDatabase(db: SupportSQLiteDatabase) {
+            private suspend fun seedDatabase(db: Sql) {
                 try {
-                    db.execSQL(
+                    db.exec(
                         "INSERT OR IGNORE INTO categories (name, type, icon, color, isDefault, orderIndex) VALUES " +
                             "('Salary', 'income', 'payments', '#BFFCC6', 0, 1)," +
                             "('Business', 'income', 'storefront', '#CAFFBF', 0, 2)," +
@@ -268,7 +278,7 @@ abstract class AppDatabase : RoomDatabase() {
                             "('Other', 'income', 'more_horiz', '#E8AEB2', 0, 11)"
                     )
 
-                    db.execSQL(
+                    db.exec(
                         "INSERT OR IGNORE INTO categories (name, type, icon, color, isDefault, orderIndex) VALUES " +
                             "('Food & Dining', 'expense', 'restaurant', '#FFDFBA', 0, 1)," +
                             "('Shopping', 'expense', 'shopping_bag', '#FFB3BA', 0, 2)," +
@@ -294,16 +304,16 @@ abstract class AppDatabase : RoomDatabase() {
                             "('Other', 'expense', 'more_horiz', '#E8AEB2', 0, 22)"
                     )
 
-                    db.execSQL(
+                    db.exec(
                         "INSERT INTO accounts (id, name, type, openingBalance, currentBalance, icon, color, bankName, accountLast4) " +
                             "VALUES (1, 'Cash', 'Cash', 0.0, 0.0, 'wallet', '#FFD6A5', NULL, NULL)"
                     )
-                    db.execSQL(
+                    db.exec(
                         "INSERT INTO accounts (id, name, type, openingBalance, currentBalance, icon, color, bankName, accountLast4) " +
                             "VALUES (2, 'Bank Account', 'Bank Account', 0.0, 0.0, 'account_balance', '#A0C4FF', NULL, NULL)"
                     )
 
-                    db.execSQL(
+                    db.exec(
                         "INSERT OR IGNORE INTO settings " +
                             "(id, themeMode, currency, pinEnabled, biometricEnabled, notificationsEnabled, colorPalette, lastSmsScanAt, smsScanEnabled, hideBalancesByDefault, onboardingCompleted) " +
                             "VALUES (1, 'system', '₹', 0, 0, 1, 'dynamic', 0, 1, 1, 0)"

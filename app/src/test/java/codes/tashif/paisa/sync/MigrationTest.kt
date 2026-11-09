@@ -2,7 +2,14 @@ package codes.tashif.paisa.sync
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
-import androidx.room.Room
+import androidx.room3.Room
+import codes.tashif.paisa.data.sql.sqlRead
+import codes.tashif.paisa.testing.double
+import codes.tashif.paisa.testing.exec
+import codes.tashif.paisa.testing.long
+import codes.tashif.paisa.testing.sql
+import codes.tashif.paisa.testing.string
+import kotlinx.coroutines.runBlocking
 import androidx.test.core.app.ApplicationProvider
 import codes.tashif.paisa.data.AppDatabase
 import org.junit.Assert.assertEquals
@@ -29,10 +36,9 @@ class MigrationTest {
         context.deleteDatabase(name)
 
         // 1. Current schema, then strip it back to version 9.
-        Room.databaseBuilder(context, AppDatabase::class.java, name)
-            .allowMainThreadQueries()
+        Room.databaseBuilder<AppDatabase>(context, name)
             .build()
-            .also { it.openHelper.writableDatabase; it.close() }
+            .also { db -> runBlocking { db.sqlRead { it.long("SELECT 1") } }; db.close() }
         val raw = SQLiteDatabase.openDatabase(
             context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE
         )
@@ -75,20 +81,17 @@ class MigrationTest {
         raw.close()
 
         // 3. Upgrade.
-        val db = Room.databaseBuilder(context, AppDatabase::class.java, name)
+        val db = Room.databaseBuilder<AppDatabase>(context, name)
             .addMigrations(*AppDatabase.MIGRATIONS)
             .addCallback(AppDatabase.callback)
-            .allowMainThreadQueries()
             .build()
-        val sql = db.openHelper.writableDatabase
 
-        fun balance(id: Int) = sql.query("SELECT currentBalance FROM accounts WHERE id = $id")
-            .use { it.moveToFirst(); it.getDouble(0) }
+        fun balance(id: Int) = db.double("SELECT currentBalance FROM accounts WHERE id = $id")
         assertEquals(70.0, balance(1), 0.001)
         assertEquals(4950.0, balance(3), 0.001)
         assertEquals(1234.5, balance(4), 0.001)
 
-        fun syncId(query: String) = sql.query(query).use { it.moveToFirst(); it.getString(0) }
+        fun syncId(query: String) = db.string(query)
         assertEquals("cat:expense:food & dining", syncId("SELECT syncId FROM categories WHERE id = 1"))
         assertEquals("acct:seed:cash", syncId("SELECT syncId FROM accounts WHERE id = 1"))
         assertEquals("acct:hdfc bank:1234", syncId("SELECT syncId FROM accounts WHERE id = 3"))
@@ -100,19 +103,19 @@ class MigrationTest {
         assertEquals("1", syncId("SELECT navBarLabels FROM settings WHERE id = 1"))
         // 11 to 12: today's five tabs, and an empty, synced Debts section.
         assertEquals("home,analytics,budgets,accounts,more", syncId("SELECT navTabs FROM settings WHERE id = 1"))
-        sql.execSQL("INSERT INTO debt_people (name, createdAt) VALUES ('Radhika', 'c')")
+        db.exec("INSERT INTO debt_people (name, createdAt) VALUES ('Radhika', 'c')")
         assertEquals("person:radhika", syncId("SELECT syncId FROM debt_people"))
-        sql.execSQL("DELETE FROM debt_people")
-        SyncEngine.clearAllOutbox(sql)
-        sql.execSQL("DELETE FROM sync_tombstones")
-        assertEquals(0, sql.query("SELECT COUNT(*) FROM transactions WHERE syncId IS NULL").use { it.moveToFirst(); it.getInt(0) })
+        db.exec("DELETE FROM debt_people")
+        db.sql { SyncEngine.clearAllOutbox(it) }
+        db.exec("DELETE FROM sync_tombstones")
+        assertEquals(0L, db.long("SELECT COUNT(*) FROM transactions WHERE syncId IS NULL"))
 
         // Existing data isn't queued as fresh edits; the first sync sends a full copy anyway.
-        assertFalse(SyncEngine.hasPendingChanges(sql))
+        assertFalse(db.sql { SyncEngine.hasPendingChanges(it) })
 
         // Triggers are live after the upgrade.
-        sql.execSQL("UPDATE accounts SET name = 'Pocket' WHERE id = 4")
-        assertEquals(true, SyncEngine.hasPendingChanges(sql))
+        db.exec("UPDATE accounts SET name = 'Pocket' WHERE id = 4")
+        assertEquals(true, db.sql { SyncEngine.hasPendingChanges(it) })
         db.close()
     }
 }

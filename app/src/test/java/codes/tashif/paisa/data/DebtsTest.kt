@@ -1,7 +1,7 @@
 package codes.tashif.paisa.data
 
 import android.content.Context
-import androidx.room.Room
+import codes.tashif.paisa.testing.inMemoryDatabase
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -28,11 +28,7 @@ import codes.tashif.paisa.ui.debts.split.computeBill
 @Config(sdk = [34])
 class DebtsTest {
 
-    private val db: AppDatabase = Room.inMemoryDatabaseBuilder(
-        ApplicationProvider.getApplicationContext<Context>(),
-        AppDatabase::class.java
-    ).addCallback(AppDatabase.callback).allowMainThreadQueries().build()
-        .also { it.openHelper.writableDatabase }
+    private val db: AppDatabase = inMemoryDatabase()
     private val accountRepo = AccountRepository(db)
     private val debtRepo = DebtRepository(db)
     private val transactionRepo = TransactionRepository(db, accountRepo, debtRepo)

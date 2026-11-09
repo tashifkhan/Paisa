@@ -1,6 +1,6 @@
 package codes.tashif.paisa.data.repository
 
-import androidx.room.withTransaction
+import androidx.room3.withWriteTransaction
 import codes.tashif.paisa.data.Account
 import codes.tashif.paisa.data.AppDatabase
 import kotlinx.coroutines.flow.Flow
@@ -66,7 +66,7 @@ class AccountRepository(private val db: AppDatabase) {
     }
 
     /** New accounts start anchored at their opening balance, before every transaction. */
-    suspend fun insertAccount(account: Account): Long = db.withTransaction {
+    suspend fun insertAccount(account: Account): Long = db.withWriteTransaction {
         val anchored = if (account.balanceAnchorAt.isEmpty()) {
             account.copy(balanceAnchor = account.openingBalance)
         } else {
@@ -78,7 +78,7 @@ class AccountRepository(private val db: AppDatabase) {
     }
 
     /** Saves account fields. currentBalance is derived, so it's recomputed, not taken from [account]. */
-    suspend fun updateAccount(account: Account) = db.withTransaction {
+    suspend fun updateAccount(account: Account) = db.withWriteTransaction {
         accountDao.updateAccount(account)
         accountDao.recomputeBalance(account.id)
     }
@@ -90,7 +90,7 @@ class AccountRepository(private val db: AppDatabase) {
      * The user typed in what the account holds right now. Pinned after the newest
      * transaction so future-dated entries don't move the number they just entered.
      */
-    suspend fun updateCurrentBalance(accountId: Int, balance: Double) = db.withTransaction {
+    suspend fun updateCurrentBalance(accountId: Int, balance: Double) = db.withWriteTransaction {
         val newest = accountDao.getNewestTransactionDate(accountId).orEmpty()
         val now = nowIso()
         accountDao.setBalanceAnchor(accountId, balance, if (newest > now) newest else now)
@@ -102,9 +102,9 @@ class AccountRepository(private val db: AppDatabase) {
      * arrives late, so a rescan of old messages can't roll the balance back.
      */
     suspend fun applyReportedBalance(accountId: Int, balance: Double, at: String) {
-        db.withTransaction {
-            val account = accountDao.getAccountById(accountId) ?: return@withTransaction
-            if (at < account.balanceAnchorAt) return@withTransaction
+        db.withWriteTransaction {
+            val account = accountDao.getAccountById(accountId) ?: return@withWriteTransaction
+            if (at < account.balanceAnchorAt) return@withWriteTransaction
             accountDao.setBalanceAnchor(accountId, balance, at)
             accountDao.recomputeBalance(accountId)
         }
@@ -134,7 +134,7 @@ class AccountRepository(private val db: AppDatabase) {
         val sources = ids.mapNotNull { accountDao.getAccountById(it) }
         if (sources.isEmpty()) return
 
-        db.withTransaction {
+        db.withWriteTransaction {
             accountDao.reassignTransactions(ids, targetId)
             accountDao.reassignRecurringTransactions(ids, targetId)
 

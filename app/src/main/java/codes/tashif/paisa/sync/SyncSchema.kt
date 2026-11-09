@@ -1,7 +1,8 @@
 package codes.tashif.paisa.sync
 
-import androidx.sqlite.db.SupportSQLiteDatabase
-import java.util.UUID
+import codes.tashif.paisa.data.sql.Sql
+import codes.tashif.paisa.data.sql.nowMillis
+import codes.tashif.paisa.data.sql.randomHexId
 import kotlin.math.abs
 
 /**
@@ -90,10 +91,9 @@ object SyncSchema {
      * Synced tables that exist in [db]. An old schema being migrated doesn't
      * have the tables later versions add, so loops over [TABLES] go through this.
      */
-    fun existingTables(db: SupportSQLiteDatabase): List<Table> {
-        val present = db.query("SELECT name FROM sqlite_master WHERE type = 'table'").use { c ->
-            buildSet { while (c.moveToNext()) add(c.getString(0)) }
-        }
+    suspend fun existingTables(db: Sql): List<Table> {
+        val present = db.rows("SELECT name FROM sqlite_master WHERE type = 'table'")
+            .mapTo(mutableSetOf()) { it.getString(0) }
         return TABLES.filter { it.name in present }
     }
 
@@ -129,16 +129,16 @@ object SyncSchema {
     """
 
     /** Creates the bookkeeping tables and (re)creates the triggers. Safe on every open. */
-    fun install(db: SupportSQLiteDatabase) {
-        db.execSQL(
+    suspend fun install(db: Sql) {
+        db.exec(
             "CREATE TABLE IF NOT EXISTS $STATE (id INTEGER PRIMARY KEY, " +
                 "applying INTEGER NOT NULL DEFAULT 0, clock INTEGER NOT NULL DEFAULT 0)"
         )
-        db.execSQL("INSERT OR IGNORE INTO $STATE (id, applying, clock) VALUES (1, 0, 0)")
+        db.exec("INSERT OR IGNORE INTO $STATE (id, applying, clock) VALUES (1, 0, 0)")
         // A crash mid-apply rolls back with its transaction, but be sure.
-        db.execSQL("UPDATE $STATE SET applying = 0 WHERE id = 1")
+        db.exec("UPDATE $STATE SET applying = 0 WHERE id = 1")
         for (t in listOf(OUTBOX, TOMBSTONES)) {
-            db.execSQL(
+            db.exec(
                 "CREATE TABLE IF NOT EXISTS $t (tableName TEXT NOT NULL, syncId TEXT NOT NULL, " +
                     "stamp INTEGER NOT NULL, PRIMARY KEY (tableName, syncId))"
             )
@@ -146,28 +146,22 @@ object SyncSchema {
         for (table in TABLES) installTriggers(db, table)
     }
 
-    fun isInstalled(db: SupportSQLiteDatabase): Boolean =
-        db.query("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = '$STATE'").use {
-            it.moveToFirst()
-        }
+    suspend fun isInstalled(db: Sql): Boolean =
+        db.first("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = '$STATE'") != null
 
     /** Columns whose values sync, in table order. */
-    fun syncedColumns(db: SupportSQLiteDatabase, table: Table): List<String> =
+    suspend fun syncedColumns(db: Sql, table: Table): List<String> =
         columnsOf(db, table.name).filter { col ->
             col !in META_COLUMNS && col !in table.derived && !(table.localPk && col == table.pk) &&
                 (table.only == null || col in table.only)
         }
 
-    fun columnsOf(db: SupportSQLiteDatabase, table: String): List<String> {
-        val cols = mutableListOf<String>()
-        db.query("PRAGMA table_info(`$table`)").use { c ->
-            val idx = c.getColumnIndexOrThrow("name")
-            while (c.moveToNext()) cols += c.getString(idx)
-        }
-        return cols
+    suspend fun columnsOf(db: Sql, table: String): List<String> {
+        val rows = db.rows("PRAGMA table_info(`$table`)")
+        return rows.map { it.getString(it.index("name")) }
     }
 
-    private fun installTriggers(db: SupportSQLiteDatabase, table: Table) {
+    private suspend fun installTriggers(db: Sql, table: Table) {
         val t = table.name
         val cols = syncedColumns(db, table)
         val changed = if (cols.isEmpty()) "0" else cols.joinToString(" OR ") { "OLD.`$it` IS NOT NEW.`$it`" }
@@ -181,11 +175,11 @@ object SyncSchema {
                 "(SELECT 1 FROM `$t` WHERE syncId = ($natural)) THEN ($natural) ELSE $RANDOM_ID END"
         }
 
-        db.execSQL("DROP TRIGGER IF EXISTS sync_ins_$t")
-        db.execSQL("DROP TRIGGER IF EXISTS sync_upd_$t")
-        db.execSQL("DROP TRIGGER IF EXISTS sync_del_$t")
+        db.exec("DROP TRIGGER IF EXISTS sync_ins_$t")
+        db.exec("DROP TRIGGER IF EXISTS sync_upd_$t")
+        db.exec("DROP TRIGGER IF EXISTS sync_del_$t")
 
-        db.execSQL(
+        db.exec(
             """
             CREATE TRIGGER sync_ins_$t AFTER INSERT ON `$t` WHEN $APPLYING_OFF
             BEGIN
@@ -211,7 +205,7 @@ object SyncSchema {
         // synced value nor anything it would fix.
         // No INSERT OR REPLACE in trigger bodies: the firing statement's conflict
         // clause overrides it, and Room's @Update runs UPDATE OR ABORT.
-        db.execSQL(
+        db.exec(
             """
             CREATE TRIGGER sync_upd_$t AFTER UPDATE ON `$t` WHEN $APPLYING_OFF AND (
                 ($changed) OR NEW.syncId IS NULL OR NEW.syncStamp < OLD.syncStamp)
@@ -231,7 +225,7 @@ object SyncSchema {
             """.trimIndent()
         )
 
-        db.execSQL(
+        db.exec(
             """
             CREATE TRIGGER sync_del_$t AFTER DELETE ON `$t`
                 WHEN $APPLYING_OFF AND OLD.syncId IS NOT NULL
@@ -246,26 +240,24 @@ object SyncSchema {
         )
     }
 
-    fun setApplying(db: SupportSQLiteDatabase, applying: Boolean) {
+    suspend fun setApplying(db: Sql, applying: Boolean) {
         if (!isInstalled(db)) return
-        db.execSQL("UPDATE $STATE SET applying = ${if (applying) 1 else 0} WHERE id = 1")
+        db.exec("UPDATE $STATE SET applying = ${if (applying) 1 else 0} WHERE id = 1")
     }
 
     /** Moves the local clock past [stamp] so new local edits win over what we just saw. */
-    fun observeClock(db: SupportSQLiteDatabase, stamp: Long) {
-        db.execSQL("UPDATE $STATE SET clock = max(clock, ?) WHERE id = 1", arrayOf<Any>(stamp))
+    suspend fun observeClock(db: Sql, stamp: Long) {
+        db.exec("UPDATE $STATE SET clock = max(clock, ?) WHERE id = 1", stamp)
     }
 
     /** Next clock value, for writes made while the triggers are off. */
-    fun tick(db: SupportSQLiteDatabase): Long {
-        db.execSQL(TICK)
-        return db.query("SELECT clock FROM $STATE WHERE id = 1").use { c ->
-            if (c.moveToFirst()) c.getLong(0) else System.currentTimeMillis()
-        }
+    suspend fun tick(db: Sql): Long {
+        db.exec(TICK)
+        return db.long("SELECT clock FROM $STATE WHERE id = 1") ?: nowMillis()
     }
 
-    fun recomputeBalances(db: SupportSQLiteDatabase) {
-        db.execSQL(RECOMPUTE_BALANCES)
+    suspend fun recomputeBalances(db: Sql) {
+        db.exec(RECOMPUTE_BALANCES)
     }
 
     /**
@@ -273,33 +265,26 @@ object SyncSchema {
      * [stamp]. Used by the 9 to 10 migration (stamp 1), the first-run seed
      * (stamp 0, so any real edit on another device wins), and old backups.
      */
-    fun backfillIds(db: SupportSQLiteDatabase, stamp: Long) {
+    suspend fun backfillIds(db: Sql, stamp: Long) {
         for (table in existingTables(db)) {
-            val used = mutableSetOf<String>()
-            db.query("SELECT syncId FROM `${table.name}` WHERE syncId IS NOT NULL").use { c ->
-                while (c.moveToNext()) used += c.getString(0)
-            }
+            val used = db.rows("SELECT syncId FROM `${table.name}` WHERE syncId IS NOT NULL")
+                .mapTo(mutableSetOf()) { it.getString(0) }
             val natural = table.natural?.invoke("") ?: "NULL"
-            val pending = mutableListOf<Pair<Long, String?>>()
-            db.query(
+            val pending = db.rows(
                 "SELECT rowid, ($natural) FROM `${table.name}` WHERE syncId IS NULL ORDER BY rowid"
-            ).use { c ->
-                while (c.moveToNext()) {
-                    pending += c.getLong(0) to (if (c.isNull(1)) null else c.getString(1))
-                }
-            }
+            ).map { it.getLong(0) to (if (it.isNull(1)) null else it.getString(1)) }
             for ((rowid, candidate) in pending) {
                 val id = candidate?.takeIf { it !in used } ?: randomId()
                 used += id
-                db.execSQL(
+                db.exec(
                     "UPDATE `${table.name}` SET syncId = ?, syncStamp = ? WHERE rowid = ?",
-                    arrayOf<Any>(id, stamp, rowid)
+                    id, stamp, rowid
                 )
             }
         }
     }
 
-    fun randomId(): String = UUID.randomUUID().toString().replace("-", "")
+    fun randomId(): String = randomHexId()
 
     /**
      * Picks an anchor for each account so the new balance formula reproduces
@@ -307,53 +292,50 @@ object SyncSchema {
      * every transaction, the last SMS-reported balance plus what came after it,
      * and finally the current balance pinned after the newest transaction.
      */
-    fun deriveAnchors(db: SupportSQLiteDatabase) {
+    suspend fun deriveAnchors(db: Sql) {
         data class Acc(val id: Long, val opening: Double, val current: Double)
-        val accounts = mutableListOf<Acc>()
-        db.query("SELECT id, openingBalance, currentBalance FROM accounts").use { c ->
-            while (c.moveToNext()) accounts += Acc(c.getLong(0), c.getDouble(1), c.getDouble(2))
-        }
+        val accounts = db.rows("SELECT id, openingBalance, currentBalance FROM accounts")
+            .map { Acc(it.getLong(0), it.getDouble(1), it.getDouble(2)) }
         for (a in accounts) {
             val (anchor, at) = anchorFor(db, a.id, a.opening, a.current)
-            db.execSQL(
+            db.exec(
                 "UPDATE accounts SET balanceAnchor = ?, balanceAnchorAt = ? WHERE id = ?",
-                arrayOf<Any>(anchor, at, a.id)
+                anchor, at, a.id
             )
         }
         recomputeBalances(db)
     }
 
-    private fun anchorFor(
-        db: SupportSQLiteDatabase,
+    private suspend fun anchorFor(
+        db: Sql,
         accountId: Long,
         opening: Double,
         current: Double
     ): Pair<Double, String> {
         if (close(opening + sumAfter(db, accountId, ""), current)) return opening to ""
-        db.query(
+        val last = db.first(
             "SELECT balanceAfter, transactionDate FROM transactions WHERE accountId = ? " +
                 "AND balanceAfter IS NOT NULL AND isDeleted = 0 ORDER BY transactionDate DESC LIMIT 1",
-            arrayOf<Any>(accountId)
-        ).use { c ->
-            if (c.moveToFirst()) {
-                val reported = c.getDouble(0)
-                val date = c.getString(1)
-                if (close(reported + sumAfter(db, accountId, date), current)) return reported to date
-            }
+            accountId
+        )
+        if (last != null) {
+            val reported = last.getDouble(0)
+            val date = last.getString(1)
+            if (close(reported + sumAfter(db, accountId, date), current)) return reported to date
         }
-        val newest = db.query(
+        val newest = db.string(
             "SELECT MAX(transactionDate) FROM transactions WHERE accountId = ?",
-            arrayOf<Any>(accountId)
-        ).use { c -> if (c.moveToFirst() && !c.isNull(0)) c.getString(0) else "" }
+            accountId
+        ) ?: ""
         return current to newest
     }
 
-    private fun sumAfter(db: SupportSQLiteDatabase, accountId: Long, after: String): Double =
-        db.query(
+    private suspend fun sumAfter(db: Sql, accountId: Long, after: String): Double =
+        db.double(
             "SELECT COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE -amount END), 0) " +
                 "FROM transactions WHERE accountId = ? AND isDeleted = 0 AND transactionDate > ?",
-            arrayOf<Any>(accountId, after)
-        ).use { c -> if (c.moveToFirst()) c.getDouble(0) else 0.0 }
+            accountId, after
+        ) ?: 0.0
 
     private fun close(a: Double, b: Double) = abs(a - b) < 0.005
 }

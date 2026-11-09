@@ -1,6 +1,6 @@
 package codes.tashif.paisa.data.repository
 
-import androidx.room.withTransaction
+import androidx.room3.withWriteTransaction
 import codes.tashif.paisa.data.AppDatabase
 import codes.tashif.paisa.data.RecurringTransaction
 import codes.tashif.paisa.data.Transaction
@@ -77,7 +77,7 @@ class TransactionRepository(
     }
 
     suspend fun insertTransaction(transaction: Transaction): Long {
-        return db.withTransaction {
+        return db.withWriteTransaction {
             val id = transactionDao.insertTransaction(transaction)
             accountDao.recomputeBalance(transaction.accountId)
             id
@@ -92,9 +92,9 @@ class TransactionRepository(
         transaction: Transaction,
         absoluteBalance: Double?
     ): Long {
-        return db.withTransaction {
+        return db.withWriteTransaction {
             val rowId = transactionDao.insertTransaction(transaction)
-            if (rowId == -1L) return@withTransaction -1L
+            if (rowId == -1L) return@withWriteTransaction -1L
 
             if (absoluteBalance != null) {
                 // The reported balance already includes this transaction.
@@ -110,9 +110,9 @@ class TransactionRepository(
     }
 
     suspend fun updateTransaction(newTransaction: Transaction) {
-        db.withTransaction {
+        db.withWriteTransaction {
             val oldTransaction = transactionDao.getRawTransactionById(newTransaction.id)
-                ?: return@withTransaction
+                ?: return@withWriteTransaction
             transactionDao.updateTransaction(newTransaction)
             debtRepository.onTransactionChanged(oldTransaction, newTransaction)
             accountDao.recomputeBalance(oldTransaction.accountId)
@@ -123,9 +123,9 @@ class TransactionRepository(
     }
 
     suspend fun deleteTransaction(transactionId: Int) {
-        db.withTransaction {
+        db.withWriteTransaction {
             val transaction = transactionDao.getRawTransactionById(transactionId)
-                ?: return@withTransaction
+                ?: return@withWriteTransaction
             // Soft-delete so SMS re-scan won't re-import
             if (transaction.transactionHash != null) {
                 transactionDao.softDeleteTransaction(transactionId, nowIso())
@@ -151,7 +151,7 @@ class TransactionRepository(
         recurringTransactionDao.deleteRecurringTransaction(rule)
 
     suspend fun processRecurringTransactions() {
-        db.withTransaction {
+        db.withWriteTransaction {
             val nowStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
             val dueRules = recurringTransactionDao.getEnabledRecurringTransactions()
             val touched = mutableSetOf<Int>()

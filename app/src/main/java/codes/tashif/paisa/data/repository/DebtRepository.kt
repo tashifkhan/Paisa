@@ -1,6 +1,6 @@
 package codes.tashif.paisa.data.repository
 
-import androidx.room.withTransaction
+import androidx.room3.withWriteTransaction
 import codes.tashif.paisa.data.AppDatabase
 import codes.tashif.paisa.data.DebtEntry
 import codes.tashif.paisa.data.DebtEntryWithPerson
@@ -37,7 +37,7 @@ class DebtRepository(private val db: AppDatabase) {
 
     /** Finds [name] (any case) or adds them. A non-zero [startingAmount] is recorded as their first entry. */
     suspend fun addDebtPerson(name: String, startingAmount: Double = 0.0, note: String = ""): Int =
-        db.withTransaction {
+        db.withWriteTransaction {
             val clean = name.trim()
             require(clean.isNotEmpty()) { "Name required" }
             val now = nowIso()
@@ -92,7 +92,7 @@ class DebtRepository(private val db: AppDatabase) {
     suspend fun deleteDebtEntry(id: Int) = debtDao.deleteEntry(id)
 
     /** Brings the person's balance to zero with one closing entry. */
-    suspend fun settleDebt(personId: Int) = db.withTransaction {
+    suspend fun settleDebt(personId: Int) = db.withWriteTransaction {
         val balance = debtDao.getBalance(personId)
         if (abs(balance) >= 0.005) {
             addDebtEntry(personId, -balance, "Settled up")
@@ -123,7 +123,7 @@ class DebtRepository(private val db: AppDatabase) {
      * Older entries with random ids move onto the fixed id here.
      */
     suspend fun saveTransactionSplit(transactionId: Int, shares: List<DebtShare>): List<Int> =
-        db.withTransaction {
+        db.withWriteTransaction {
             val tx = requireNotNull(transactionDao.getRawTransactionById(transactionId)) { "No transaction $transactionId" }
             val txSyncId = requireNotNull(tx.syncId) { "Transaction $transactionId has no syncId" }
             val sign = if (tx.type == "income") -1.0 else 1.0
@@ -180,7 +180,7 @@ class DebtRepository(private val db: AppDatabase) {
      * [shares] are signed: > 0 they owe you, < 0 you owe them.
      */
     suspend fun recordBillSplit(shares: List<DebtShare>, note: String, entryDate: String) =
-        db.withTransaction {
+        db.withWriteTransaction {
             val what = note.trim().ifBlank { "Split bill" }
             shares.filter { it.amount != 0.0 }.forEach { share ->
                 addDebtEntry(resolvePerson(share), share.amount, what, entryDate)
