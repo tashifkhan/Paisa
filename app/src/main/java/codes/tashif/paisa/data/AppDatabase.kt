@@ -123,7 +123,8 @@ abstract class AppDatabase : RoomDatabase() {
 
         private val MIGRATION_9_10 = object : Migration(9, 10) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                for (table in SyncSchema.TABLES) {
+                // Only tables that existed in 9; later ones are created with these columns.
+                for (table in SyncSchema.existingTables(db)) {
                     db.execSQL("ALTER TABLE `${table.name}` ADD COLUMN syncId TEXT")
                     db.execSQL(
                         "ALTER TABLE `${table.name}` ADD COLUMN syncStamp INTEGER NOT NULL DEFAULT 0"

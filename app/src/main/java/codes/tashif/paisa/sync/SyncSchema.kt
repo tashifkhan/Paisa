@@ -83,6 +83,17 @@ object SyncSchema {
 
     val TABLE_NAMES: Array<String> = TABLES.map { it.name }.toTypedArray()
 
+    /**
+     * Synced tables that exist in [db]. An old schema being migrated doesn't
+     * have the tables later versions add, so loops over [TABLES] go through this.
+     */
+    fun existingTables(db: SupportSQLiteDatabase): List<Table> {
+        val present = db.query("SELECT name FROM sqlite_master WHERE type = 'table'").use { c ->
+            buildSet { while (c.moveToNext()) add(c.getString(0)) }
+        }
+        return TABLES.filter { it.name in present }
+    }
+
     fun table(name: String): Table? = TABLES.firstOrNull { it.name == name }
 
     const val STATE = "sync_state"
@@ -260,7 +271,7 @@ object SyncSchema {
      * (stamp 0, so any real edit on another device wins), and old backups.
      */
     fun backfillIds(db: SupportSQLiteDatabase, stamp: Long) {
-        for (table in TABLES) {
+        for (table in existingTables(db)) {
             val used = mutableSetOf<String>()
             db.query("SELECT syncId FROM `${table.name}` WHERE syncId IS NOT NULL").use { c ->
                 while (c.moveToNext()) used += c.getString(0)
