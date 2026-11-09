@@ -6,16 +6,13 @@ import codes.tashif.paisa.core.SnackbarManager
 import codes.tashif.paisa.data.Category
 import codes.tashif.paisa.data.MerchantMapping
 import codes.tashif.paisa.data.repository.CategoryRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /** Categories and merchant rules, for the Categories and Merchant rules screens. */
-@HiltViewModel
-class CategoriesViewModel @Inject constructor(
+class CategoriesViewModel(
     private val categoriesRepository: CategoryRepository,
     private val snackbarManager: SnackbarManager
 ) : ViewModel() {

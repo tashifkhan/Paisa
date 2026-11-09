@@ -2,7 +2,10 @@ package codes.tashif.paisa.widget
 
 import android.content.Context
 import codes.tashif.paisa.data.Account
-import codes.tashif.paisa.di.WidgetEntryPoint
+import codes.tashif.paisa.data.repository.AccountRepository
+import codes.tashif.paisa.data.repository.SettingsRepository
+import codes.tashif.paisa.data.repository.TransactionRepository
+import org.koin.mp.KoinPlatform
 import codes.tashif.paisa.ui.theme.PaisaPalette
 import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
@@ -25,10 +28,11 @@ internal data class WidgetSnapshot(
 )
 
 internal suspend fun loadWidgetSnapshot(context: Context): WidgetSnapshot {
-    val deps = WidgetEntryPoint.get(context)
-    val settings = deps.settingsRepository().getSettings()
-    val accounts = deps.accountRepository().allAccounts.first()
-    val transactions = deps.transactionRepository().allTransactions.first()
+    // Glance creates widgets itself, so they pull dependencies from Koin.
+    val koin = KoinPlatform.getKoin()
+    val settings = koin.get<SettingsRepository>().getSettings()
+    val accounts = koin.get<AccountRepository>().allAccounts.first()
+    val transactions = koin.get<TransactionRepository>().allTransactions.first()
 
     // Mirrors HomeViewModel.homeSummary: cards are debt, not spendable balance.
     val (creditCards, bankAccounts) = accounts.partition { it.type == "Credit Card" }

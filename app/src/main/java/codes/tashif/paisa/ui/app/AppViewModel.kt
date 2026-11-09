@@ -15,8 +15,6 @@ import codes.tashif.paisa.data.repository.AccountRepository
 import codes.tashif.paisa.data.repository.SettingsRepository
 import codes.tashif.paisa.data.repository.TransactionRepository
 import codes.tashif.paisa.widget.PaisaWidgets
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,16 +23,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * App-wide state for the shell: settings, onboarding, the app lock, nav tabs,
  * navigation and snackbars. Scoped to MainActivity, so its init runs once per
  * activity and starts a fresh navigation and privacy session.
  */
-@HiltViewModel
-class AppViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+class AppViewModel(
+    private val context: Context,
     accountRepository: AccountRepository,
     transactionRepository: TransactionRepository,
     settingsRepository: SettingsRepository,

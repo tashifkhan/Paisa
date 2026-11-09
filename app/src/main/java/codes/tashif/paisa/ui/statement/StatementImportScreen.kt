@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ui.statement
 
 import androidx.activity.compose.BackHandler
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
@@ -14,7 +15,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.hilt.navigation.compose.hiltViewModel
 import codes.tashif.paisa.ui.components.DetailHeader
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 
@@ -22,7 +22,7 @@ import codes.tashif.paisa.ui.haptics.rememberHaptics
 fun StatementImportScreen(
     onBack: () -> Unit,
     onOpenAiSettings: () -> Unit,
-    viewModel: StatementImportViewModel = hiltViewModel()
+    viewModel: StatementImportViewModel = koinViewModel()
 ) {
     val state by viewModel.statementUiState.collectAsState()
     val ai by viewModel.aiSummary.collectAsState()

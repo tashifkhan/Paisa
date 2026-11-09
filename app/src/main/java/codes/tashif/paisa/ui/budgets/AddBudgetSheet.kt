@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ui.budgets
 
 import androidx.compose.foundation.layout.Arrangement
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,7 +21,6 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.spacing
 
@@ -28,7 +28,7 @@ import codes.tashif.paisa.ui.theme.spacing
 @Composable
 fun AddBudgetSheet(
     onDismiss: () -> Unit,
-    viewModel: BudgetsViewModel = hiltViewModel()
+    viewModel: BudgetsViewModel = koinViewModel()
 ) {
     val categories by viewModel.categories.collectAsState()
     val settings by viewModel.settings.collectAsState()

@@ -11,15 +11,12 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import java.util.concurrent.atomic.AtomicInteger
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Extracts structured transactions from a statement through the AI ladders:
  * "Statement photos" for images, "Statement import" for text, CSV and PDF text.
  */
-@Singleton
-class StatementExtractionService @Inject constructor(
+class StatementExtractionService(
     private val ladderRunner: AiLadderRunner
 ) {
     suspend fun extractFromUri(

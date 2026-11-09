@@ -3,12 +3,9 @@ package codes.tashif.paisa.data.repository
 import codes.tashif.paisa.data.AppDatabase
 import codes.tashif.paisa.data.UnrecognizedSms
 import kotlinx.coroutines.flow.Flow
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /** Bank-looking SMS from senders no parser knows, kept for the user to review. */
-@Singleton
-class SmsInboxRepository @Inject constructor(db: AppDatabase) {
+class SmsInboxRepository(db: AppDatabase) {
 
     private val unrecognizedSmsDao = db.unrecognizedSmsDao()
 

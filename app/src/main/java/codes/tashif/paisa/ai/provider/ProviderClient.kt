@@ -14,8 +14,6 @@ import org.json.JSONObject
 import java.io.IOException
 import java.io.InterruptedIOException
 import java.util.concurrent.TimeUnit
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /** Something that runs one model call. The ladder runner only needs this. */
 fun interface ModelCaller {
@@ -26,8 +24,7 @@ fun interface ModelCaller {
  * Sends one call to one model over OkHttp. A 429 or 5xx gets at most one
  * retry on the same model, so a ladder moves on quickly.
  */
-@Singleton
-class ProviderClient @Inject constructor() : ModelCaller {
+class ProviderClient() : ModelCaller {
 
     internal var http: OkHttpClient = defaultClient()
 

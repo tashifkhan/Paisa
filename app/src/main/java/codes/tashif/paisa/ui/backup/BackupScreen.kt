@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ui.backup
 
 import android.content.Intent
+import org.koin.compose.viewmodel.koinViewModel
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -29,7 +30,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.hilt.navigation.compose.hiltViewModel
 import codes.tashif.paisa.backup.BackupManager
 import codes.tashif.paisa.backup.BackupNames
 import codes.tashif.paisa.backup.BackupProvider
@@ -50,7 +50,7 @@ import com.google.android.gms.common.api.CommonStatusCodes
 fun BackupScreen(
     onBack: () -> Unit,
     onRestored: () -> Unit = {},
-    viewModel: BackupViewModel = hiltViewModel()
+    viewModel: BackupViewModel = koinViewModel()
 ) {
     val backup = viewModel
     val context = LocalContext.current

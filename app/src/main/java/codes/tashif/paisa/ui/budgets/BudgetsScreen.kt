@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ui.budgets
 
 import androidx.compose.foundation.layout.Arrangement
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,14 +16,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.hilt.navigation.compose.hiltViewModel
 import codes.tashif.paisa.ui.components.EmptyState
 import codes.tashif.paisa.ui.components.PaisaTopBar
 import codes.tashif.paisa.ui.theme.spacing
 import java.util.Locale
 
 @Composable
-fun BudgetsScreen(viewModel: BudgetsViewModel = hiltViewModel()) {
+fun BudgetsScreen(viewModel: BudgetsViewModel = koinViewModel()) {
     val budgets by viewModel.budgets.collectAsState()
     val transactions by viewModel.transactions.collectAsState()
     val categories by viewModel.categories.collectAsState()

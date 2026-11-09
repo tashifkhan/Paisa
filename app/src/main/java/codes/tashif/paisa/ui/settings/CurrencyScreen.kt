@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ui.settings
 
 import androidx.activity.compose.BackHandler
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +25,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.hilt.navigation.compose.hiltViewModel
 import codes.tashif.paisa.ui.components.DetailHeader
 import codes.tashif.paisa.ui.components.SettingsGroup
 import codes.tashif.paisa.ui.components.groupPositionOf
@@ -61,7 +61,7 @@ private val currencyOptions = listOf(
 @Composable
 fun CurrencyScreen(
     onBack: () -> Unit,
-    viewModel: SettingsViewModel = hiltViewModel()
+    viewModel: SettingsViewModel = koinViewModel()
 ) {
     val settings by viewModel.settings.collectAsState()
 

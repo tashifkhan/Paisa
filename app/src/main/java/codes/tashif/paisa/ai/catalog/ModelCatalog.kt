@@ -5,7 +5,6 @@ import codes.tashif.paisa.ai.provider.AiProviderInfo
 import codes.tashif.paisa.ai.provider.BuiltInProviders
 import codes.tashif.paisa.ai.provider.ProviderClient
 import codes.tashif.paisa.ai.provider.RouteMode
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,8 +15,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /** Where the models.dev part of the catalogue came from. */
 enum class CatalogSource { NETWORK, CACHE, BUILT_IN }
@@ -37,9 +34,8 @@ data class ModelsDevState(
  * it survives restarts and never goes into a backup. This class never touches
  * the network on its own; callers decide when to refresh.
  */
-@Singleton
-class ModelCatalog @Inject constructor(
-    @ApplicationContext context: Context,
+class ModelCatalog(
+    context: Context,
     private val lister: LiveModelLister,
     private val client: ProviderClient,
 ) {

@@ -8,10 +8,9 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import javax.inject.Inject
 
 /** Writes every non-deleted transaction to a CSV file or a PDF statement. */
-class TransactionExporter @Inject constructor(
+class TransactionExporter(
     private val transactionsRepository: TransactionRepository,
     private val settingsRepository: SettingsRepository
 ) {

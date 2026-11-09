@@ -9,15 +9,12 @@ import codes.tashif.paisa.ai.ladder.LadderState
 import codes.tashif.paisa.ai.provider.AiProviderInfo
 import codes.tashif.paisa.ai.provider.ApiStyle
 import codes.tashif.paisa.core.SnackbarManager
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /** The AI overview: catalogue, services, the Default ladder, providers, and adding a custom provider. */
-@HiltViewModel
-class AiViewModel @Inject constructor(
+class AiViewModel(
     private val repository: AiRepository,
     private val snackbarManager: SnackbarManager,
 ) : ViewModel() {

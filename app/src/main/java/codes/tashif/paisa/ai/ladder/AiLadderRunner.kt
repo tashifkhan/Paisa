@@ -8,12 +8,9 @@ import codes.tashif.paisa.ai.provider.LlmRequest
 import codes.tashif.paisa.ai.provider.ModelCaller
 import codes.tashif.paisa.ai.provider.ProviderClient
 import kotlinx.coroutines.CancellationException
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /** Runs a service's ladder against the saved keys, config and catalogue. */
-@Singleton
-class AiLadderRunner @Inject constructor(
+class AiLadderRunner(
     private val repository: AiRepository,
     client: ProviderClient,
 ) {

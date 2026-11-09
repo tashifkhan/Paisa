@@ -3,12 +3,9 @@ package codes.tashif.paisa.data.repository
 import codes.tashif.paisa.data.AppDatabase
 import codes.tashif.paisa.data.Settings
 import kotlinx.coroutines.flow.Flow
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /** The single settings row. Null until the database has seeded it. */
-@Singleton
-class SettingsRepository @Inject constructor(db: AppDatabase) {
+class SettingsRepository(db: AppDatabase) {
 
     private val settingsDao = db.settingsDao()
 

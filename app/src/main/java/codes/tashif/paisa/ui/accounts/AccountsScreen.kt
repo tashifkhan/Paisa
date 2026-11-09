@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ui.accounts
 
 import androidx.compose.foundation.layout.Column
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -15,14 +16,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.hilt.navigation.compose.hiltViewModel
 import codes.tashif.paisa.data.Account
 import codes.tashif.paisa.ui.components.EmptyState
 import codes.tashif.paisa.ui.components.PaisaTopBar
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 
 @Composable
-fun AccountsScreen(viewModel: AccountsViewModel = hiltViewModel()) {
+fun AccountsScreen(viewModel: AccountsViewModel = koinViewModel()) {
     val accounts by viewModel.accounts.collectAsState()
     val transactionsByAccount by viewModel.transactionsByAccount.collectAsState()
     val settings by viewModel.settings.collectAsState()

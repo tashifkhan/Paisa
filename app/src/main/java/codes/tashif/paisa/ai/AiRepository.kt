@@ -36,8 +36,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /** A provider with what the UI shows next to it. */
 data class ProviderStatus(
@@ -70,8 +68,7 @@ data class CatalogState(
  * The UI reads the flows and calls the suspend functions; [AiLadderRunner]
  * runs requests.
  */
-@Singleton
-class AiRepository @Inject constructor(
+class AiRepository(
     private val keys: AiKeyStore,
     private val configStore: AiConfigStore,
     private val catalogSource: ModelCatalog,

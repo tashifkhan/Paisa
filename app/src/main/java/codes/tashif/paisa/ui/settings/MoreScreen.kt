@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ui.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -21,7 +22,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.hilt.navigation.compose.hiltViewModel
 import codes.tashif.paisa.data.AppTab
 import codes.tashif.paisa.ui.components.PaisaTopBar
 import codes.tashif.paisa.ui.theme.spacing
@@ -50,7 +50,7 @@ fun MoreScreen(
     hiddenTabs: List<AppTab> = emptyList(),
     onOpenTab: (AppTab) -> Unit = {},
     onExternalActivityLaunched: () -> Unit = {},
-    viewModel: SettingsViewModel = hiltViewModel()
+    viewModel: SettingsViewModel = koinViewModel()
 ) {
     val settings by viewModel.settings.collectAsState()
     val categoryCount by viewModel.categoryCount.collectAsState()

@@ -4,12 +4,9 @@ import codes.tashif.paisa.data.AppTab
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /** App-wide navigation state: the visible tab, the open transaction, and widget deep links. */
-@Singleton
-class AppNavigator @Inject constructor() {
+class AppNavigator() {
 
     private val _currentTab = MutableStateFlow(AppTab.HOME)
     val currentTab: StateFlow<AppTab> = _currentTab.asStateFlow()

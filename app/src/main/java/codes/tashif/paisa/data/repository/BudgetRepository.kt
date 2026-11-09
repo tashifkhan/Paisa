@@ -4,12 +4,9 @@ import codes.tashif.paisa.data.AppDatabase
 import codes.tashif.paisa.data.Budget
 import codes.tashif.paisa.data.SavingsGoal
 import kotlinx.coroutines.flow.Flow
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /** Budgets and savings goals. */
-@Singleton
-class BudgetRepository @Inject constructor(db: AppDatabase) {
+class BudgetRepository(db: AppDatabase) {
 
     private val budgetDao = db.budgetDao()
     private val savingsGoalDao = db.savingsGoalDao()

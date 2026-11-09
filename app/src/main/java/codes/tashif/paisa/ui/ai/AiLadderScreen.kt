@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ui.ai
 
 import androidx.compose.foundation.layout.Column
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,7 +27,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import codes.tashif.paisa.ai.CatalogState
 import codes.tashif.paisa.ai.ProviderStatus
 import codes.tashif.paisa.ai.ladder.AiService
@@ -45,7 +45,7 @@ import codes.tashif.paisa.ui.theme.spacing
 fun AiLadderScreen(
     service: AiService?,
     onBack: () -> Unit,
-    viewModel: AiLadderViewModel = hiltViewModel()
+    viewModel: AiLadderViewModel = koinViewModel()
 ) {
     val ladders by viewModel.ladders.collectAsState()
     val providers by viewModel.providers.collectAsState()

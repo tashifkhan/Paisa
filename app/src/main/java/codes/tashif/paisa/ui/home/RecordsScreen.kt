@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -15,7 +16,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.hilt.navigation.compose.hiltViewModel
 import codes.tashif.paisa.data.AppTab
 import codes.tashif.paisa.ui.components.AccountVisuals
 import codes.tashif.paisa.ui.components.CategoryVisuals
@@ -27,7 +27,7 @@ import codes.tashif.paisa.ui.theme.spacing
 import kotlin.math.abs
 
 @Composable
-fun RecordsScreen(viewModel: HomeViewModel = hiltViewModel()) {
+fun RecordsScreen(viewModel: HomeViewModel = koinViewModel()) {
     val summary by viewModel.homeSummary.collectAsState()
     val transactions by viewModel.filteredTransactions.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()

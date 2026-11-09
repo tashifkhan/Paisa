@@ -15,7 +15,6 @@ import codes.tashif.paisa.data.repository.CategoryRepository
 import codes.tashif.paisa.data.repository.DebtRepository
 import codes.tashif.paisa.data.repository.SettingsRepository
 import codes.tashif.paisa.data.repository.TransactionRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,11 +24,9 @@ import kotlinx.coroutines.flow.stateIn
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import javax.inject.Inject
 
 /** State for the Home tab: the summary cards, search and filters, and the day-grouped list. */
-@HiltViewModel
-class HomeViewModel @Inject constructor(
+class HomeViewModel(
     accountRepository: AccountRepository,
     categoryRepository: CategoryRepository,
     transactionRepository: TransactionRepository,

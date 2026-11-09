@@ -8,8 +8,6 @@ import codes.tashif.paisa.data.DebtPerson
 import codes.tashif.paisa.data.DebtPersonBalance
 import codes.tashif.paisa.data.Transaction
 import kotlinx.coroutines.flow.Flow
-import javax.inject.Inject
-import javax.inject.Singleton
 import kotlin.math.abs
 import kotlin.math.roundToLong
 
@@ -20,8 +18,7 @@ import kotlin.math.roundToLong
 data class DebtShare(val personId: Int?, val newName: String?, val amount: Double)
 
 /** People you lend to or borrow from, and the entries that make up each balance. */
-@Singleton
-class DebtRepository @Inject constructor(private val db: AppDatabase) {
+class DebtRepository(private val db: AppDatabase) {
 
     private val debtDao = db.debtDao()
     private val transactionDao = db.transactionDao()

@@ -8,21 +8,18 @@ import codes.tashif.paisa.data.Settings
 import codes.tashif.paisa.data.TransactionWithDetails
 import codes.tashif.paisa.data.repository.SettingsRepository
 import codes.tashif.paisa.data.repository.TransactionRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import java.util.Calendar
-import javax.inject.Inject
 
 /**
  * State for the Analytics tab. Scoped to MainActivity, so the period and the
  * open drill-down survive opening a transaction and coming back.
  */
-@HiltViewModel
-class AnalyticsViewModel @Inject constructor(
+class AnalyticsViewModel(
     transactionRepository: TransactionRepository,
     settingsRepository: SettingsRepository,
     privacySession: PrivacySession,

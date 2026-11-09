@@ -1,7 +1,5 @@
 package codes.tashif.paisa.core
 
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Remembers when we deliberately hand off to another app (file picker, export
@@ -12,8 +10,7 @@ import javax.inject.Singleton
  * before launching. The app-lock owner checks [isExternalActivityPending]
  * before locking in onStop, and calls [onReturnToForeground] in onStart.
  */
-@Singleton
-class AppLockGuard @Inject constructor() {
+class AppLockGuard() {
 
     @Volatile
     private var externalActivityStartedAt: Long? = null

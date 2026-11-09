@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ui.analytics
 
 import androidx.activity.compose.BackHandler
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,14 +21,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.hilt.navigation.compose.hiltViewModel
 import codes.tashif.paisa.ui.components.EmptyState
 import codes.tashif.paisa.ui.components.PaisaTopBar
 import codes.tashif.paisa.ui.format.formatMoney
 import codes.tashif.paisa.ui.theme.spacing
 
 @Composable
-fun AnalysisScreen(viewModel: AnalyticsViewModel = hiltViewModel()) {
+fun AnalysisScreen(viewModel: AnalyticsViewModel = koinViewModel()) {
     val transactions by viewModel.transactions.collectAsState()
     val settings by viewModel.settings.collectAsState()
     val periodKind by viewModel.analyticsPeriod.collectAsState()

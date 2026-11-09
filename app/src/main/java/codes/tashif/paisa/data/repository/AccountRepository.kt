@@ -5,11 +5,8 @@ import codes.tashif.paisa.data.Account
 import codes.tashif.paisa.data.AppDatabase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class AccountRepository @Inject constructor(private val db: AppDatabase) {
+class AccountRepository(private val db: AppDatabase) {
 
     private val accountDao = db.accountDao()
     private val transactionDao = db.transactionDao()

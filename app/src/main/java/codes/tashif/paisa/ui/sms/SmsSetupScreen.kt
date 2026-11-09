@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ui.sms
 
 import android.Manifest
+import org.koin.compose.viewmodel.koinViewModel
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.BackHandler
@@ -35,7 +36,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.core.content.ContextCompat
-import androidx.hilt.navigation.compose.hiltViewModel
 import codes.tashif.paisa.ui.components.DetailHeader
 import codes.tashif.paisa.ui.theme.spacing
 
@@ -47,7 +47,7 @@ import codes.tashif.paisa.ui.theme.spacing
 fun SmsSetupScreen(
     onBack: () -> Unit,
     onExternalActivityLaunched: () -> Unit = {},
-    viewModel: SmsViewModel = hiltViewModel()
+    viewModel: SmsViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
     val scan by viewModel.smsScanProgress.collectAsState()

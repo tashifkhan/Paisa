@@ -11,17 +11,14 @@ import codes.tashif.paisa.ai.ladder.Rung
 import codes.tashif.paisa.ai.provider.BuiltInProviders
 import codes.tashif.paisa.ai.provider.RouteMode
 import codes.tashif.paisa.ai.provider.ThinkingLevel
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /**
  * Edits one ladder: the Default one ([AiService] null) or a service's. Edits
  * to a service that uses the default give it its own ladder.
  */
-@HiltViewModel
-class AiLadderViewModel @Inject constructor(
+class AiLadderViewModel(
     private val repository: AiRepository,
 ) : ViewModel() {
 

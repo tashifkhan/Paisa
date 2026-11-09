@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ui.debts
 
 import androidx.activity.compose.BackHandler
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -25,7 +26,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import codes.tashif.paisa.ui.components.EmptyState
 import codes.tashif.paisa.ui.components.PaisaTopBar
 import codes.tashif.paisa.ui.debts.split.SplitBillSheet
@@ -35,7 +35,7 @@ import codes.tashif.paisa.ui.theme.spacing
 
 /** Money between you and other people. Lives apart from accounts, so it never moves a balance. */
 @Composable
-fun DebtsScreen(viewModel: DebtsViewModel = hiltViewModel()) {
+fun DebtsScreen(viewModel: DebtsViewModel = koinViewModel()) {
     val people by viewModel.debtPeople.collectAsState()
     val openId by viewModel.openDebtPersonId.collectAsState()
     val settings by viewModel.settings.collectAsState()

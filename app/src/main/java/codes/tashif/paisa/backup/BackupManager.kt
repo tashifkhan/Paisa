@@ -13,9 +13,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import dagger.hilt.android.qualifiers.ApplicationContext
-import javax.inject.Inject
-import javax.inject.Singleton
 import java.io.IOException
 import java.io.InputStream
 import java.util.concurrent.TimeUnit
@@ -25,9 +22,8 @@ class PasswordRequiredException : IOException("This backup is encrypted. Enter i
 
 data class RestoreResult(val transactions: Int, val backupCreatedAt: Long)
 
-@Singleton
-class BackupManager @Inject constructor(
-    @ApplicationContext context: Context,
+class BackupManager(
+    context: Context,
     val prefs: BackupPrefs,
     private val db: AppDatabase
 ) {

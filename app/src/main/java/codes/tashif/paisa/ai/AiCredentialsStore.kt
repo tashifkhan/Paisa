@@ -4,9 +4,6 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-import dagger.hilt.android.qualifiers.ApplicationContext
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * The EncryptedSharedPreferences file (Android Keystore-backed) that holds AI
@@ -14,11 +11,9 @@ import javax.inject.Singleton
  * migrate to per-provider keys; [prefs] is shared with
  * [codes.tashif.paisa.ai.store.AiKeyStore]. Never write keys into Room or logs.
  */
-@Singleton
 class AiCredentialsStore internal constructor(internal val prefs: SharedPreferences) {
 
-    @Inject
-    constructor(@ApplicationContext context: Context) : this(openPrefs(context))
+    constructor(context: Context) : this(openPrefs(context))
 
     fun load(): AiCredentials {
         val provider = AiProvider.fromId(prefs.getString(KEY_PROVIDER, null))

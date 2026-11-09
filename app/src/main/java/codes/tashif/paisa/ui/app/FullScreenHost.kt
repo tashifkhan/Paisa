@@ -1,7 +1,7 @@
 package codes.tashif.paisa.ui.app
 
 import androidx.compose.runtime.Composable
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import codes.tashif.paisa.ui.ai.AiScreen
 import codes.tashif.paisa.ui.backup.BackupScreen
 import codes.tashif.paisa.ui.onboarding.OnboardingViewModel
@@ -40,7 +40,7 @@ fun FullScreenHost(
         FullScreen.CURRENCY -> CurrencyScreen(onBack = close)
         FullScreen.BACKUP -> BackupScreen(onBack = close)
         FullScreen.ABOUT -> {
-            val onboarding: OnboardingViewModel = hiltViewModel()
+            val onboarding: OnboardingViewModel = koinViewModel()
             AboutScreen(
                 onBack = close,
                 onReplayOnboarding = {

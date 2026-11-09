@@ -18,8 +18,6 @@ import codes.tashif.paisa.backup.RemoteBackup
 import codes.tashif.paisa.backup.RestoreResult
 import codes.tashif.paisa.core.AppLockGuard
 import com.google.android.gms.auth.api.identity.AuthorizationResult
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -33,14 +31,12 @@ import codes.tashif.paisa.sync.SyncManager
 import java.io.IOException
 import java.text.DateFormat
 import java.util.Date
-import javax.inject.Inject
 
 /** Restore waiting on a password. Holds the downloaded bytes so we don't fetch twice. */
 class PendingRestore(val label: String, val data: ByteArray)
 
-@HiltViewModel
-class BackupViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+class BackupViewModel(
+    private val context: Context,
     private val manager: BackupManager,
     private val sync: SyncManager,
     private val appLockGuard: AppLockGuard

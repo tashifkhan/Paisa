@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ui.accounts
 
 import androidx.compose.foundation.layout.Arrangement
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,7 +31,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import codes.tashif.paisa.ui.components.AccountVisuals
 import codes.tashif.paisa.ui.components.ChoiceOption
 import codes.tashif.paisa.ui.components.OptionChipGrid
@@ -50,7 +50,7 @@ private val accountTypes = listOf(
 /** Add-account bottom sheet wired to the ViewModel; opened from the Accounts FAB. */
 @Composable
 fun AddAccountSheetHost(
-    viewModel: AccountsViewModel = hiltViewModel(),
+    viewModel: AccountsViewModel = koinViewModel(),
     onDismiss: () -> Unit
 ) {
     AddAccountSheet(

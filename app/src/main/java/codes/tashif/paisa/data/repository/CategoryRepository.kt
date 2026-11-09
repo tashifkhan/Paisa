@@ -6,12 +6,9 @@ import codes.tashif.paisa.data.MerchantMapping
 import codes.tashif.paisa.sms.CategoryMapping
 import kotlinx.coroutines.flow.Flow
 import java.util.Locale
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /** Categories and the merchant to category rules. */
-@Singleton
-class CategoryRepository @Inject constructor(db: AppDatabase) {
+class CategoryRepository(db: AppDatabase) {
 
     private val categoryDao = db.categoryDao()
     private val transactionDao = db.transactionDao()

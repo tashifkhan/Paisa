@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ui.app
 
 import androidx.activity.compose.BackHandler
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -34,7 +35,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.hilt.navigation.compose.hiltViewModel
 import codes.tashif.paisa.data.AppTab
 import codes.tashif.paisa.ui.accounts.AccountsScreen
 import codes.tashif.paisa.ui.analytics.AnalysisScreen
@@ -51,8 +51,8 @@ import codes.tashif.paisa.widget.WidgetDeepLink
 @Composable
 fun AppShell(
     viewModel: AppViewModel,
-    smsViewModel: SmsViewModel = hiltViewModel(),
-    debtsViewModel: DebtsViewModel = hiltViewModel()
+    smsViewModel: SmsViewModel = koinViewModel(),
+    debtsViewModel: DebtsViewModel = koinViewModel()
 ) {
     val currentTab by viewModel.currentTab.collectAsState()
     val selectedTxId by viewModel.selectedTransactionId.collectAsState()

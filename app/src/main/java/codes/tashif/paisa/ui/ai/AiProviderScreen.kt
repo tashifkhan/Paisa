@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ui.ai
 
 import androidx.compose.ui.unit.dp
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,7 +26,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.hilt.navigation.compose.hiltViewModel
 import codes.tashif.paisa.ai.catalog.ModelInfo
 import codes.tashif.paisa.ai.provider.AiProviderInfo
 import codes.tashif.paisa.ai.provider.ApiStyle
@@ -37,7 +37,7 @@ import codes.tashif.paisa.ui.theme.spacing
 fun AiProviderScreen(
     providerId: String,
     onBack: () -> Unit,
-    viewModel: AiProviderViewModel = hiltViewModel()
+    viewModel: AiProviderViewModel = koinViewModel()
 ) {
     val providers by viewModel.providers.collectAsState()
     val catalog by viewModel.catalog.collectAsState()

@@ -11,8 +11,6 @@ import codes.tashif.paisa.data.TransactionWithDetails
 import codes.tashif.paisa.data.repository.AccountRepository
 import codes.tashif.paisa.data.repository.SettingsRepository
 import codes.tashif.paisa.data.repository.TransactionRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -21,8 +19,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /** State and actions for the Accounts tab and the add-account sheet. */
-@HiltViewModel
-class AccountsViewModel @Inject constructor(
+class AccountsViewModel(
     private val accountRepository: AccountRepository,
     transactionRepository: TransactionRepository,
     settingsRepository: SettingsRepository,

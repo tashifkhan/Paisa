@@ -2,7 +2,6 @@ package codes.tashif.paisa.ai.store
 
 import android.content.Context
 import android.content.SharedPreferences
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -10,18 +9,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * [AiConfig] as one JSON string in plain SharedPreferences. It holds no keys.
  * Backup rules exclude the file, and sync never reads it.
  */
-@Singleton
 class AiConfigStore internal constructor(private val prefs: SharedPreferences) {
 
-    @Inject
-    constructor(@ApplicationContext context: Context) :
+    constructor(context: Context) :
         this(context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE))
 
     private val mutex = Mutex()

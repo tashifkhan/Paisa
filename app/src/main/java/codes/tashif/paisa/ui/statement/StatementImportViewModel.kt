@@ -22,8 +22,6 @@ import codes.tashif.paisa.data.repository.AccountRepository
 import codes.tashif.paisa.data.repository.CategoryRepository
 import codes.tashif.paisa.data.repository.SettingsRepository
 import codes.tashif.paisa.data.repository.TransactionRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -32,7 +30,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 sealed class StatementUiState {
     data object Idle : StatementUiState()
@@ -59,9 +56,8 @@ sealed class StatementUiState {
  * the picked rows. Scoped to MainActivity, so extraction keeps going when the
  * user leaves the screen; a notification announces the result.
  */
-@HiltViewModel
-class StatementImportViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+class StatementImportViewModel(
+    private val context: Context,
     accountsRepository: AccountRepository,
     private val categoriesRepository: CategoryRepository,
     private val transactionsRepository: TransactionRepository,

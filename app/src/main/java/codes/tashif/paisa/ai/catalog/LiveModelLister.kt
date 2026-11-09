@@ -13,12 +13,9 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import java.net.URLEncoder
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /** Asks a provider which models it serves right now. Costs no tokens. */
-@Singleton
-class LiveModelLister @Inject constructor(
+class LiveModelLister(
     private val client: ProviderClient,
 ) {
     suspend fun list(provider: AiProviderInfo, baseUrl: String, apiKey: String): List<ModelInfo> {

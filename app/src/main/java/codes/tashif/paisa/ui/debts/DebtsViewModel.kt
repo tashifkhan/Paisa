@@ -12,8 +12,6 @@ import codes.tashif.paisa.data.Settings
 import codes.tashif.paisa.data.repository.DebtRepository
 import codes.tashif.paisa.data.repository.DebtShare
 import codes.tashif.paisa.data.repository.SettingsRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,8 +26,7 @@ import kotlinx.coroutines.launch
  * State for the Debts tab. Scoped to MainActivity, so the open person survives
  * switching tabs. The shell reads [openDebtPersonId] to hide the FAB on a person page.
  */
-@HiltViewModel
-class DebtsViewModel @Inject constructor(
+class DebtsViewModel(
     private val debtRepository: DebtRepository,
     settingsRepository: SettingsRepository,
     private val navigator: AppNavigator,

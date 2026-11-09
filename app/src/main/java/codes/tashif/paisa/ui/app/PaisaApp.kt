@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ui.app
 
 import android.content.Context
+import org.koin.compose.viewmodel.koinViewModel
 import android.content.ContextWrapper
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -16,7 +17,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.fragment.app.FragmentActivity
-import androidx.hilt.navigation.compose.hiltViewModel
 import codes.tashif.paisa.security.BiometricAuth
 import codes.tashif.paisa.ui.backup.BackupScreen
 import codes.tashif.paisa.ui.onboarding.OnboardingScreen
@@ -30,7 +30,7 @@ import codes.tashif.paisa.ui.theme.PaisaTheme
  * onboarding.
  */
 @Composable
-fun PaisaApp(viewModel: AppViewModel = hiltViewModel()) {
+fun PaisaApp(viewModel: AppViewModel = koinViewModel()) {
     val settings by viewModel.settings.collectAsState()
     val isLocked by viewModel.isLocked.collectAsState()
     val isDark = when (settings?.themeMode) {

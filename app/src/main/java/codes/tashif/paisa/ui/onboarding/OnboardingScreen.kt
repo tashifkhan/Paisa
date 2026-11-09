@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ui.onboarding
 
 import androidx.activity.compose.BackHandler
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -42,7 +43,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.onboarding.pages.onboardingPages
 import codes.tashif.paisa.ui.theme.spacing
@@ -57,7 +57,7 @@ import kotlinx.coroutines.launch
 fun OnboardingScreen(
     onFinished: () -> Unit = {},
     onRestoreBackup: (() -> Unit)? = null,
-    viewModel: OnboardingViewModel = hiltViewModel()
+    viewModel: OnboardingViewModel = koinViewModel()
 ) {
     // Marks onboarding done in settings, then lets the host react if it wants to.
     val finish = {

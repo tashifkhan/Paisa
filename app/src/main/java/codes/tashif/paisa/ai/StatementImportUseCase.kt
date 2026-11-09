@@ -9,14 +9,11 @@ import com.pennywiseai.parser.core.md5Hex
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Commits reviewed [ExtractedTransaction] rows into Room with category resolution + hash dedup.
  */
-@Singleton
-class StatementImportUseCase @Inject constructor(
+class StatementImportUseCase(
     private val accountRepository: AccountRepository,
     private val categoryRepository: CategoryRepository,
     private val transactionRepository: TransactionRepository

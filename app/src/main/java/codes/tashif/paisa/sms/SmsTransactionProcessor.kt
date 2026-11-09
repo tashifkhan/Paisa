@@ -15,15 +15,12 @@ import com.pennywiseai.parser.core.md5Hex
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Parses bank SMS via [BankParserFactory] and persists transactions into Paisa Room DB.
  * Shared by the real-time [SmsBroadcastReceiver] and the bulk [SmsReaderWorker].
  */
-@Singleton
-class SmsTransactionProcessor @Inject constructor(
+class SmsTransactionProcessor(
     private val accountRepository: AccountRepository,
     private val categoryRepository: CategoryRepository,
     private val transactionRepository: TransactionRepository,

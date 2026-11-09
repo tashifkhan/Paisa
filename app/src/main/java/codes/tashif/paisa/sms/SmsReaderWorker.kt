@@ -19,10 +19,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import androidx.hilt.work.HiltWorker
 import codes.tashif.paisa.data.repository.SettingsRepository
-import dagger.assisted.Assisted
-import dagger.assisted.AssistedInject
 import com.pennywiseai.parser.core.bank.BankParserFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -31,10 +28,9 @@ import kotlinx.coroutines.withContext
  * Bulk inbox scan: reads SMS via ContentProvider, parses with BankParserFactory,
  * and stores transactions through [SmsTransactionProcessor].
  */
-@HiltWorker
-class SmsReaderWorker @AssistedInject constructor(
-    @Assisted appContext: Context,
-    @Assisted params: WorkerParameters,
+class SmsReaderWorker(
+    appContext: Context,
+    params: WorkerParameters,
     private val processor: SmsTransactionProcessor,
     private val settingsRepository: SettingsRepository
 ) : CoroutineWorker(appContext, params) {

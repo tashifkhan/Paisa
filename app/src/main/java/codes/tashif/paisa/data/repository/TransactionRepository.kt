@@ -10,15 +10,12 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Transactions and recurring rules. Every write keeps the account balance in
  * step, and edits and deletes keep the transaction's debt split in step too.
  */
-@Singleton
-class TransactionRepository @Inject constructor(
+class TransactionRepository(
     private val db: AppDatabase,
     private val accountRepository: AccountRepository,
     private val debtRepository: DebtRepository

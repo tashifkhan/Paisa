@@ -18,7 +18,6 @@ import codes.tashif.paisa.data.repository.DebtShare
 import codes.tashif.paisa.data.repository.SettingsRepository
 import codes.tashif.paisa.data.repository.TransactionRepository
 import codes.tashif.paisa.data.repository.nowIso
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,11 +26,9 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /** Adding, editing, deleting and linking transactions, for the add sheet and the detail screen. */
-@HiltViewModel
-class TransactionViewModel @Inject constructor(
+class TransactionViewModel(
     accountRepository: AccountRepository,
     private val categoryRepository: CategoryRepository,
     private val transactionRepository: TransactionRepository,

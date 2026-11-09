@@ -11,17 +11,14 @@ import codes.tashif.paisa.data.repository.BudgetRepository
 import codes.tashif.paisa.data.repository.CategoryRepository
 import codes.tashif.paisa.data.repository.SettingsRepository
 import codes.tashif.paisa.data.repository.TransactionRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.Calendar
-import javax.inject.Inject
 
 /** Budgets, plus the categories and transactions needed to show what each has spent. */
-@HiltViewModel
-class BudgetsViewModel @Inject constructor(
+class BudgetsViewModel(
     private val budgetRepository: BudgetRepository,
     categoryRepository: CategoryRepository,
     transactionRepository: TransactionRepository,

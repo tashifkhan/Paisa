@@ -1,26 +1,33 @@
 package codes.tashif.paisa
 
 import android.app.Application
-import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import codes.tashif.paisa.di.paisaModules
 import codes.tashif.paisa.sync.SyncManager
-import dagger.hilt.android.HiltAndroidApp
-import javax.inject.Inject
+import org.koin.android.ext.koin.androidContext
+import org.koin.androidx.workmanager.factory.KoinWorkerFactory
+import org.koin.core.context.GlobalContext
+import org.koin.core.context.startKoin
+import org.koin.core.context.stopKoin
 
-@HiltAndroidApp
 class PaisaApplication : Application(), Configuration.Provider {
 
-    @Inject
-    lateinit var workerFactory: HiltWorkerFactory
-
-    // The default initializer is removed in the manifest so workers get Hilt injection.
+    // The default initializer is removed in the manifest so workers get their
+    // dependencies from Koin.
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
-            .setWorkerFactory(workerFactory)
+            .setWorkerFactory(KoinWorkerFactory())
             .build()
 
     override fun onCreate() {
         super.onCreate()
+        // Only Robolectric creates a second Application in one process, once
+        // per test. Start from a clean graph each time.
+        if (GlobalContext.getOrNull() != null) stopKoin()
+        startKoin {
+            androidContext(this@PaisaApplication)
+            modules(paisaModules)
+        }
         // Local edits from anywhere in the process (UI, SMS receiver, workers)
         // schedule an upload when sync is on.
         SyncManager.watchLocalChanges(this)

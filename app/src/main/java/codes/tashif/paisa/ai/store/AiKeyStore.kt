@@ -6,16 +6,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * One API key per provider id, in the same EncryptedSharedPreferences file
  * the old single key used. Backup rules already exclude that file, so keys
  * stay on the device. Never log a key.
  */
-@Singleton
-class AiKeyStore @Inject constructor(legacy: AiCredentialsStore) {
+class AiKeyStore(legacy: AiCredentialsStore) {
 
     private val prefs = legacy.prefs
 

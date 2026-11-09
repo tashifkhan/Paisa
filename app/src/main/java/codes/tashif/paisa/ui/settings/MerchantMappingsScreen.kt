@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ui.settings
 
 import androidx.activity.compose.BackHandler
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -25,7 +26,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.hilt.navigation.compose.hiltViewModel
 import codes.tashif.paisa.ui.components.DetailHeader
 import codes.tashif.paisa.ui.components.EmptyState
 import codes.tashif.paisa.ui.haptics.rememberHaptics
@@ -35,7 +35,7 @@ import codes.tashif.paisa.ui.theme.spacing
 @Composable
 fun MerchantMappingsScreen(
     onBack: () -> Unit,
-    viewModel: CategoriesViewModel = hiltViewModel()
+    viewModel: CategoriesViewModel = koinViewModel()
 ) {
     val mappings by viewModel.merchantMappings.collectAsState()
 

@@ -6,16 +6,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Whether balances are masked right now. Starts hidden, then follows
  * Settings.hideBalancesByDefault once per session; after that only the
  * user's toggles change it.
  */
-@Singleton
-class PrivacySession @Inject constructor(
+class PrivacySession(
     private val settingsRepository: SettingsRepository
 ) {
 

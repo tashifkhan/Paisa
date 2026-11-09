@@ -14,17 +14,13 @@ import codes.tashif.paisa.data.UnrecognizedSms
 import codes.tashif.paisa.data.repository.SettingsRepository
 import codes.tashif.paisa.data.repository.SmsInboxRepository
 import codes.tashif.paisa.sms.SmsReaderWorker
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class SmsViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+class SmsViewModel(
+    private val context: Context,
     private val settingsRepository: SettingsRepository,
     private val smsInboxRepository: SmsInboxRepository,
     private val snackbarManager: SnackbarManager,

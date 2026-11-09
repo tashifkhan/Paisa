@@ -1,6 +1,8 @@
 package codes.tashif.paisa.sms
 
 import android.app.NotificationChannel
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -11,8 +13,6 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import codes.tashif.paisa.MainActivity
 import codes.tashif.paisa.R
-import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,11 +21,9 @@ import kotlinx.coroutines.launch
 /**
  * Real-time SMS interceptor — parses bank alerts as they arrive.
  */
-@AndroidEntryPoint
-class SmsBroadcastReceiver : BroadcastReceiver() {
+class SmsBroadcastReceiver : BroadcastReceiver(), KoinComponent {
 
-    @Inject
-    lateinit var processor: SmsTransactionProcessor
+    private val processor: SmsTransactionProcessor by inject()
 
     companion object {
         private const val TAG = "SmsBroadcastReceiver"

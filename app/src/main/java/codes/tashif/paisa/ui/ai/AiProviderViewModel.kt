@@ -10,17 +10,14 @@ import codes.tashif.paisa.ai.ladder.AiLadderRunner
 import codes.tashif.paisa.ai.ladder.AiService
 import codes.tashif.paisa.ai.ladder.Rung
 import codes.tashif.paisa.core.SnackbarManager
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 /** One provider: its key, base URL, connection test and models. */
-@HiltViewModel
-class AiProviderViewModel @Inject constructor(
+class AiProviderViewModel(
     private val repository: AiRepository,
     private val runner: AiLadderRunner,
     private val snackbarManager: SnackbarManager,

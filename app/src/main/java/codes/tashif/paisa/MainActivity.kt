@@ -1,24 +1,23 @@
 package codes.tashif.paisa
 
 import android.content.Intent
+import org.koin.compose.viewmodel.koinViewModel
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
+import org.koin.androidx.viewmodel.ext.android.viewModel
 import androidx.fragment.app.FragmentActivity
 import codes.tashif.paisa.sync.SyncManager
 import codes.tashif.paisa.ui.app.AppViewModel
 import codes.tashif.paisa.ui.app.PaisaApp
 import codes.tashif.paisa.ui.sms.SmsViewModel
 import codes.tashif.paisa.widget.WidgetDeepLink
-import dagger.hilt.android.AndroidEntryPoint
 
-@AndroidEntryPoint
 class MainActivity : FragmentActivity() {
 
-    // Same instances PaisaApp gets from hiltViewModel(), since both use this activity's store.
-    private val appViewModel: AppViewModel by viewModels()
-    private val smsViewModel: SmsViewModel by viewModels()
+    // Same instances PaisaApp gets from koinViewModel(), since both use this activity's store.
+    private val appViewModel: AppViewModel by viewModel()
+    private val smsViewModel: SmsViewModel by viewModel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

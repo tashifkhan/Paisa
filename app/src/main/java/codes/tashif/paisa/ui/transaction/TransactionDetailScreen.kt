@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ui.transaction
 
 import androidx.activity.compose.BackHandler
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -31,7 +32,6 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
-import androidx.hilt.navigation.compose.hiltViewModel
 import codes.tashif.paisa.ui.components.AccountPicker
 import codes.tashif.paisa.ui.components.CategoryPicker
 import codes.tashif.paisa.ui.components.CircleIconButton
@@ -47,8 +47,8 @@ import java.util.Locale
 @Composable
 fun TransactionDetailScreen(
     onBack: () -> Unit,
-    viewModel: TransactionViewModel = hiltViewModel(),
-    debtsViewModel: DebtsViewModel = hiltViewModel()
+    viewModel: TransactionViewModel = koinViewModel(),
+    debtsViewModel: DebtsViewModel = koinViewModel()
 ) {
     val transactions by viewModel.transactions.collectAsState()
     val selectedId by viewModel.selectedTransactionId.collectAsState()
