@@ -34,13 +34,13 @@ import codes.tashif.paisa.ui.theme.spacing
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.unit.dp
 
-private data class CurrencyOption(
+internal data class CurrencyOption(
     val symbol: String,
     val code: String,
     val name: String
 )
 
-private val currencyOptions = listOf(
+internal val currencyOptions = listOf(
     CurrencyOption("₹", "INR", "Indian Rupee"),
     CurrencyOption("$", "USD", "US Dollar"),
     CurrencyOption("€", "EUR", "Euro"),

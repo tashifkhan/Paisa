@@ -69,8 +69,9 @@ fun AiOverviewScreen(
                 .padding(bottom = MaterialTheme.spacing.extraLarge)
         ) {
             NoteCard(
-                text = "Bring your own key for statement import. SMS stays on this device. " +
-                    "Only the files you import are sent, and only to the providers you pick.",
+                text = "Bring your own key for Add with AI and statement import. SMS stays on " +
+                    "this device. Only the notes and files you send go out, and only to the " +
+                    "providers you pick.",
                 icon = Icons.Rounded.AutoAwesome,
                 container = MaterialTheme.colorScheme.primaryContainer,
                 content = MaterialTheme.colorScheme.onPrimaryContainer

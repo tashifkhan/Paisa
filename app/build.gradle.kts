@@ -10,6 +10,25 @@ plugins {
     alias(libs.plugins.room3)
 }
 
+// The web build gets android.defaultConfig.versionName as a generated
+// constant, so About shows the same version on both. The release workflow
+// bumps versionName below; keep it a plain string literal.
+val generateWebVersion by tasks.registering {
+    val version = provider { android.defaultConfig.versionName ?: "dev" }
+    val out = layout.buildDirectory.dir("generated/webVersion/kotlin")
+    inputs.property("version", version)
+    outputs.dir(out)
+    doLast {
+        val file = out.get().file("codes/tashif/paisa/WebVersion.kt").asFile
+        file.parentFile.mkdirs()
+        file.writeText(
+            "package codes.tashif.paisa\n\n" +
+                "/** Generated from versionName in app/build.gradle.kts. */\n" +
+                "internal const val WEB_VERSION_NAME = \"${version.get()}\"\n"
+        )
+    }
+}
+
 // One Compose Multiplatform app. commonMain holds the screens, viewmodels,
 // database and sync; androidMain adds SMS, widgets, WorkManager, biometrics
 // and Google sign-in; wasmJsMain is the web host.
@@ -37,6 +56,9 @@ kotlin {
     }
 
     sourceSets {
+        wasmJsMain {
+            kotlin.srcDir(generateWebVersion)
+        }
         commonMain.dependencies {
             implementation(project(":shared"))
             implementation(libs.kotlinx.coroutines.core)

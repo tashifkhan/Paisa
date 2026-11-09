@@ -10,7 +10,7 @@ import org.koin.dsl.module
 /** The web's database and shell services. PDF export has no web renderer yet. */
 val webPlatformModule = module {
     single<AppDatabase> { createWebDatabase() }
-    single<AppPlatform> { WebAppPlatform(versionName = "web") }
+    single<AppPlatform> { WebAppPlatform(versionName = codes.tashif.paisa.WEB_VERSION_NAME) }
     factory { TransactionExporter(get(), get(), null) }
 }
 

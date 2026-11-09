@@ -105,6 +105,8 @@ fun AppShell(
             AppDestinations.ADD_TRANSACTION -> state.open(AddSheet.TRANSACTION)
             AppDestinations.STATEMENT_IMPORT -> state.open(FullScreen.STATEMENT_IMPORT)
             AppDestinations.SMS_SETUP -> state.open(FullScreen.SMS_SETUP)
+            AppDestinations.AI_SETTINGS -> state.open(FullScreen.AI)
+            AppDestinations.BACKUP -> state.open(FullScreen.BACKUP)
             AppDestinations.ACCOUNTS -> viewModel.selectTab(AppTab.ACCOUNTS)
             AppDestinations.HOME -> viewModel.selectTab(AppTab.HOME)
         }

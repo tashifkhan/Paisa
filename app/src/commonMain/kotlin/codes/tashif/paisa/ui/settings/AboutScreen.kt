@@ -1,14 +1,8 @@
 package codes.tashif.paisa.ui.settings
 
-import codes.tashif.paisa.ui.app.AppPlatform
-import codes.tashif.paisa.ui.app.appIconPainter
-import org.koin.compose.koinInject
-import codes.tashif.paisa.ui.platform.PlatformBackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,31 +10,46 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.BugReport
+import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Gavel
-import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Handshake
+import androidx.compose.material.icons.rounded.PhoneAndroid
+import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material.icons.rounded.Sms
-import androidx.compose.material.icons.rounded.Tour
+import androidx.compose.material.icons.rounded.Storage
+import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import codes.tashif.paisa.ui.app.AppPlatform
+import codes.tashif.paisa.ui.app.appIconPainter
 import codes.tashif.paisa.ui.components.DetailHeader
 import codes.tashif.paisa.ui.components.SettingsGroup
 import codes.tashif.paisa.ui.components.SettingsItem
 import codes.tashif.paisa.ui.components.SettingsSectionLabel
 import codes.tashif.paisa.ui.components.groupPositionOf
+import codes.tashif.paisa.ui.platform.PlatformBackHandler
+import codes.tashif.paisa.ui.platform.isWebPlatform
+import codes.tashif.paisa.ui.sms.smsImportSupported
 import codes.tashif.paisa.ui.theme.spacing
+import org.koin.compose.koinInject
+
+private const val REPO = "https://github.com/tashifkhan/Paisa"
 
 @Composable
 fun AboutScreen(
@@ -48,6 +57,8 @@ fun AboutScreen(
     onReplayOnboarding: () -> Unit = {}
 ) {
     val versionName = koinInject<AppPlatform>().versionName
+    val uri = LocalUriHandler.current
+    val open: (String) -> Unit = { runCatching { uri.openUri(it) } }
 
     PlatformBackHandler(onBack = onBack)
 
@@ -62,102 +73,149 @@ fun AboutScreen(
                 .padding(horizontal = MaterialTheme.spacing.medium)
                 .padding(bottom = MaterialTheme.spacing.extraLarge)
         ) {
-            // App identity card
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .background(
-                            MaterialTheme.colorScheme.primaryContainer,
-                            CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = appIconPainter(),
-                        contentDescription = "Paisa app icon",
-                        modifier = Modifier
-                            .size(72.dp)
-                            .clip(CircleShape)
+            AppIdentity(versionName)
+
+            SettingsSectionLabel("Where your data goes")
+            val privacy = buildList {
+                add(Triple(Icons.Rounded.Storage, "On this device", if (isWebPlatform) {
+                    "Transactions live in this browser's private storage. No account, no analytics."
+                } else {
+                    "Transactions live in a database on this phone. No account, no analytics."
+                }))
+                if (smsImportSupported) {
+                    add(Triple(Icons.Rounded.Sms, "Bank SMS", "Read and parsed on the phone. The messages never leave it."))
+                }
+                add(Triple(Icons.Rounded.CloudSync, "Backup and sync", "Only to the Google Drive, Nextcloud or file you pick. AES-256-GCM encrypted when you set a password."))
+                add(Triple(Icons.Rounded.AutoAwesome, "AI", "Off until you add a key. Only what you send, like a note, receipt or statement, goes to the provider you chose."))
+            }
+            SettingsGroup {
+                privacy.forEachIndexed { i, (icon, title, body) ->
+                    SettingsItem(
+                        title = title,
+                        subtitle = body,
+                        icon = icon,
+                        position = groupPositionOf(i, privacy.size),
+                        iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        iconContentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
-                Spacer(Modifier.height(MaterialTheme.spacing.small))
-                Text(
-                    text = "Paisa",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "Version $versionName",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            SettingsSectionLabel("Privacy")
-            SettingsGroup {
-                SettingsItem(
-                    title = "Offline-first",
-                    subtitle = "All data stays in a local database on your phone. " +
-                        "No account, no sync, no analytics.",
-                    icon = Icons.Rounded.Lock,
-                    position = groupPositionOf(0, 3),
-                    iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                    iconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                SettingsItem(
-                    title = "SMS parsed on-device",
-                    subtitle = "Bank SMS never leave your phone. Parsing runs " +
-                        "entirely locally.",
-                    icon = Icons.Rounded.Sms,
-                    position = groupPositionOf(1, 3),
-                    iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    iconContentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-                SettingsItem(
-                    title = "Optional BYOK AI",
-                    subtitle = "Statement import uses your own API key. Only files " +
-                        "you upload are sent to the endpoint you choose.",
-                    icon = Icons.Rounded.AutoAwesome,
-                    position = groupPositionOf(2, 3),
-                    iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    iconContentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                )
             }
 
             SettingsSectionLabel("Help")
             SettingsGroup {
                 SettingsItem(
-                    title = "Feature tour",
-                    subtitle = "Replay the onboarding walkthrough of every Paisa feature",
-                    icon = Icons.Rounded.Tour,
-                    position = groupPositionOf(0, 1),
-                    iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                    iconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    title = "Run setup again",
+                    subtitle = "Currency, theme and SMS access, then shortcuts to get going",
+                    icon = Icons.Rounded.Replay,
+                    position = groupPositionOf(0, 2),
                     onClick = onReplayOnboarding
+                )
+                SettingsItem(
+                    title = "Report a problem",
+                    subtitle = "Open an issue on GitHub",
+                    icon = Icons.Rounded.BugReport,
+                    position = groupPositionOf(1, 2),
+                    onClick = { open("$REPO/issues") },
+                    trailing = { ExternalIcon() }
                 )
             }
 
             SettingsSectionLabel("Project")
-            SettingsGroup {
-                SettingsItem(
-                    title = "Open source",
-                    subtitle = "Built with Kotlin, Jetpack Compose, and Room",
-                    icon = Icons.Rounded.Code,
-                    position = groupPositionOf(0, 2),
-                    iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    iconContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            val project = listOf(
+                LinkRow(Icons.Rounded.Code, "Source code", "github.com/tashifkhan/Paisa", REPO),
+                LinkRow(Icons.Rounded.SystemUpdate, "Updates", "Releases on GitHub, or the F-Droid repo", "$REPO/releases/latest"),
+                LinkRow(Icons.Rounded.Gavel, "License", "AGPL-3.0", "$REPO/blob/master/LICENSE"),
+                LinkRow(
+                    Icons.Rounded.Handshake,
+                    "Bank SMS parsers",
+                    "From PennyWise AI Tracker by sarim2000",
+                    "https://github.com/sarim2000/pennywiseai-tracker"
                 )
-                SettingsItem(
-                    title = "License",
-                    subtitle = "AGPL-3.0",
-                    icon = Icons.Rounded.Gavel,
-                    position = groupPositionOf(1, 2),
-                    iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    iconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            SettingsGroup {
+                project.forEachIndexed { i, row ->
+                    SettingsItem(
+                        title = row.title,
+                        subtitle = row.subtitle,
+                        icon = row.icon,
+                        position = groupPositionOf(i, project.size),
+                        iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        iconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        onClick = { open(row.url) },
+                        trailing = { ExternalIcon() }
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(MaterialTheme.spacing.large))
+            Text(
+                text = "Built with Kotlin Multiplatform and Compose Multiplatform. " +
+                    "One codebase for Android and the web.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small)
+            )
+        }
+    }
+}
+
+private data class LinkRow(
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val title: String,
+    val subtitle: String,
+    val url: String
+)
+
+@Composable
+private fun ExternalIcon() {
+    Icon(
+        Icons.AutoMirrored.Rounded.OpenInNew,
+        contentDescription = "Opens in the browser",
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.size(18.dp)
+    )
+}
+
+@Composable
+private fun AppIdentity(versionName: String) {
+    Surface(
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(MaterialTheme.spacing.large),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(shape = MaterialTheme.shapes.large, modifier = Modifier.size(64.dp)) {
+                Image(appIconPainter(), contentDescription = "Paisa app icon", modifier = Modifier.size(64.dp))
+            }
+            Spacer(Modifier.width(MaterialTheme.spacing.medium))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "Paisa",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        if (isWebPlatform) Icons.Rounded.Code else Icons.Rounded.PhoneAndroid,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        "Version $versionName · ${if (isWebPlatform) "Web" else "Android"}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                Text(
+                    "An expense tracker that keeps your data with you.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                 )
             }
         }

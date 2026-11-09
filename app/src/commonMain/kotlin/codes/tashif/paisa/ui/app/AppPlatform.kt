@@ -19,6 +19,8 @@ object AppDestinations {
     const val STATEMENT_IMPORT = "statement_import"
     const val SMS_SETUP = "sms_setup"
     const val ACCOUNTS = "accounts"
+    const val AI_SETTINGS = "ai_settings"
+    const val BACKUP = "backup"
 }
 
 /** Width of the app's window in dp, as Android's `Configuration.screenWidthDp` reports it. */

@@ -217,7 +217,7 @@ fun MoreAboutSection(onOpenAbout: () -> Unit) {
     SettingsGroup {
         SettingsItem(
             title = "About",
-            subtitle = "Offline-first · SMS on-device · optional BYOK AI",
+            subtitle = "Version, where your data goes, and links",
             icon = Icons.Rounded.Info,
             position = groupPositionOf(0, 1),
             iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,

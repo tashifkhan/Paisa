@@ -1,6 +1,5 @@
 package codes.tashif.paisa.ui.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -50,13 +49,13 @@ fun ThemeModePicker(
     ) {
         themeModes.forEach { mode ->
             val selected = selectedId == mode.id
+            // Card's own onClick clips the ripple and hover to its shape.
             Card(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable {
-                        if (!selected) haptics.tick()
-                        onSelect(mode.id)
-                    },
+                onClick = {
+                    if (!selected) haptics.tick()
+                    onSelect(mode.id)
+                },
+                modifier = Modifier.weight(1f),
                 shape = MaterialTheme.shapes.extraLarge,
                 colors = CardDefaults.cardColors(
                     containerColor = if (selected) {
