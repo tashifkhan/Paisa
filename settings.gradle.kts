@@ -50,4 +50,3 @@ rootProject.name = "Paisa"
 include(":app")
 include(":parser-core")
 include(":shared")
-include(":web")

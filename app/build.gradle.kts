@@ -1,8 +1,100 @@
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
+    alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.google.devtools.ksp)
+    alias(libs.plugins.room3)
+}
+
+// One Compose Multiplatform app. commonMain holds the screens, viewmodels,
+// database and sync; androidMain adds SMS, widgets, WorkManager, biometrics
+// and Google sign-in; wasmJsMain is the web host.
+kotlin {
+    androidTarget {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
+        }
+    }
+
+    @OptIn(ExperimentalWasmDsl::class)
+    wasmJs {
+        outputModuleName.set("paisa-web")
+        browser {
+            commonWebpackConfig {
+                outputFileName = "paisa-web.js"
+            }
+        }
+        binaries.executable()
+    }
+
+    compilerOptions {
+        optIn.add("kotlin.js.ExperimentalWasmJsInterop")
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
+    sourceSets {
+        commonMain.dependencies {
+            implementation(project(":shared"))
+            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.io.core)
+            implementation(libs.kotlinx.serialization.json)
+            implementation(libs.room3.runtime)
+        }
+        androidMain.dependencies {
+            implementation(project(":parser-core"))
+            implementation(libs.koin.android)
+            implementation(libs.koin.androidx.workmanager)
+            implementation(libs.koin.compose.viewmodel)
+
+            implementation(project.dependencies.platform(libs.androidx.compose.bom))
+            implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.fragment.ktx)
+            implementation(libs.androidx.compose.material.icons.core)
+            implementation(libs.androidx.compose.material.icons.extended)
+            implementation(libs.androidx.compose.material3)
+            implementation(libs.androidx.compose.ui)
+            implementation(libs.androidx.compose.ui.graphics)
+            implementation(libs.androidx.compose.ui.tooling.preview)
+            implementation(libs.androidx.core.ktx)
+            implementation(libs.androidx.biometric)
+            implementation(libs.androidx.lifecycle.runtime.compose)
+            implementation(libs.androidx.lifecycle.runtime.ktx)
+            implementation(libs.androidx.lifecycle.viewmodel.compose)
+            implementation(libs.androidx.navigation.compose)
+            implementation(libs.androidx.work.runtime.ktx)
+            implementation(libs.androidx.glance.appwidget)
+            implementation(libs.androidx.glance.material3)
+            implementation(libs.androidx.graphics.shapes)
+            implementation(libs.kotlinx.coroutines.android)
+            implementation(libs.okhttp)
+            implementation(libs.androidx.security.crypto)
+            implementation(libs.pdfbox.android)
+            // Google Drive backup sign-in (AuthorizationClient)
+            implementation(libs.play.services.auth)
+        }
+        androidUnitTest.dependencies {
+            implementation(libs.androidx.compose.ui.test.junit4)
+            implementation(libs.androidx.core)
+            implementation(libs.androidx.junit)
+            implementation(libs.junit)
+            implementation(libs.kotlinx.coroutines.test)
+            // Real org.json for JVM unit tests (Android stubs throw at runtime)
+            implementation("org.json:json:20240303")
+            // Real SQLite + android.util for the database tests
+            implementation("org.robolectric:robolectric:4.16")
+        }
+        wasmJsMain.dependencies {
+            implementation(libs.kotlinx.browser)
+            implementation(libs.sqlite.web)
+            // SQLite compiled to Wasm, run by sqlite-worker/worker.js.
+            // webpack.config.d/sqlite-worker.js points webpack at that file.
+            implementation(npm("@sqlite.org/sqlite-wasm", "3.54.1-build1"))
+        }
+    }
 }
 
 android {
@@ -43,65 +135,13 @@ android {
     }
 }
 
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
-    }
-}
-
 dependencies {
-    implementation(project(":parser-core"))
-    implementation(project(":shared"))
-    implementation(libs.koin.android)
-    implementation(libs.koin.androidx.workmanager)
-    implementation(libs.koin.compose.viewmodel)
-
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.fragment.ktx)
-    implementation(libs.androidx.compose.material.icons.core)
-    implementation(libs.androidx.compose.material.icons.extended)
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.biometric)
-    implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.navigation.compose)
-    implementation(libs.room3.runtime)
-    implementation(libs.kotlinx.io.core)
-    implementation(libs.kotlinx.serialization.json)
-    implementation(libs.androidx.work.runtime.ktx)
-    implementation(libs.androidx.glance.appwidget)
-    implementation(libs.androidx.glance.material3)
-    implementation(libs.androidx.graphics.shapes)
-    implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.okhttp)
-    implementation(libs.androidx.security.crypto)
-    implementation(libs.pdfbox.android)
-    // Google Drive backup sign-in (AuthorizationClient)
-    implementation(libs.play.services.auth)
-
-    testImplementation(libs.androidx.compose.ui.test.junit4)
-    testImplementation(libs.androidx.core)
-    testImplementation(libs.androidx.junit)
-    testImplementation(libs.junit)
-    testImplementation(libs.kotlinx.coroutines.test)
-    // Real org.json for JVM unit tests (Android stubs throw at runtime)
-    testImplementation("org.json:json:20240303")
-    // Real SQLite + android.util for the backup archive round-trip test
-    testImplementation("org.robolectric:robolectric:4.16")
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.runner)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    add("kspAndroid", libs.room3.compiler)
+    add("kspWasmJs", libs.room3.compiler)
+}
 
-    "ksp"(libs.room3.compiler)
+room3 {
+    schemaDirectory("$projectDir/schemas")
 }
