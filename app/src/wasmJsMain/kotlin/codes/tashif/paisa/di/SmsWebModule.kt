@@ -9,5 +9,4 @@ import org.koin.dsl.module
 /** SMS on the web: no scanning. Needs the repositories and SnackbarManager bound elsewhere. */
 val smsWebModule = module {
     single<SmsScanService> { WebSmsScanService() }
-    viewModelOf(::SmsViewModel)
 }

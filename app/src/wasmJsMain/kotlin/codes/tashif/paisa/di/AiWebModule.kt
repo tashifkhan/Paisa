@@ -36,18 +36,5 @@ val aiWebModule = module {
     single { AiCredentialsStore(LocalStorageAiStore(AiCredentialsStore.PREFS_NAME)) }
     single<AiCacheStore> { LocalStorageAiCacheStore() }
     single<StatementNotifier> { WebStatementNotifier() }
-    singleOf(::AiKeyStore)
-    singleOf(::LegacyMigrator)
-    singleOf(::ModelCatalog)
-    singleOf(::LiveModelLister)
-    singleOf(::ProviderClient)
-    singleOf(::AiLadderRunner)
-    singleOf(::AiRepository)
-    singleOf(::StatementExtractionService)
-    singleOf(::StatementImportUseCase)
 
-    viewModelOf(::StatementImportViewModel)
-    viewModelOf(::AiViewModel)
-    viewModelOf(::AiProviderViewModel)
-    viewModelOf(::AiLadderViewModel)
 }

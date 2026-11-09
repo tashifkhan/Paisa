@@ -13,6 +13,4 @@ import org.koin.dsl.module
  */
 val backupWebModule = module {
     single<BackupService> { WebBackupService(get()) }
-    viewModelOf(::BackupViewModel)
-    viewModelOf(::OnboardingViewModel)
 }

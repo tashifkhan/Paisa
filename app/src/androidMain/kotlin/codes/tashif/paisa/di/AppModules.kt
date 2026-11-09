@@ -64,46 +64,16 @@ import org.koin.dsl.module
 val databaseModule = module {
     // Same instance as AppDatabase.getDatabase, which sync and tests still call.
     single { PaisaDatabase.get(androidContext()) }
-    single { get<AppDatabase>().accountDao() }
-    single { get<AppDatabase>().categoryDao() }
-    single { get<AppDatabase>().transactionDao() }
-    single { get<AppDatabase>().budgetDao() }
-    single { get<AppDatabase>().savingsGoalDao() }
-    single { get<AppDatabase>().recurringTransactionDao() }
-    single { get<AppDatabase>().settingsDao() }
-    single { get<AppDatabase>().unrecognizedSmsDao() }
-    single { get<AppDatabase>().merchantMappingDao() }
-    single { get<AppDatabase>().debtDao() }
     single { WorkManager.getInstance(androidContext()) }
 }
 
-/** App-wide singletons: repositories, stores, AI, backup and sync. */
+/** Android-only singletons: SMS, the AI stores on SharedPreferences, backup and sync. */
 val appModule = module {
-    singleOf(::AppNavigator)
-    singleOf(::AppLockGuard)
-    singleOf(::PrivacySession)
-    singleOf(::SnackbarManager)
 
-    singleOf(::AccountRepository)
-    singleOf(::BudgetRepository)
-    singleOf(::CategoryRepository)
-    singleOf(::DebtRepository)
-    singleOf(::SettingsRepository)
-    singleOf(::SmsInboxRepository)
-    singleOf(::TransactionRepository)
     singleOf(::SmsTransactionProcessor)
 
     single { AiConfigStore(codes.tashif.paisa.ai.store.SharedPrefsAiStore.aiConfig(androidContext())) }
     single { AiCredentialsStore(codes.tashif.paisa.ai.store.SharedPrefsAiStore.aiCredentials(androidContext())) }
-    singleOf(::AiKeyStore)
-    singleOf(::LegacyMigrator)
-    singleOf(::ModelCatalog)
-    singleOf(::LiveModelLister)
-    singleOf(::ProviderClient)
-    singleOf(::AiLadderRunner)
-    singleOf(::AiRepository)
-    singleOf(::StatementExtractionService)
-    singleOf(::StatementImportUseCase)
 
     single { BackupPrefs(androidContext()) }
     singleOf(::BackupManager)
@@ -114,24 +84,6 @@ val appModule = module {
     single<AppPlatform> { AndroidAppPlatform(androidContext()) }
 }
 
-val viewModelModule = module {
-    viewModelOf(::AppViewModel)
-    viewModelOf(::HomeViewModel)
-    viewModelOf(::AnalyticsViewModel)
-    viewModelOf(::BudgetsViewModel)
-    viewModelOf(::AccountsViewModel)
-    viewModelOf(::DebtsViewModel)
-    viewModelOf(::TransactionViewModel)
-    viewModelOf(::OnboardingViewModel)
-    viewModelOf(::SettingsViewModel)
-    viewModelOf(::CategoriesViewModel)
-    viewModelOf(::SmsViewModel)
-    viewModelOf(::StatementImportViewModel)
-    viewModelOf(::BackupViewModel)
-    viewModelOf(::AiViewModel)
-    viewModelOf(::AiProviderViewModel)
-    viewModelOf(::AiLadderViewModel)
-}
 
 val workerModule = module {
     workerOf(::SmsReaderWorker)
@@ -139,4 +91,6 @@ val workerModule = module {
     workerOf(::SyncWorker)
 }
 
-val paisaModules = listOf(databaseModule, appModule, viewModelModule, workerModule)
+val paisaModules = listOf(
+    databaseModule, daoModule, coreModule, aiServicesModule, appModule, viewModelModule, workerModule
+)
