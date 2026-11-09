@@ -13,19 +13,7 @@ internal fun TopPlacesCard(
     onOpen: (AnalyticsGroup) -> Unit,
     onSeeAll: (String, List<RankItem>) -> Unit
 ) {
-        val ranks = expenses.groupBy { merchantKey(it) }
-            .map { (name, list) ->
-                val sum = list.sumOf { it.amount }
-                RankItem(
-                    group = AnalyticsGroup(AnalyticsGroup.Kind.MERCHANT, name),
-                    label = name,
-                    amount = sum,
-                    count = list.size,
-                    share = (sum / totalExpense).toFloat(),
-                    color = Color.Unspecified
-                )
-            }
-            .sortedByDescending { it.amount }
+        val ranks = placeRanks(expenses, totalExpense)
         ChartCard(title = "Top places", subtitle = "Where the money went") {
             RankList(ranks.take(LEGEND_ROWS), currency, onClick = onOpen)
             if (ranks.size > LEGEND_ROWS) {
