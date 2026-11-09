@@ -10,9 +10,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.CallMade
 import androidx.compose.material.icons.automirrored.rounded.CallReceived
-import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.ReceiptLong
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,16 +34,22 @@ import java.util.Locale
 import kotlin.math.abs
 
 
+/**
+ * One line of a person's history. [onClick] opens the transaction for a
+ * linked entry, or the edit sheet for one added by hand.
+ */
 @Composable
 internal fun DebtEntryRow(
     entry: DebtEntry,
     currency: String,
     index: Int,
     count: Int,
-    onDelete: () -> Unit
+    onClick: () -> Unit
 ) {
     val up = entry.amount >= 0
+    val linked = entry.transactionSyncId != null
     Surface(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = groupShape(groupPositionOf(index, count)),
         color = MaterialTheme.colorScheme.surfaceContainerLow
@@ -51,6 +57,7 @@ internal fun DebtEntryRow(
         Row(
             modifier = Modifier.padding(
                 start = MaterialTheme.spacing.medium,
+                end = MaterialTheme.spacing.small,
                 top = MaterialTheme.spacing.small,
                 bottom = MaterialTheme.spacing.small
             ),
@@ -70,11 +77,29 @@ internal fun DebtEntryRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    text = displayDate(entry.entryDate),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = displayDate(entry.entryDate),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (linked) {
+                        Icon(
+                            Icons.AutoMirrored.Rounded.ReceiptLong,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .padding(start = MaterialTheme.spacing.small)
+                                .size(14.dp)
+                        )
+                        Text(
+                            text = "From transaction",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(start = 2.dp)
+                        )
+                    }
+                }
             }
             Text(
                 text = (if (up) "+" else "−") + formatMoney(currency, abs(entry.amount)),
@@ -82,13 +107,11 @@ internal fun DebtEntryRow(
                 fontWeight = FontWeight.SemiBold,
                 color = if (up) IncomeGreen else ExpenseRed
             )
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Rounded.Delete,
-                    contentDescription = "Delete entry",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            Icon(
+                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = if (linked) "Open transaction" else "Edit entry",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

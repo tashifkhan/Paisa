@@ -6,6 +6,7 @@ import codes.tashif.paisa.core.AppNavigator
 import codes.tashif.paisa.core.SnackbarManager
 import codes.tashif.paisa.data.Account
 import codes.tashif.paisa.data.Category
+import codes.tashif.paisa.data.DebtEntryWithPerson
 import codes.tashif.paisa.data.DebtPersonBalance
 import codes.tashif.paisa.data.Settings
 import codes.tashif.paisa.data.Transaction
@@ -13,12 +14,17 @@ import codes.tashif.paisa.data.TransactionWithDetails
 import codes.tashif.paisa.data.repository.AccountRepository
 import codes.tashif.paisa.data.repository.CategoryRepository
 import codes.tashif.paisa.data.repository.DebtRepository
+import codes.tashif.paisa.data.repository.DebtShare
 import codes.tashif.paisa.data.repository.SettingsRepository
 import codes.tashif.paisa.data.repository.TransactionRepository
 import codes.tashif.paisa.data.repository.nowIso
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -52,8 +58,18 @@ class TransactionViewModel @Inject constructor(
 
     val selectedTransactionId: StateFlow<Int?> = navigator.selectedTransactionId
 
+    /** Who the open transaction is split with, from its linked debt entries. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val selectedSplit: StateFlow<List<DebtEntryWithPerson>> = navigator.selectedTransactionId
+        .flatMapLatest { id ->
+            flow { emit(id?.let { transactionRepository.getRawTransactionById(it)?.syncId }) }
+        }
+        .flatMapLatest { syncId -> if (syncId == null) flowOf(emptyList()) else debtRepository.transactionSplit(syncId) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     fun closeTransaction() = navigator.closeTransaction()
 
+    /** Shows the Debts tab. The caller opens the person on the activity's DebtsViewModel. */
     fun showSnackbar(
         message: String,
         actionLabel: String? = null,
@@ -69,7 +85,7 @@ class TransactionViewModel @Inject constructor(
         transactionDate: String = nowIso(),
         merchantName: String? = null,
         rememberMerchant: Boolean = false,
-        personLink: PersonLink? = null
+        debtShares: List<DebtShare> = emptyList()
     ) {
         viewModelScope.launch {
             // Title maps to merchantName; note stays a separate free-text field.
@@ -88,7 +104,7 @@ class TransactionViewModel @Inject constructor(
                     source = "manual"
                 )
             )
-            personLink?.let { link -> linkToDebt(transactionId.toInt(), link) }
+            if (debtShares.isNotEmpty()) saveSplit(transactionId.toInt(), debtShares)
             if (rememberMerchant && merchant != null) {
                 val cat = categoryRepository.getCategoryById(categoryId)
                 if (cat != null) {
@@ -104,15 +120,31 @@ class TransactionViewModel @Inject constructor(
         }
     }
 
-    /** Ties an existing transaction (a UPI payment, a bill you covered) to someone in Debts. */
-    fun linkTransactionToDebt(transactionId: Int, link: PersonLink) {
-        viewModelScope.launch { linkToDebt(transactionId, link) }
+    /**
+     * Makes [shares] the transaction's split, replacing whatever it had.
+     * Amounts are positive; the transaction's type sets the direction.
+     */
+    fun saveTransactionSplit(transactionId: Int, shares: List<DebtShare>) {
+        viewModelScope.launch { saveSplit(transactionId, shares) }
     }
 
-    private suspend fun linkToDebt(transactionId: Int, link: PersonLink) {
-        debtRepository.linkTransactionToDebt(transactionId, link.personId, link.newName, link.amount)
-        val name = link.newName ?: debtPeople.value.firstOrNull { it.person.id == link.personId }?.person?.name
-        showSnackbar("Recorded in Debts" + (name?.let { " for $it" } ?: ""))
+    fun removeTransactionSplit(transactionId: Int) {
+        viewModelScope.launch {
+            debtRepository.removeTransactionSplit(transactionId)
+            showSnackbar("Split removed")
+        }
+    }
+
+    private suspend fun saveSplit(transactionId: Int, shares: List<DebtShare>) {
+        debtRepository.saveTransactionSplit(transactionId, shares)
+        val single = shares.singleOrNull()
+        val name = single?.newName ?: single?.let { s -> debtPeople.value.firstOrNull { it.person.id == s.personId }?.person?.name }
+        showSnackbar(
+            when {
+                name != null -> "Recorded in Debts for $name"
+                else -> "Recorded in Debts for ${shares.size} people"
+            }
+        )
     }
 
     fun updateTransactionCategory(

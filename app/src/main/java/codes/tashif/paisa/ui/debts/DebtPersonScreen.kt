@@ -36,7 +36,10 @@ import codes.tashif.paisa.ui.theme.spacing
 import kotlin.math.abs
 
 
-/** One person's page: their balance, quick add buttons, settle up, and the history. */
+/**
+ * One person's page: their balance, quick add buttons, settle up, and the
+ * history. A linked entry opens its transaction; one added by hand opens an edit sheet.
+ */
 @Composable
 internal fun DebtPersonScreen(
     entry: DebtPersonBalance,
@@ -44,7 +47,9 @@ internal fun DebtPersonScreen(
     currency: String,
     onBack: () -> Unit,
     onAddEntry: (amount: Double, note: String) -> Unit,
+    onUpdateEntry: (id: Int, amount: Double, note: String, entryDate: String) -> Unit,
     onDeleteEntry: (Int) -> Unit,
+    onOpenTransaction: (transactionSyncId: String) -> Unit,
     onSettle: () -> Unit,
     onRename: (String) -> Unit,
     onDelete: () -> Unit
@@ -55,6 +60,7 @@ internal fun DebtPersonScreen(
     var renaming by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var confirmSettle by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<DebtEntry?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         DebtPersonTopBar(
@@ -132,9 +138,10 @@ internal fun DebtPersonScreen(
                     currency = currency,
                     index = index,
                     count = entries.size,
-                    onDelete = {
-                        haptics.reject()
-                        onDeleteEntry(e.id)
+                    onClick = {
+                        haptics.click()
+                        val syncId = e.transactionSyncId
+                        if (syncId != null) onOpenTransaction(syncId) else editing = e
                     }
                 )
             }
@@ -154,6 +161,23 @@ internal fun DebtPersonScreen(
                 haptics.confirm()
                 onAddEntry(if (theyOwe) amount else -amount, note)
                 adding = null
+            }
+        )
+    }
+
+    editing?.let { e ->
+        EditDebtEntrySheet(
+            entry = e,
+            onDismiss = { editing = null },
+            onSave = { amount, note, date ->
+                haptics.confirm()
+                onUpdateEntry(e.id, amount, note, date)
+                editing = null
+            },
+            onDelete = {
+                haptics.reject()
+                onDeleteEntry(e.id)
+                editing = null
             }
         )
     }

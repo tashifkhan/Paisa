@@ -8,6 +8,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.CallSplit
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.MaterialTheme
@@ -20,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import codes.tashif.paisa.ui.components.EmptyState
 import codes.tashif.paisa.ui.components.PaisaTopBar
+import codes.tashif.paisa.ui.debts.split.SplitBillSheet
 import codes.tashif.paisa.ui.format.debtTotals
 import codes.tashif.paisa.ui.theme.spacing
 
@@ -31,18 +40,21 @@ fun DebtsScreen(viewModel: DebtsViewModel = hiltViewModel()) {
     val openId by viewModel.openDebtPersonId.collectAsState()
     val settings by viewModel.settings.collectAsState()
     val currency = settings?.currency ?: "₹"
+    var splittingBill by remember { mutableStateOf(false) }
 
     val open = people.firstOrNull { it.person.id == openId }
     if (open != null) {
-        BackHandler { viewModel.openDebtPerson(null) }
+        BackHandler { viewModel.closeDebtPerson() }
         val entries by viewModel.openDebtEntries.collectAsState()
         DebtPersonScreen(
             entry = open,
             entries = entries,
             currency = currency,
-            onBack = { viewModel.openDebtPerson(null) },
+            onBack = { viewModel.closeDebtPerson() },
             onAddEntry = { amount, note -> viewModel.addDebtEntry(open.person.id, amount, note) },
+            onUpdateEntry = viewModel::updateDebtEntry,
             onDeleteEntry = { viewModel.deleteDebtEntry(it) },
+            onOpenTransaction = viewModel::openLinkedTransaction,
             onSettle = { viewModel.settleDebt(open.person) },
             onRename = { viewModel.renameDebtPerson(open.person, it) },
             onDelete = { viewModel.deleteDebtPerson(open.person) }
@@ -50,13 +62,31 @@ fun DebtsScreen(viewModel: DebtsViewModel = hiltViewModel()) {
         return
     }
 
+    if (splittingBill) {
+        SplitBillSheet(
+            people = people,
+            currency = currency,
+            onDismiss = { splittingBill = false },
+            onSave = { shares, note, date ->
+                viewModel.recordBillSplit(shares, note, date)
+                splittingBill = false
+            }
+        )
+    }
+
     Column(modifier = Modifier.fillMaxSize()) {
-        PaisaTopBar(title = "Debts")
+        PaisaTopBar(title = "Debts") {
+            TextButton(onClick = { splittingBill = true }) {
+                Icon(Icons.AutoMirrored.Rounded.CallSplit, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(MaterialTheme.spacing.smaller))
+                Text("Split a bill")
+            }
+        }
         if (people.isEmpty()) {
             EmptyState(
                 title = "Nobody owes anything",
-                subtitle = "Add someone with +, or mark a transaction with " +
-                    "\"Someone owes me for this\""
+                subtitle = "Add someone with +, use Split a bill, or turn on " +
+                    "\"Split with others\" on a transaction"
             )
             return@Column
         }

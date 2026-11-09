@@ -14,7 +14,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Handshake
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -220,18 +219,13 @@ internal fun parseToCalendar(iso: String): Calendar {
     return cal
 }
 
-/**
- * "Always use" merchant rule (when there is a merchant) and the Debts link.
- * The Debts card never stays on; tapping it opens the person dialog.
- */
+/** "Always use" merchant rule, shown when there is a merchant. */
 @Composable
 internal fun DetailToggles(
     merchantForMapping: String,
     fromSmsOrImport: Boolean,
     rememberMerchant: Boolean,
-    onRememberMerchantChange: (Boolean) -> Unit,
-    isExpense: Boolean,
-    onLinkPerson: () -> Unit
+    onRememberMerchantChange: (Boolean) -> Unit
 ) {
     if (merchantForMapping.isNotEmpty()) {
         Spacer(Modifier.height(MaterialTheme.spacing.small))
@@ -248,13 +242,4 @@ internal fun DetailToggles(
         )
     }
 
-    // UPI to a friend, a bill you covered: put it on what they owe.
-    Spacer(Modifier.height(MaterialTheme.spacing.small))
-    SheetToggleCard(
-        icon = Icons.Rounded.Handshake,
-        title = personLinkTitle(isExpense),
-        subtitle = personLinkSubtitle(isExpense),
-        checked = false,
-        onCheckedChange = { onLinkPerson() }
-    )
 }
