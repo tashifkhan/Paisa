@@ -222,8 +222,8 @@ internal fun MultiSelectFilterChip(
                 var index = 0
                 if (hasSelection) {
                     DropdownMenuItem(
-                        selected = false,
-                        onClick = {
+                        checked = false,
+                        onCheckedChange = {
                             haptics.tick()
                             onSelectionChange(emptySet())
                         },
@@ -235,17 +235,15 @@ internal fun MultiSelectFilterChip(
                     )
                     index++
                     HorizontalDivider(
-                        modifier = Modifier.padding(
-                            horizontal = MenuDefaults.HorizontalDividerPadding
-                        )
+                        modifier = Modifier.padding(MenuDefaults.HorizontalDividerPadding)
                     )
                 }
                 options.forEach { option ->
                     val itemIndex = index
                     val isSelected = option.id in selectedIds
                     DropdownMenuItem(
-                        selected = isSelected,
-                        onClick = {
+                        checked = isSelected,
+                        onCheckedChange = {
                             haptics.tick()
                             val next = if (isSelected) {
                                 selectedIds - option.id

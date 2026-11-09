@@ -25,6 +25,7 @@ import codes.tashif.paisa.backup.BackupProvider
 import codes.tashif.paisa.backup.BackupStore
 import codes.tashif.paisa.backup.RemoteBackup
 import codes.tashif.paisa.data.AppDatabase
+import codes.tashif.paisa.data.PaisaDatabase
 import codes.tashif.paisa.widget.PaisaWidgets
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -332,7 +333,7 @@ class SyncManager internal constructor(
         /** Hooks local database changes to [requestSoon]. Call once per process. */
         fun watchLocalChanges(context: Context) {
             val app = context.applicationContext
-            val db = AppDatabase.getDatabase(app)
+            val db = PaisaDatabase.get(app)
             CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
                 db.invalidationTracker.createFlow(*SyncSchema.TABLE_NAMES, emitInitialState = false)
                     .collect {

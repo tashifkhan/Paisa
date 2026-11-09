@@ -1,15 +1,15 @@
 package codes.tashif.paisa.data.repository
 
+import codes.tashif.paisa.platform.PaisaCalendar
+import codes.tashif.paisa.platform.formatDate
+import codes.tashif.paisa.platform.parseDate
+import codes.tashif.paisa.platform.nowMillis
 import androidx.room3.withWriteTransaction
 import codes.tashif.paisa.data.AppDatabase
 import codes.tashif.paisa.data.RecurringTransaction
 import codes.tashif.paisa.data.Transaction
 import codes.tashif.paisa.data.TransactionWithDetails
 import kotlinx.coroutines.flow.Flow
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 
 /**
  * Transactions and recurring rules. Every write keeps the account balance in
@@ -53,14 +53,13 @@ class TransactionRepository(
     ): Transaction? {
         val day = dateIso.take(10)
         if (day.length != 10) return null
-        val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-        val parsed = runCatching { fmt.parse(day) }.getOrNull() ?: return null
-        val cal = Calendar.getInstance()
-        cal.time = parsed
-        cal.add(Calendar.DAY_OF_MONTH, -windowDays)
-        val from = fmt.format(cal.time)
-        cal.add(Calendar.DAY_OF_MONTH, 2 * windowDays)
-        val to = fmt.format(cal.time)
+        val parsed = parseDate(day, "yyyy-MM-dd", machine = true) ?: return null
+        val cal = PaisaCalendar.getInstance()
+        cal.timeInMillis = parsed
+        cal.add(PaisaCalendar.DAY_OF_MONTH, -windowDays)
+        val from = formatDate(cal.timeInMillis, "yyyy-MM-dd", machine = true)
+        cal.add(PaisaCalendar.DAY_OF_MONTH, 2 * windowDays)
+        val to = formatDate(cal.timeInMillis, "yyyy-MM-dd", machine = true)
         return transactionDao.findSimilarTransactions(
             type = type,
             amountLow = amount - 0.01,
@@ -69,9 +68,8 @@ class TransactionRepository(
             toDate = to
         ).minByOrNull {
             // Prefer the entry closest to the statement row's date
-            runCatching { fmt.parse(it.transactionDate.take(10))?.time }
-                .getOrNull()
-                ?.let { t -> kotlin.math.abs(t - parsed.time) }
+            parseDate(it.transactionDate.take(10), "yyyy-MM-dd", machine = true)
+                ?.let { t -> kotlin.math.abs(t - parsed) }
                 ?: Long.MAX_VALUE
         }
     }
@@ -152,7 +150,7 @@ class TransactionRepository(
 
     suspend fun processRecurringTransactions() {
         db.withWriteTransaction {
-            val nowStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+            val nowStr = formatDate(nowMillis(), "yyyy-MM-dd")
             val dueRules = recurringTransactionDao.getEnabledRecurringTransactions()
             val touched = mutableSetOf<Int>()
             for (rule in dueRules) {
@@ -186,15 +184,14 @@ class TransactionRepository(
     }
 
     private fun advanceDate(dateStr: String, frequency: String): String {
-        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val date = sdf.parse(dateStr) ?: return dateStr
-        val calendar = Calendar.getInstance().apply { time = date }
-        when (frequency.lowercase(Locale.getDefault())) {
-            "daily" -> calendar.add(Calendar.DAY_OF_YEAR, 1)
-            "weekly" -> calendar.add(Calendar.WEEK_OF_YEAR, 1)
-            "yearly" -> calendar.add(Calendar.YEAR, 1)
-            else -> calendar.add(Calendar.MONTH, 1)
+        val date = parseDate(dateStr, "yyyy-MM-dd") ?: return dateStr
+        val calendar = PaisaCalendar.getInstance().apply { timeInMillis = date }
+        when (frequency.lowercase()) {
+            "daily" -> calendar.add(PaisaCalendar.DAY_OF_YEAR, 1)
+            "weekly" -> calendar.add(PaisaCalendar.WEEK_OF_YEAR, 1)
+            "yearly" -> calendar.add(PaisaCalendar.YEAR, 1)
+            else -> calendar.add(PaisaCalendar.MONTH, 1)
         }
-        return sdf.format(calendar.time)
+        return formatDate(calendar.timeInMillis, "yyyy-MM-dd")
     }
 }

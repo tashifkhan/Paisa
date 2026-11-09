@@ -20,6 +20,7 @@ import codes.tashif.paisa.core.AppNavigator
 import codes.tashif.paisa.core.PrivacySession
 import codes.tashif.paisa.core.SnackbarManager
 import codes.tashif.paisa.data.AppDatabase
+import codes.tashif.paisa.data.PaisaDatabase
 import codes.tashif.paisa.data.repository.AccountRepository
 import codes.tashif.paisa.data.repository.BudgetRepository
 import codes.tashif.paisa.data.repository.CategoryRepository
@@ -58,7 +59,7 @@ import org.koin.dsl.module
 /** Database, its DAOs and WorkManager. */
 val databaseModule = module {
     // Same instance as AppDatabase.getDatabase, which sync and tests still call.
-    single { AppDatabase.getDatabase(androidContext()) }
+    single { PaisaDatabase.get(androidContext()) }
     single { get<AppDatabase>().accountDao() }
     single { get<AppDatabase>().categoryDao() }
     single { get<AppDatabase>().transactionDao() }

@@ -21,7 +21,7 @@ object SplitScaling {
         class Part(val id: Int, val floor: Long, val remainder: Long)
         val parts = entries.map { (id, paise) ->
             val product = paise * newPaise
-            Part(id, Math.floorDiv(product, oldPaise), Math.floorMod(product, oldPaise))
+            Part(id, (product).floorDiv(oldPaise), (product).mod(oldPaise))
         }
         var left = target - parts.sumOf { it.floor }
         val result = parts.associateTo(LinkedHashMap()) { it.id to it.floor }
@@ -49,8 +49,8 @@ object SplitScaling {
 
     /** [num] / [den] rounded to the nearest whole number, halves away from zero. [den] > 0. */
     private fun roundHalfUp(num: Long, den: Long): Long {
-        val q = Math.floorDiv(num, den)
-        val r = Math.floorMod(num, den)
+        val q = (num).floorDiv(den)
+        val r = (num).mod(den)
         return when {
             2 * r > den -> q + 1
             2 * r < den -> q

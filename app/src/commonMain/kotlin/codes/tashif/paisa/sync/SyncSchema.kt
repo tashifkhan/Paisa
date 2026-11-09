@@ -1,8 +1,8 @@
 package codes.tashif.paisa.sync
 
 import codes.tashif.paisa.data.sql.Sql
-import codes.tashif.paisa.data.sql.nowMillis
-import codes.tashif.paisa.data.sql.randomHexId
+import codes.tashif.paisa.platform.nowMillis
+import codes.tashif.paisa.platform.randomHexId
 import kotlin.math.abs
 
 /**

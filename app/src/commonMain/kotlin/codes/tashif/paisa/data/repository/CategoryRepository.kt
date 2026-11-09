@@ -5,7 +5,6 @@ import codes.tashif.paisa.data.Category
 import codes.tashif.paisa.data.MerchantMapping
 import codes.tashif.paisa.sms.CategoryMapping
 import kotlinx.coroutines.flow.Flow
-import java.util.Locale
 
 /** Categories and the merchant to category rules. */
 class CategoryRepository(db: AppDatabase) {
@@ -72,7 +71,7 @@ class CategoryRepository(db: AppDatabase) {
     /** Map historical / PennyWise names onto seeded Paisa categories. */
     fun canonicalizeCategoryName(name: String, type: String): String {
         if (type == "income") return name
-        return CATEGORY_ALIASES[name.lowercase(Locale.getDefault())] ?: name
+        return CATEGORY_ALIASES[name.lowercase()] ?: name
     }
 
     // --- MERCHANT MAPPINGS ---
@@ -120,7 +119,7 @@ class CategoryRepository(db: AppDatabase) {
             return canonicalizeCategoryName(mapping.categoryName, type)
         }
         return canonicalizeCategoryName(
-            CategoryMapping.determineCategory(merchantName, type.uppercase(Locale.getDefault())),
+            CategoryMapping.determineCategory(merchantName, type.uppercase()),
             type
         )
     }

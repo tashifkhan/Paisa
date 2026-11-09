@@ -57,7 +57,7 @@ class BackupArchiveTest {
     private fun row(query: String): SqlRow = db.sql { it.first(query) }!!
 
     @Test
-    fun encryptedRoundTripReplacesEverything() {
+    fun encryptedRoundTripReplacesEverything(): Unit = runBlocking {
         val key = BackupCrypto.deriveKey("pw123456".toCharArray(), BackupCrypto.newSalt(), 1_000)
         val file = BackupCrypto.seal(export(), key)
 
@@ -67,7 +67,7 @@ class BackupArchiveTest {
         db.exec("UPDATE settings SET themeMode = 'light'")
 
         val header = BackupCrypto.readHeader(file)
-        val snapshot = runBlocking { BackupArchive.parse(BackupCrypto.open(file, header, key)) }
+        val snapshot = BackupArchive.parse(BackupCrypto.open(file, header, key))
         assertEquals(AppDatabase.SCHEMA_VERSION, snapshot.dbVersion)
         assertEquals(2, snapshot.transactionCount)
         db.sql { BackupArchive.restore(it, snapshot) }

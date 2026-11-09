@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import kotlinx.coroutines.runBlocking
 import org.junit.Test
 
 class BackupCryptoTest {
@@ -12,11 +13,12 @@ class BackupCryptoTest {
     private val payload = "gzip-json-stand-in ₹ 🙂".toByteArray()
 
     // Low iteration count keeps the test fast; the format stores it per file.
-    private fun key(pw: String, salt: ByteArray = BackupCrypto.newSalt()) =
+    private fun key(pw: String, salt: ByteArray = BackupCrypto.newSalt()) = runBlocking {
         BackupCrypto.deriveKey(pw.toCharArray(), salt, iterations = 1_000)
+    }
 
     @Test
-    fun plainRoundTrip() {
+    fun plainRoundTrip(): Unit = runBlocking {
         val sealed = BackupCrypto.seal(payload, null)
         val header = BackupCrypto.readHeader(sealed)
         assertFalse(header.encrypted)
@@ -24,7 +26,7 @@ class BackupCryptoTest {
     }
 
     @Test
-    fun encryptedRoundTripWithPasswordOnAnotherDevice() {
+    fun encryptedRoundTripWithPasswordOnAnotherDevice(): Unit = runBlocking {
         val sealed = BackupCrypto.seal(payload, key("hunter22"))
         val header = BackupCrypto.readHeader(sealed)
         assertTrue(header.encrypted)
@@ -35,7 +37,7 @@ class BackupCryptoTest {
     }
 
     @Test(expected = BackupCrypto.WrongPasswordException::class)
-    fun wrongPasswordFails() {
+    fun wrongPasswordFails(): Unit = runBlocking {
         val sealed = BackupCrypto.seal(payload, key("hunter22"))
         val header = BackupCrypto.readHeader(sealed)
         val wrong = BackupCrypto.deriveKey("hunter23".toCharArray(), header.salt!!, header.iterations)
@@ -43,7 +45,7 @@ class BackupCryptoTest {
     }
 
     @Test(expected = BackupCrypto.WrongPasswordException::class)
-    fun tamperedBodyFails() {
+    fun tamperedBodyFails(): Unit = runBlocking {
         val k = key("pw123456")
         val sealed = BackupCrypto.seal(payload, k)
         sealed[sealed.size - 1] = (sealed[sealed.size - 1].toInt() xor 1).toByte()
@@ -51,7 +53,7 @@ class BackupCryptoTest {
     }
 
     @Test(expected = BackupCrypto.WrongPasswordException::class)
-    fun tamperedHeaderFails() {
+    fun tamperedHeaderFails(): Unit = runBlocking {
         val k = key("pw123456")
         val sealed = BackupCrypto.seal(payload, k)
         // Flip a bit in the IV, which is authenticated as associated data.
@@ -61,7 +63,7 @@ class BackupCryptoTest {
     }
 
     @Test
-    fun freshIvPerBackup() {
+    fun freshIvPerBackup(): Unit = runBlocking {
         val k = key("pw123456")
         val a = BackupCrypto.seal(payload, k)
         val b = BackupCrypto.seal(payload, k)
@@ -69,25 +71,25 @@ class BackupCryptoTest {
     }
 
     @Test(expected = BackupCrypto.NotABackupException::class)
-    fun rejectsOtherFiles() {
+    fun rejectsOtherFiles(): Unit = runBlocking {
         BackupCrypto.readHeader("%PDF-1.7 hello".toByteArray())
     }
 
     @Test(expected = BackupCrypto.NotABackupException::class)
-    fun rejectsTruncatedEncryptedHeader() {
+    fun rejectsTruncatedEncryptedHeader(): Unit = runBlocking {
         val sealed = BackupCrypto.seal(payload, key("pw123456"))
         BackupCrypto.readHeader(sealed.copyOfRange(0, 20))
     }
 
     @Test(expected = BackupCrypto.NotABackupException::class)
-    fun rejectsFutureVersion() {
+    fun rejectsFutureVersion(): Unit = runBlocking {
         val sealed = BackupCrypto.seal(payload, null)
         sealed[8] = 99
         BackupCrypto.readHeader(sealed)
     }
 
     @Test
-    fun namesEncodeTimeAndSort() {
+    fun namesEncodeTimeAndSort(): Unit = runBlocking {
         val t = 1_780_000_000_000L
         val name = BackupNames.forTime(t)
         assertTrue(BackupNames.isBackup(name))

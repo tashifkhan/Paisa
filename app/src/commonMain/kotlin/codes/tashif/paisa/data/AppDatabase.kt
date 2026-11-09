@@ -1,8 +1,8 @@
 package codes.tashif.paisa.data
 
-import android.content.Context
+import androidx.room3.ConstructedBy
 import androidx.room3.Database
-import androidx.room3.Room
+import androidx.room3.RoomDatabaseConstructor
 import androidx.room3.RoomDatabase
 import androidx.room3.migration.Migration
 import androidx.sqlite.SQLiteConnection
@@ -26,6 +26,7 @@ import codes.tashif.paisa.sync.SyncSchema
     version = AppDatabase.SCHEMA_VERSION,
     exportSchema = false
 )
+@ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
     abstract fun categoryDao(): CategoryDao
@@ -41,9 +42,6 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         /** Bump with every migration. Backups made on a newer schema are refused. */
         const val SCHEMA_VERSION = 12
-
-        @Volatile
-        private var INSTANCE: AppDatabase? = null
 
         private val MIGRATION_2_3 = object : Migration(2, 3) {
             override suspend fun migrate(connection: SQLiteConnection) {
@@ -212,21 +210,6 @@ abstract class AppDatabase : RoomDatabase() {
                 MIGRATION_11_12
             )
 
-        fun getDatabase(context: Context): AppDatabase {
-            return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder<AppDatabase>(
-                    context.applicationContext,
-                    "paisa_database"
-                )
-                    .addCallback(callback)
-                    .addMigrations(*MIGRATIONS)
-                    .fallbackToDestructiveMigration(dropAllTables = true)
-                    .build()
-                INSTANCE = instance
-                instance
-            }
-        }
-
         /** Seeds a new database and keeps the sync triggers installed. Tests add it too. */
         val callback: RoomDatabase.Callback get() = DatabaseCallback
 
@@ -324,4 +307,19 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
     }
+}
+
+/** The callback, migrations and fallback every platform's builder needs. */
+fun RoomDatabase.Builder<AppDatabase>.withPaisaDefaults(): RoomDatabase.Builder<AppDatabase> =
+    addCallback(AppDatabase.callback)
+        .addMigrations(*AppDatabase.MIGRATIONS)
+        .fallbackToDestructiveMigration(dropAllTables = true)
+
+/** File name of the database on every platform. */
+const val DATABASE_NAME = "paisa_database"
+
+// Room's KSP processor writes the actual for each platform.
+@Suppress("KotlinNoActualForExpect")
+expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
+    override fun initialize(): AppDatabase
 }

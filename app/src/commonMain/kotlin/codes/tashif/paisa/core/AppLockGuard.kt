@@ -1,5 +1,8 @@
 package codes.tashif.paisa.core
 
+import kotlin.concurrent.Volatile
+import codes.tashif.paisa.platform.nowMillis
+
 
 /**
  * Remembers when we deliberately hand off to another app (file picker, export
@@ -17,7 +20,7 @@ class AppLockGuard() {
 
     /** Call right before launching a picker or sheet so the resulting onStop doesn't lock. */
     fun onExternalActivityLaunched() {
-        externalActivityStartedAt = System.currentTimeMillis()
+        externalActivityStartedAt = nowMillis()
     }
 
     /** True while a detour started by [onExternalActivityLaunched] hasn't come back yet. */
@@ -32,7 +35,7 @@ class AppLockGuard() {
     fun onReturnToForeground(): Boolean {
         val startedAt = externalActivityStartedAt ?: return false
         externalActivityStartedAt = null
-        return System.currentTimeMillis() - startedAt > EXTERNAL_ACTIVITY_GRACE_MS
+        return nowMillis() - startedAt > EXTERNAL_ACTIVITY_GRACE_MS
     }
 
     private companion object {
