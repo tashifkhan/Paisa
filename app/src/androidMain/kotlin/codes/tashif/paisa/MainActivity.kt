@@ -7,7 +7,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import androidx.fragment.app.FragmentActivity
+import codes.tashif.paisa.data.PaisaDatabase
+import codes.tashif.paisa.data.demo.DemoData
 import codes.tashif.paisa.sync.SyncManager
+import kotlinx.coroutines.runBlocking
 import codes.tashif.paisa.ui.app.AppViewModel
 import codes.tashif.paisa.ui.app.PaisaApp
 import codes.tashif.paisa.ui.sms.SmsViewModel
@@ -22,8 +25,21 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        seedDemoDataIfAsked()
         handleWidgetIntent(intent)
         setContent { PaisaApp() }
+    }
+
+    /**
+     * Debug builds only: `adb shell am start -n codes.tashif.paisa/.MainActivity --ez seed_demo true`
+     * fills an empty database with DemoData, for screenshots.
+     */
+    private fun seedDemoDataIfAsked() {
+        if (!BuildConfig.DEBUG || !intent.getBooleanExtra(EXTRA_SEED_DEMO, false)) return
+        runBlocking {
+            val db = PaisaDatabase.get(this@MainActivity)
+            if (DemoData.isEmpty(db)) DemoData.seed(db)
+        }
     }
 
     // launchMode is singleTop, so a widget tap on an already-running app arrives
@@ -56,5 +72,9 @@ class MainActivity : FragmentActivity() {
         // Lock when leaving the app so the next resume requires biometrics.
         // No-op while an in-app picker or export sheet is on screen.
         appViewModel.lockApp()
+    }
+
+    private companion object {
+        const val EXTRA_SEED_DEMO = "seed_demo"
     }
 }
