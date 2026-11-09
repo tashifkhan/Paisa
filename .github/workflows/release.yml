@@ -155,10 +155,29 @@ jobs:
           NEXT_VERSION="${{ steps.next_version.outputs.version }}"
           TAG="${{ steps.next_version.outputs.tag }}"
 
+          # Prefer the hand-written notes in CHANGELOG.md for this version: the
+          # lines under "## <version>" up to the next "## " heading. Their "###"
+          # subheadings become "##" in the release.
+          NOTES=""
+          if [ -f CHANGELOG.md ]; then
+            NOTES=$(awk -v v="$NEXT_VERSION" '
+              $0 == "## " v || $0 == "## v" v { found = 1; next }
+              found && /^## / { exit }
+              found { sub(/^### /, "## "); print }
+            ' CHANGELOG.md)
+          fi
+
           {
             echo "# Paisa $TAG"
             echo ""
-            if [ -n "$LAST_TAG" ]; then
+            if [ -n "$NOTES" ]; then
+              echo "$NOTES"
+              echo ""
+              echo "## Earlier releases"
+              echo ""
+              echo "Every earlier version's notes are in [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/master/CHANGELOG.md), and their APKs are on the [releases page](https://github.com/${{ github.repository }}/releases)."
+              echo ""
+            elif [ -n "$LAST_TAG" ]; then
               echo "## Changes since $LAST_TAG"
               echo ""
               git log "${LAST_TAG}..HEAD" --pretty=format:'- %s (%h)'
