@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.sms
 
+import codes.tashif.paisa.platform.formatDate
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -11,9 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import codes.tashif.paisa.ui.theme.spacing
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /** Live or last-run scan numbers. Emits its children without a wrapper, like [SmsPermissionsSection]. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -47,8 +45,7 @@ fun SmsScanProgressSection(
         style = MaterialTheme.typography.bodyMedium
     )
     lastSmsScanAt?.takeIf { it > 0 }?.let { ts ->
-        val formatted = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
-            .format(Date(ts))
+        val formatted = formatDate(ts, "dd MMM yyyy, HH:mm")
         Text(
             "Last scan watermark: $formatted",
             style = MaterialTheme.typography.bodySmall,

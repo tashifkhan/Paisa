@@ -1,12 +1,7 @@
 package codes.tashif.paisa.ui.backup
 
-import android.content.Intent
+import codes.tashif.paisa.ui.platform.PlatformBackHandler
 import org.koin.compose.viewmodel.koinViewModel
-import android.net.Uri
-import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.IntentSenderRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,17 +24,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import codes.tashif.paisa.backup.BackupManager
-import codes.tashif.paisa.backup.BackupNames
 import codes.tashif.paisa.backup.BackupProvider
-import codes.tashif.paisa.backup.GoogleDriveAuth
 import codes.tashif.paisa.backup.RemoteBackup
 import codes.tashif.paisa.ui.components.DetailHeader
 import codes.tashif.paisa.ui.theme.spacing
-import com.google.android.gms.auth.api.identity.Identity
-import com.google.android.gms.common.api.ApiException
-import com.google.android.gms.common.api.CommonStatusCodes
 
 /**
  * Backups, laid out like WhatsApp's chat backup screen: last backup and a big
@@ -53,7 +41,6 @@ fun BackupScreen(
     viewModel: BackupViewModel = koinViewModel()
 ) {
     val backup = viewModel
-    val context = LocalContext.current
     val config by backup.config.collectAsState()
     val remote by backup.remote.collectAsState()
     val busy by backup.busy.collectAsState()
@@ -70,7 +57,9 @@ fun BackupScreen(
     var showDisableSync by remember { mutableStateOf(false) }
     var confirmRestore by remember { mutableStateOf<RemoteBackup?>(null) }
 
-    BackHandler(onBack = onBack)
+    PlatformBackHandler(onBack = onBack)
+
+    val launchers = rememberBackupLaunchers(backup)
 
     LaunchedEffect(Unit) { backup.messages.collect { snackbar.showSnackbar(it) } }
     LaunchedEffect(Unit) { backup.restored.collect { onRestored() } }
@@ -80,56 +69,10 @@ fun BackupScreen(
         val url = nextcloudLoginUrl ?: return@LaunchedEffect
         showNextcloud = false
         backup.onExternalActivityLaunched()
-        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        launchers.openUrl(url)
     }
 
-    val googleLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartIntentSenderForResult()
-    ) { res ->
-        try {
-            val result = Identity.getAuthorizationClient(context)
-                .getAuthorizationResultFromIntent(res.data)
-            backup.onGoogleAuthorized(result)
-        } catch (e: ApiException) {
-            backup.onGoogleAuthFailed("Google sign-in was cancelled")
-        }
-    }
-
-    fun connectGoogle() {
-        if (!GoogleDriveAuth.isAvailable(context)) {
-            backup.onGoogleAuthFailed("Google Drive needs Google Play services. Use Nextcloud instead.")
-            return
-        }
-        Identity.getAuthorizationClient(context)
-            .authorize(GoogleDriveAuth.request())
-            .addOnSuccessListener { result ->
-                val pending = result.pendingIntent
-                if (result.hasResolution() && pending != null) {
-                    backup.onExternalActivityLaunched()
-                    googleLauncher.launch(IntentSenderRequest.Builder(pending.intentSender).build())
-                } else {
-                    backup.onGoogleAuthorized(result)
-                }
-            }
-            .addOnFailureListener { e ->
-                val code = (e as? ApiException)?.statusCode
-                backup.onGoogleAuthFailed(
-                    if (code == CommonStatusCodes.DEVELOPER_ERROR) {
-                        "Google sign-in isn't set up for this build of Paisa"
-                    } else {
-                        "Couldn't reach Google: ${e.message ?: "unknown error"}"
-                    }
-                )
-            }
-    }
-
-    val exportLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument(BackupNames.MIME)
-    ) { uri -> if (uri != null) backup.exportToFile(uri) }
-
-    val importLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri -> if (uri != null) backup.restoreFromFile(uri) }
+    val cloudUnavailable = backup.cloudUnavailableMessage
 
     val connected = config.provider != BackupProvider.NONE
     val isBusy = busy != null
@@ -163,8 +106,20 @@ fun BackupScreen(
                     config = config,
                     nextcloudLoginUrl = nextcloudLoginUrl,
                     isBusy = isBusy,
-                    onConnectGoogle = { connectGoogle() },
-                    onOpenNextcloud = { showNextcloud = true },
+                    onConnectGoogle = {
+                        if (cloudUnavailable != null) {
+                            backup.showMessage(cloudUnavailable)
+                        } else {
+                            launchers.connectGoogle()
+                        }
+                    },
+                    onOpenNextcloud = {
+                        if (cloudUnavailable != null) {
+                            backup.showMessage(cloudUnavailable)
+                        } else {
+                            showNextcloud = true
+                        }
+                    },
                     onDisconnect = { showDisconnect = true }
                 )
 
@@ -197,20 +152,29 @@ fun BackupScreen(
                     onRestoreRemote = { confirmRestore = it },
                     onRestoreFromFile = {
                         backup.onExternalActivityLaunched()
-                        importLauncher.launch(arrayOf("*/*"))
+                        launchers.restoreFromFile()
                     },
                     onSaveToFile = {
                         backup.onExternalActivityLaunched()
-                        exportLauncher.launch(BackupNames.forTime(System.currentTimeMillis()))
+                        launchers.saveToFile()
                     }
                 )
 
                 Spacer(Modifier.height(MaterialTheme.spacing.medium))
+                if (cloudUnavailable != null) {
+                    Text(
+                        cloudUnavailable,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small)
+                    )
+                    Spacer(Modifier.height(MaterialTheme.spacing.small))
+                }
                 Text(
                     "A backup holds every account, category, transaction (including the SMS " +
                         "text it came from), budget, goal and merchant rule. AI keys and the " +
                         "Nextcloud password are never included. Paisa keeps the newest " +
-                        "${BackupManager.KEEP} backups and deletes older ones. Restoring " +
+                        "${backup.keptBackups} backups and deletes older ones. Restoring " +
                         "replaces everything on this phone.\n\nSync works offline: every " +
                         "change is saved on this device first and sent the next time there's " +
                         "a connection. Sync files are encrypted with your sync password before " +
@@ -307,6 +271,7 @@ fun BackupScreen(
     if (showNextcloud) {
         NextcloudSheet(
             initialServer = config.nextcloud?.serverUrl.orEmpty(),
+            serverError = backup::nextcloudServerError,
             onDismiss = { showNextcloud = false },
             onBrowserLogin = { backup.connectNextcloud(it) },
             onManualLogin = { server, user, pw ->
@@ -320,7 +285,7 @@ fun BackupScreen(
         NextcloudApproveDialog(
             onOpenAgain = {
                 backup.onExternalActivityLaunched()
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                launchers.openUrl(url)
             },
             onCancel = { backup.cancelNextcloudLogin() }
         )

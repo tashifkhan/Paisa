@@ -19,11 +19,6 @@ import java.io.IOException
 import java.io.InputStream
 import java.util.concurrent.TimeUnit
 
-/** The backup is encrypted with a key this device doesn't have. Ask for the password. */
-class PasswordRequiredException : IOException("This backup is encrypted. Enter its password.")
-
-data class RestoreResult(val transactions: Int, val backupCreatedAt: Long)
-
 class BackupManager(
     context: Context,
     val prefs: BackupPrefs,

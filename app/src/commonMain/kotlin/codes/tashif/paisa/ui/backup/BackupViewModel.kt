@@ -1,23 +1,18 @@
 package codes.tashif.paisa.ui.backup
 
-import android.content.Context
-import android.content.SharedPreferences
-import android.net.Uri
+import codes.tashif.paisa.platform.formatFixed
+import codes.tashif.paisa.platform.formatMediumDateTime
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import codes.tashif.paisa.backup.BackupConfig
 import codes.tashif.paisa.backup.BackupCrypto
 import codes.tashif.paisa.backup.BackupFrequency
-import codes.tashif.paisa.backup.BackupManager
 import codes.tashif.paisa.backup.BackupProvider
-import codes.tashif.paisa.backup.GoogleDriveAuth
 import codes.tashif.paisa.backup.NextcloudAccount
-import codes.tashif.paisa.backup.NextcloudStore
 import codes.tashif.paisa.backup.PasswordRequiredException
 import codes.tashif.paisa.backup.RemoteBackup
 import codes.tashif.paisa.backup.RestoreResult
 import codes.tashif.paisa.core.AppLockGuard
-import com.google.android.gms.auth.api.identity.AuthorizationResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -27,25 +22,20 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import codes.tashif.paisa.sync.SyncManager
-import java.io.IOException
-import java.text.DateFormat
-import java.util.Date
+import kotlinx.io.IOException
 
 /** Restore waiting on a password. Holds the downloaded bytes so we don't fetch twice. */
 class PendingRestore(val label: String, val data: ByteArray)
 
 class BackupViewModel(
-    private val context: Context,
-    private val manager: BackupManager,
-    private val sync: SyncManager,
+    private val service: BackupService,
     private val appLockGuard: AppLockGuard
 ) : ViewModel() {
 
     /** Call right before opening the browser, Google sign-in or a file picker. */
     fun onExternalActivityLaunched() = appLockGuard.onExternalActivityLaunched()
 
-    private val _config = MutableStateFlow(manager.prefs.load())
+    private val _config = MutableStateFlow(service.loadConfig())
     val config: StateFlow<BackupConfig> = _config.asStateFlow()
 
     /** null = not loaded yet. */
@@ -71,23 +61,28 @@ class BackupViewModel(
     private val _restored = MutableSharedFlow<RestoreResult>(extraBufferCapacity = 1)
     val restored = _restored.asSharedFlow()
 
-    // BackupWorker writes status through its own BackupPrefs; pick those changes up.
-    private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
-        _config.value = manager.prefs.load()
-    }
+    /** Null where Google Drive and Nextcloud work, otherwise why they don't. */
+    val cloudUnavailableMessage: String? get() = service.cloudUnavailableMessage
+
+    /** Remote copies kept per provider. */
+    val keptBackups: Int get() = service.keptBackups
 
     init {
-        manager.prefs.prefs.registerOnSharedPreferenceChangeListener(prefsListener)
+        // BackupWorker writes status through its own BackupPrefs; pick those changes up.
+        viewModelScope.launch {
+            service.configChanges().collect { _config.value = service.loadConfig() }
+        }
         refreshList()
     }
 
-    override fun onCleared() {
-        manager.prefs.prefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
+    private fun reload() {
+        _config.value = service.loadConfig()
     }
 
-    private fun reload() {
-        _config.value = manager.prefs.load()
-    }
+    /** Shows [message] in the screen's snackbar. */
+    fun showMessage(message: String) = say(message)
+
+    fun nextcloudServerError(server: String): String? = service.nextcloudServerError(server)
 
     private fun say(message: String) {
         _messages.tryEmit(message)
@@ -118,7 +113,7 @@ class BackupViewModel(
         }
         viewModelScope.launch {
             _remote.value = try {
-                manager.list()
+                service.list()
             } catch (e: IOException) {
                 say(e.message ?: "Couldn't load backups")
                 emptyList()
@@ -128,12 +123,11 @@ class BackupViewModel(
 
     // --- Accounts ---
 
-    fun onGoogleAuthorized(result: AuthorizationResult) = run("Connecting…") {
-        val token = result.accessToken ?: throw IOException("Google returned no access token")
-        val email = GoogleDriveAuth.email(token)
-        manager.prefs.setGoogle(email)
+    fun onGoogleAuthorized(accessToken: String?) = run("Connecting…") {
+        val token = accessToken ?: throw IOException("Google returned no access token")
+        val email = service.connectGoogle(token)
         reload()
-        manager.schedule()
+        service.schedule()
         refreshList()
         say(if (email != null) "Connected $email" else "Connected Google Drive")
     }
@@ -141,21 +135,21 @@ class BackupViewModel(
     fun onGoogleAuthFailed(message: String) = say(message)
 
     fun connectNextcloud(serverInput: String) {
-        val server = NextcloudStore.normalizeServer(serverInput)
+        val server = service.normalizeNextcloudServer(serverInput)
         if (server == null) {
             say("Enter your Nextcloud address")
             return
         }
-        NextcloudStore.serverError(server)?.let {
+        service.nextcloudServerError(server)?.let {
             say(it)
             return
         }
         nextcloudPoll?.cancel()
         nextcloudPoll = viewModelScope.launch {
             try {
-                val flow = NextcloudStore.startLogin(server)
+                val flow = service.startNextcloudLogin(server)
                 _nextcloudLoginUrl.value = flow.loginUrl
-                val account = NextcloudStore.pollLogin(flow)
+                val account = service.pollNextcloudLogin(flow)
                 finishNextcloud(account)
             } catch (e: IOException) {
                 say(e.message ?: "Couldn't reach Nextcloud")
@@ -171,41 +165,31 @@ class BackupViewModel(
     }
 
     fun connectNextcloudManual(serverInput: String, user: String, appPassword: String) {
-        val server = NextcloudStore.normalizeServer(serverInput)
+        val server = service.normalizeNextcloudServer(serverInput)
         if (server == null || user.isBlank() || appPassword.isBlank()) {
             say("Fill in the address, username and app password")
             return
         }
-        NextcloudStore.serverError(server)?.let {
+        service.nextcloudServerError(server)?.let {
             say(it)
             return
         }
         run("Connecting…") {
-            finishNextcloud(NextcloudStore.verify(server, user.trim(), appPassword.trim()))
+            finishNextcloud(service.verifyNextcloud(server, user.trim(), appPassword.trim()))
         }
     }
 
     private suspend fun finishNextcloud(account: NextcloudAccount) {
-        manager.prefs.setNextcloud(account)
+        service.setNextcloud(account)
         reload()
-        manager.schedule()
+        service.schedule()
         refreshList()
-        say("Connected ${account.loginName} on ${Uri.parse(account.serverUrl).host}")
+        say("Connected ${account.loginName} on ${urlHost(account.serverUrl)}")
     }
 
     fun disconnect() = run("Disconnecting…") {
-        if (_config.value.provider == BackupProvider.GOOGLE_DRIVE) {
-            try {
-                GoogleDriveAuth.revoke(GoogleDriveAuth.silentToken(context))
-            } catch (e: IOException) {
-                // Not signed in any more; nothing to revoke.
-            }
-        }
-        manager.prefs.disconnect()
-        SyncManager.invalidateCache()
-        SyncManager.schedule(context)
+        service.disconnect(_config.value.provider)
         reload()
-        manager.schedule()
         _remote.value = emptyList()
         say("Disconnected. Backups already uploaded were left in place.")
     }
@@ -213,38 +197,44 @@ class BackupViewModel(
     // --- Settings ---
 
     fun setFrequency(frequency: BackupFrequency) {
-        manager.prefs.setFrequency(frequency)
+        service.setFrequency(frequency)
         reload()
-        manager.schedule()
     }
 
     fun setAllowCellular(allow: Boolean) {
-        manager.prefs.setAllowCellular(allow)
+        service.setAllowCellular(allow)
         reload()
-        manager.schedule()
     }
 
     fun enableEncryption(password: String) = run("Setting password…") {
         val key = withContext(Dispatchers.Default) {
             BackupCrypto.deriveKey(password.toCharArray(), BackupCrypto.newSalt())
         }
-        manager.prefs.setEncryptionKey(key)
+        service.setEncryptionKey(key)
         say("Encryption on. New backups need this password to restore.")
     }
 
     fun disableEncryption() {
-        manager.prefs.setEncryptionKey(null)
+        service.setEncryptionKey(null)
         reload()
         say("Encryption off. New backups won't need a password.")
     }
 
     // --- Sync ---
 
-    fun enableSync(password: String) = run("Turning on sync…") {
-        sync.enable(password.toCharArray())
+    fun enableSync(password: String) {
+        service.syncUnavailableMessage?.let {
+            say(it)
+            return
+        }
+        enableSyncNow(password)
+    }
+
+    private fun enableSyncNow(password: String) = run("Turning on sync…") {
+        service.enableSync(password.toCharArray())
         reload()
         _busy.value = "Syncing…"
-        val report = sync.syncNow()
+        val report = service.syncNow()
         say(
             if (report.devices == 0) "Sync is on. Turn it on with the same password on your other devices."
             else "Sync is on. Got ${plural(report.received, "change")} from ${plural(report.devices, "device")}."
@@ -252,13 +242,13 @@ class BackupViewModel(
     }
 
     fun disableSync() {
-        sync.disable()
+        service.disableSync()
         reload()
         say("Sync is off. Data on this device and in the cloud stays.")
     }
 
     fun syncNow() = run("Syncing…") {
-        val report = sync.syncNow()
+        val report = service.syncNow()
         say(
             when {
                 report.received == 0 && report.sent == 0 -> "Already up to date"
@@ -272,31 +262,24 @@ class BackupViewModel(
     // --- Backup / restore ---
 
     fun backupNow() = run("Backing up…") {
-        val uploaded = manager.backupNow()
+        val uploaded = service.backupNow()
         refreshList()
         say("Backed up ${formatSize(uploaded.sizeBytes)}")
     }
 
-    fun exportToFile(uri: Uri) = run("Saving file…") {
-        val bytes = manager.createArchive()
-        withContext(Dispatchers.IO) {
-            context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
-                ?: throw IOException("Couldn't open that file")
-        }
+    fun exportToFile(file: BackupFile) = run("Saving file…") {
+        val bytes = service.createArchive()
+        service.writeFile(file, bytes)
         say("Saved ${formatSize(bytes.size.toLong())} backup file")
     }
 
     fun restoreRemote(backup: RemoteBackup) = run("Downloading…") {
-        val bytes = manager.download(backup)
+        val bytes = service.download(backup)
         attemptRestore(formatDate(backup.createdAt), bytes, null)
     }
 
-    fun restoreFromFile(uri: Uri) = run("Reading file…") {
-        val bytes = withContext(Dispatchers.IO) {
-            val input = context.contentResolver.openInputStream(uri)
-                ?: throw IOException("Couldn't open that file")
-            manager.readLimited(input)
-        }
+    fun restoreFromFile(file: BackupFile) = run("Reading file…") {
+        val bytes = service.readFile(file)
         attemptRestore("selected file", bytes, null)
     }
 
@@ -313,7 +296,7 @@ class BackupViewModel(
     private suspend fun attemptRestore(label: String, bytes: ByteArray, password: CharArray?) {
         _busy.value = "Restoring…"
         try {
-            val result = manager.restore(bytes, password)
+            val result = service.restore(bytes, password)
             say(
                 "Restored ${result.transactions} transaction" +
                     (if (result.transactions == 1) "" else "s") +
@@ -330,12 +313,12 @@ class BackupViewModel(
 
     companion object {
         fun formatSize(bytes: Long): String = when {
-            bytes >= 1024 * 1024 -> "%.1f MB".format(bytes / (1024.0 * 1024.0))
-            bytes >= 1024 -> "%.0f KB".format(bytes / 1024.0)
+            bytes >= 1024 * 1024 -> "${formatFixed(bytes / (1024.0 * 1024.0), 1)} MB"
+            bytes >= 1024 -> "${formatFixed(bytes / 1024.0, 0)} KB"
             else -> "$bytes B"
         }
 
         fun formatDate(millis: Long): String =
-            DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(millis))
+            formatMediumDateTime(millis)
     }
 }

@@ -1,6 +1,6 @@
 package codes.tashif.paisa.ui.onboarding
 
-import androidx.activity.compose.BackHandler
+import codes.tashif.paisa.ui.platform.PlatformBackHandler
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -70,7 +70,7 @@ fun OnboardingScreen(
     val haptics = rememberHaptics()
     val isLast = pagerState.currentPage == pages.lastIndex
 
-    BackHandler(enabled = pagerState.currentPage > 0) {
+    PlatformBackHandler(enabled = pagerState.currentPage > 0) {
         scope.launch {
             pagerState.animateScrollToPage(pagerState.currentPage - 1)
         }
