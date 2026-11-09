@@ -36,6 +36,13 @@ dependencyResolutionManagement {
             metadataSources { artifact() }
             content { includeModule("com.yarnpkg", "yarn") }
         }
+        // Binaryen optimizes the production Wasm bundle.
+        ivy("https://github.com/WebAssembly/binaryen/releases/download") {
+            name = "Binaryen"
+            patternLayout { artifact("version_[revision]/[module]-version_[revision]-[classifier].[ext]") }
+            metadataSources { artifact() }
+            content { includeModule("com.github.webassembly", "binaryen") }
+        }
     }
 }
 
@@ -43,4 +50,4 @@ rootProject.name = "Paisa"
 include(":app")
 include(":parser-core")
 include(":shared")
-// include(":web")
+include(":web")
