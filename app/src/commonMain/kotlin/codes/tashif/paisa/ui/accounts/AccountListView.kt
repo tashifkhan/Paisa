@@ -17,6 +17,21 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.MergeType
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.HorizontalFloatingToolbar
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -76,6 +91,7 @@ internal fun AccountListView(
     val listState = rememberLazyListState()
     val count = displayAccounts.size
 
+    Box(Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -89,36 +105,20 @@ internal fun AccountListView(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = if (selectionMode) {
-                    "${selectedIds.size} selected"
-                } else {
-                    "Your accounts"
-                },
+                // The floating toolbar shows the count while picking.
+                text = if (selectionMode) "Pick accounts to merge" else "Your accounts",
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
             )
-            when {
-                selectedIds.size >= 2 -> {
-                    TextButton(onClick = onClearSelection) { Text("Cancel") }
-                    Button(onClick = {
-                        haptics.click()
-                        onMergeClick()
-                    }) {
-                        Text("Merge ${selectedIds.size}")
-                    }
-                }
-                selectionMode -> {
-                    TextButton(onClick = onClearSelection) { Text("Cancel") }
-                }
-                else -> {
-                    TextButton(onClick = {
-                        haptics.click()
-                        onAutoMerge()
-                    }) {
-                        Text("Auto-merge")
-                    }
+            // While picking, cancel and merge move to the floating toolbar.
+            if (!selectionMode) {
+                TextButton(onClick = {
+                    haptics.click()
+                    onAutoMerge()
+                }) {
+                    Text("Auto-merge")
                 }
             }
         }
@@ -130,7 +130,7 @@ internal fun AccountListView(
                 start = MaterialTheme.spacing.medium,
                 end = MaterialTheme.spacing.medium,
                 top = MaterialTheme.spacing.extraSmall,
-                bottom = MaterialTheme.spacing.extraLarge
+                bottom = if (selectionMode) 120.dp else MaterialTheme.spacing.extraLarge
             ),
             // 2dp gaps match SettingsGroup / Pixel settings stacks
             verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -175,6 +175,58 @@ internal fun AccountListView(
                 )
             }
         }
+    }
+        AnimatedVisibility(
+            visible = selectionMode,
+            enter = slideInVertically { it } + fadeIn(),
+            exit = slideOutVertically { it } + fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = MaterialTheme.spacing.medium)
+        ) {
+            SelectionToolbar(
+                count = selectedIds.size,
+                onCancel = onClearSelection,
+                onMerge = {
+                    haptics.click()
+                    onMergeClick()
+                }
+            )
+        }
+    }
+}
+
+/**
+ * Shown while picking accounts to merge: how many are picked, a way out,
+ * and merge as the toolbar's FAB once there are two to merge.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SelectionToolbar(count: Int, onCancel: () -> Unit, onMerge: () -> Unit) {
+    val content: @Composable RowScope.() -> Unit = {
+        IconButton(onClick = onCancel) {
+            Icon(Icons.Rounded.Close, contentDescription = "Cancel")
+        }
+        Text(
+            text = if (count >= 2) "$count selected" else "Pick one more",
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier
+                .align(Alignment.CenterVertically)
+                .padding(end = MaterialTheme.spacing.small)
+        )
+    }
+    if (count >= 2) {
+        HorizontalFloatingToolbar(
+            expanded = true,
+            floatingActionButton = {
+                FloatingToolbarDefaults.VibrantFloatingActionButton(onClick = onMerge) {
+                    Icon(Icons.AutoMirrored.Rounded.MergeType, contentDescription = "Merge $count accounts")
+                }
+            },
+            content = content
+        )
+    } else {
+        HorizontalFloatingToolbar(expanded = true, content = content)
     }
 }
 

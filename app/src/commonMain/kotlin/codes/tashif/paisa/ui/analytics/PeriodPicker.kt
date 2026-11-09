@@ -1,5 +1,7 @@
 package codes.tashif.paisa.ui.analytics
 
+import codes.tashif.paisa.ui.components.PillTabs
+
 import codes.tashif.paisa.platform.PaisaCalendar
 import codes.tashif.paisa.platform.nowMillis
 import androidx.compose.foundation.layout.Arrangement
@@ -23,9 +25,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -58,23 +57,16 @@ internal fun PeriodPicker(
 ) {
     val haptics = rememberHaptics()
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            val options = listOf(
+        PillTabs(
+            options = listOf(
                 "Month" to AnalyticsPeriod.MONTH,
                 "Year" to AnalyticsPeriod.YEAR,
                 "Custom" to AnalyticsPeriod.CUSTOM
-            )
-            options.forEachIndexed { i, (text, value) ->
-                SegmentedButton(
-                    selected = kind == value,
-                    onClick = {
-                        haptics.tick()
-                        onKind(value)
-                    },
-                    shape = SegmentedButtonDefaults.itemShape(i, options.size)
-                ) { Text(text) }
-            }
-        }
+            ),
+            selected = kind,
+            onSelect = onKind,
+            height = 52.dp
+        )
         if (kind == AnalyticsPeriod.CUSTOM) {
             CustomRangeControls(custom = custom, onChange = onCustom)
         }

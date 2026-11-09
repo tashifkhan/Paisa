@@ -1,5 +1,7 @@
 package codes.tashif.paisa.ui.debts
 
+import codes.tashif.paisa.ui.components.PillTabs
+
 import codes.tashif.paisa.ui.components.AdaptiveSheet
 
 import androidx.compose.foundation.layout.Arrangement
@@ -13,9 +15,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -57,15 +56,11 @@ internal fun EditDebtEntrySheet(
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
         ) {
             Text("Edit entry", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                listOf("They owe me" to true, "I owe them" to false).forEachIndexed { i, (label, value) ->
-                    SegmentedButton(
-                        selected = theyOwe == value,
-                        onClick = { theyOwe = value },
-                        shape = SegmentedButtonDefaults.itemShape(i, 2)
-                    ) { Text(label) }
-                }
-            }
+            PillTabs(
+                options = listOf("They owe me" to true, "I owe them" to false),
+                selected = theyOwe,
+                onSelect = { theyOwe = it }
+            )
             OutlinedTextField(
                 value = amountText,
                 onValueChange = { if (it.isEmpty() || it.toDoubleOrNull() != null) amountText = it },

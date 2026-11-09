@@ -1,5 +1,7 @@
 package codes.tashif.paisa.ui.debts.split
 
+import codes.tashif.paisa.ui.components.PillTabs
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -17,9 +19,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -108,23 +107,18 @@ fun SplitEditor(
             modifier = Modifier.fillMaxWidth()
         )
 
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            listOf("Equal" to SplitMode.EQUAL, "Custom amounts" to SplitMode.CUSTOM)
-                .forEachIndexed { i, (label, mode) ->
-                    SegmentedButton(
-                        selected = plan.mode == mode,
-                        onClick = {
-                            val next = when {
-                                mode == plan.mode -> plan
-                                mode == SplitMode.CUSTOM -> plan.toCustom(outcome)
-                                else -> plan.copy(mode = mode)
-                            }
-                            onPlanChange(next)
-                        },
-                        shape = SegmentedButtonDefaults.itemShape(i, 2)
-                    ) { Text(label) }
+        PillTabs(
+            options = listOf("Equal" to SplitMode.EQUAL, "Custom amounts" to SplitMode.CUSTOM),
+            selected = plan.mode,
+            onSelect = { mode ->
+                val next = when {
+                    mode == plan.mode -> plan
+                    mode == SplitMode.CUSTOM -> plan.toCustom(outcome)
+                    else -> plan.copy(mode = mode)
                 }
-        }
+                onPlanChange(next)
+            }
+        )
 
         if (plan.mode == SplitMode.CUSTOM) {
             val rows = plan.people.map { it.key to it.name } +

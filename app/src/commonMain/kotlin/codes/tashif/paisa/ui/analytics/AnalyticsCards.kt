@@ -1,5 +1,7 @@
 package codes.tashif.paisa.ui.analytics
 
+import codes.tashif.paisa.ui.components.InfoTip
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +31,8 @@ import codes.tashif.paisa.ui.theme.spacing
 internal fun ChartCard(
     title: String,
     subtitle: String? = null,
+    /** Title and text for an info button beside the title, explaining the chart. */
+    info: Pair<String, String>? = null,
     content: @Composable () -> Unit
 ) {
     Card(
@@ -39,11 +43,15 @@ internal fun ChartCard(
         )
     ) {
         Column(modifier = Modifier.padding(MaterialTheme.spacing.medium)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                info?.let { (tipTitle, tipText) -> InfoTip(title = tipTitle, text = tipText) }
+            }
             if (subtitle != null) {
                 Spacer(Modifier.height(2.dp))
                 Text(

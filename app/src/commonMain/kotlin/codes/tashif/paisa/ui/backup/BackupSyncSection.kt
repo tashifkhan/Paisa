@@ -1,5 +1,11 @@
 package codes.tashif.paisa.ui.backup
 
+import androidx.compose.ui.Alignment
+
+import androidx.compose.foundation.layout.Row
+
+import codes.tashif.paisa.ui.components.InfoTip
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Devices
 import androidx.compose.material.icons.rounded.Sync
@@ -23,7 +29,16 @@ internal fun BackupSyncSection(
     onDisable: () -> Unit,
     onSyncNow: () -> Unit
 ) {
-    SettingsSectionLabel("Sync between devices")
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        SettingsSectionLabel("Sync between devices")
+        InfoTip(
+            title = "How sync works",
+            text = "Each device uploads only what changed, encrypted with your sync password " +
+                "before it leaves the device. Use the same password on every device. " +
+                "Google or Nextcloud only ever see scrambled files.",
+            tint = MaterialTheme.colorScheme.primary
+        )
+    }
     SettingsGroup {
         val rows = if (sync.enabled) 2 else 1
         SettingsItem(

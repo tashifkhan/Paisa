@@ -11,6 +11,8 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
+actual val isWebPlatform: Boolean = false
+
 actual val dynamicColorSupported: Boolean
     get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 

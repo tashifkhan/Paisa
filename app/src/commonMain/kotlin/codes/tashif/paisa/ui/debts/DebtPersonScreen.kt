@@ -20,7 +20,23 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material.icons.rounded.CallMade
+import androidx.compose.material.icons.rounded.CallReceived
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.HorizontalFloatingToolbar
+import androidx.compose.material3.PlainTooltip
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,6 +78,7 @@ internal fun DebtPersonScreen(
     var confirmSettle by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<DebtEntry?>(null) }
 
+    Box(Modifier.fillMaxSize()) {
     Column(modifier = Modifier.fillMaxSize()) {
         DebtPersonTopBar(
             name = person.name,
@@ -75,7 +92,8 @@ internal fun DebtPersonScreen(
             contentPadding = PaddingValues(
                 start = MaterialTheme.spacing.medium,
                 end = MaterialTheme.spacing.medium,
-                bottom = MaterialTheme.spacing.extraLarge
+                // Room for the floating toolbar over the end of the list.
+                bottom = 120.dp
             ),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
@@ -95,27 +113,6 @@ internal fun DebtPersonScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(Modifier.height(MaterialTheme.spacing.medium))
-                Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-                    FilledTonalButton(onClick = { adding = true }, modifier = Modifier.weight(1f)) {
-                        Text("They owe me")
-                    }
-                    FilledTonalButton(onClick = { adding = false }, modifier = Modifier.weight(1f)) {
-                        Text("I owe them")
-                    }
-                }
-                if (abs(entry.balance) >= SETTLED) {
-                    OutlinedButton(
-                        onClick = { confirmSettle = true },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = MaterialTheme.spacing.smaller)
-                    ) {
-                        Icon(Icons.Rounded.Handshake, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(MaterialTheme.spacing.smaller))
-                        Text("Settle up")
-                    }
-                }
                 Spacer(Modifier.height(MaterialTheme.spacing.large))
                 Text(
                     text = "History",
@@ -146,6 +143,26 @@ internal fun DebtPersonScreen(
                 )
             }
         }
+    }
+        DebtActionsToolbar(
+            canSettle = abs(entry.balance) >= SETTLED,
+            onTheyOwe = {
+                haptics.click()
+                adding = true
+            },
+            onIOwe = {
+                haptics.click()
+                adding = false
+            },
+            onSettle = {
+                haptics.click()
+                confirmSettle = true
+            },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = MaterialTheme.spacing.medium)
+        )
     }
 
     adding?.let { theyOwe ->
@@ -215,4 +232,60 @@ internal fun DebtPersonScreen(
             }
         )
     }
+}
+
+/**
+ * The person's actions in an M3 floating toolbar at the bottom: add to
+ * either side of the balance, with settle up as the toolbar's own FAB
+ * while there's anything to settle.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun DebtActionsToolbar(
+    canSettle: Boolean,
+    onTheyOwe: () -> Unit,
+    onIOwe: () -> Unit,
+    onSettle: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val content: @Composable RowScope.() -> Unit = {
+        TextButton(onClick = onTheyOwe) {
+            Icon(Icons.Rounded.CallReceived, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("They owe me")
+        }
+        TextButton(onClick = onIOwe) {
+            Icon(Icons.Rounded.CallMade, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("I owe them")
+        }
+    }
+    if (canSettle) {
+        HorizontalFloatingToolbar(
+            expanded = true,
+            floatingActionButton = {
+                TooltipFab(label = "Settle up") {
+                    FloatingToolbarDefaults.VibrantFloatingActionButton(onClick = onSettle) {
+                        Icon(Icons.Rounded.Handshake, contentDescription = "Settle up")
+                    }
+                }
+            },
+            modifier = modifier,
+            content = content
+        )
+    } else {
+        HorizontalFloatingToolbar(expanded = true, modifier = modifier, content = content)
+    }
+}
+
+/** A plain tooltip naming an icon-only button, shown on long press or hover. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TooltipFab(label: String, content: @Composable () -> Unit) {
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+        tooltip = { PlainTooltip { Text(label) } },
+        state = rememberTooltipState(),
+        content = content
+    )
 }

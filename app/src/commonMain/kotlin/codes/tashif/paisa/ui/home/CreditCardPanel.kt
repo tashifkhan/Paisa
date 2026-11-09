@@ -1,5 +1,7 @@
 package codes.tashif.paisa.ui.home
 
+import codes.tashif.paisa.ui.components.InfoTip
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,11 +63,19 @@ internal fun CreditCardPanel(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Credit cards",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Credit cards",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    InfoTip(
+                        title = "Credit usage",
+                        text = "Available is your combined limit minus what you owe on every card. " +
+                            "The ring shows how much of the limit is in use. Keeping it under " +
+                            "about 30% is usually better for your credit score."
+                    )
+                }
                 Spacer(modifier = Modifier.height(2.dp))
                 if (limit > 0) {
                     MoneyText(

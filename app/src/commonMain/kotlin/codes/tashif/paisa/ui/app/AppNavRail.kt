@@ -70,12 +70,14 @@ fun AppNavRail(
     navTabs: List<AppTab>,
     currentTab: AppTab,
     showLabels: Boolean,
-    actions: NavActions,
+    /** The add and rescan buttons, or null to leave them to the FAB. */
+    actions: NavActions?,
     onSelect: (AppTab) -> Unit
 ) {
     val haptics = rememberHaptics()
     NavigationRail(
-        header = {
+        header = if (actions == null) null else {
+            {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -93,6 +95,7 @@ fun AppNavRail(
                     }
                 }
                 if (currentTab == AppTab.HOME) RescanButton(actions)
+            }
             }
         }
     ) {
@@ -126,7 +129,9 @@ fun AppNavRail(
 @Composable
 fun AppNavDrawer(
     currentTab: AppTab,
-    actions: NavActions,
+    /** The add and rescan buttons, or null to leave them to the FAB. */
+    actions: NavActions?,
+    onShowShortcuts: () -> Unit,
     onSelect: (AppTab) -> Unit
 ) {
     val haptics = rememberHaptics()
@@ -146,7 +151,7 @@ fun AppNavDrawer(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 16.dp)
             )
-            Row(
+            if (actions != null) Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(start = 4.dp, bottom = 20.dp)
@@ -186,7 +191,7 @@ fun AppNavDrawer(
             Spacer(Modifier.weight(1f))
             NavigationDrawerItem(
                 selected = false,
-                onClick = actions.onShowShortcuts,
+                onClick = onShowShortcuts,
                 icon = { Icon(Icons.Rounded.Keyboard, contentDescription = null) },
                 label = { Text("Shortcuts") },
                 badge = { Text("?", style = MaterialTheme.typography.labelMedium) },

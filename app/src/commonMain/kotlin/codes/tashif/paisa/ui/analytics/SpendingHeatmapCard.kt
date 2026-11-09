@@ -14,7 +14,12 @@ internal fun SpendingHeatmapCard(
     expenses: List<TransactionWithDetails>,
     money: (Double) -> String
 ) {
-    ChartCard(title = "Spending heatmap", subtitle = "Tap a day for details") {
+    ChartCard(
+        title = "Spending heatmap",
+        subtitle = "Tap a day for details",
+        info = "Spending heatmap" to "Each square is a day of the month. The darker it is, " +
+            "the more you spent that day. Empty squares had no spending."
+    ) {
         val firstDayOffset = (period.cal.clone()).apply {
             set(PaisaCalendar.DAY_OF_MONTH, 1)
         }.get(PaisaCalendar.DAY_OF_WEEK) - PaisaCalendar.SUNDAY

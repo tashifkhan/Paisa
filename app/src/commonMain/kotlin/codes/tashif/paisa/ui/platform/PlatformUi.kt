@@ -3,6 +3,9 @@ package codes.tashif.paisa.ui.platform
 import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.Composable
 
+/** True in the browser. Some controls sit differently on the web than on Android. */
+expect val isWebPlatform: Boolean
+
 /** True where the system offers Material You colors (Android 12 and later). */
 expect val dynamicColorSupported: Boolean
 

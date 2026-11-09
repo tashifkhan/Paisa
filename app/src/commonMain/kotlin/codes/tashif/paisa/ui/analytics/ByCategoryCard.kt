@@ -1,14 +1,13 @@
 package codes.tashif.paisa.ui.analytics
 
+import codes.tashif.paisa.ui.components.PillTabs
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -37,15 +36,11 @@ internal fun ByCategoryCard(
     val ranks = categoryRanks(if (breakdownIncome) incomes else expenses)
     val total = if (breakdownIncome) totalIncome else totalExpense
     ChartCard(title = "By category", subtitle = "Tap a category to see its transactions") {
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            listOf("Spending" to false, "Income" to true).forEachIndexed { i, (text, value) ->
-                SegmentedButton(
-                    selected = breakdownIncome == value,
-                    onClick = { onBreakdownChange(value) },
-                    shape = SegmentedButtonDefaults.itemShape(i, 2)
-                ) { Text(text) }
-            }
-        }
+        PillTabs(
+            options = listOf("Spending" to false, "Income" to true),
+            selected = breakdownIncome,
+            onSelect = onBreakdownChange
+        )
         Spacer(Modifier.height(MaterialTheme.spacing.small))
         if (ranks.isEmpty()) {
             Text(

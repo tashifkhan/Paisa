@@ -34,6 +34,9 @@ internal fun RunningTotalCard(
         val labels = List(size) { i -> period.buckets.getOrNull(i)?.label ?: "" }
         ChartCard(
             title = "Running total",
+            info = "Running total" to "The solid line adds up what you've spent so far this period. " +
+                "The dashed line is the same count for the period before, so you can see " +
+                "whether you're ahead or behind on any given day.",
             subtitle = if (periodKind == AnalyticsPeriod.CUSTOM) {
                 "Spending so far, against the same length of time just before"
             } else {

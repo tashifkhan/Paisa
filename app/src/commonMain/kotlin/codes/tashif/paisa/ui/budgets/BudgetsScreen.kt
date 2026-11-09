@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import codes.tashif.paisa.ui.components.EmptyState
+import codes.tashif.paisa.ui.components.InfoTip
 import codes.tashif.paisa.ui.components.PaisaTopBar
 import codes.tashif.paisa.ui.theme.spacing
 
@@ -34,7 +35,16 @@ fun BudgetsScreen(viewModel: BudgetsViewModel = koinViewModel()) {
     val currency = settings?.currency ?: "₹"
 
     Column(modifier = Modifier.fillMaxSize()) {
-        PaisaTopBar(title = "Budgets")
+        PaisaTopBar(
+            title = "Budgets",
+            actions = {
+                InfoTip(
+                    title = "How budgets work",
+                    text = "A budget is a monthly limit for one category, or for all spending. " +
+                        "The wavy bar fills as you spend this month and starts over on the 1st."
+                )
+            }
+        )
 
         if (budgets.isEmpty()) {
             Box(

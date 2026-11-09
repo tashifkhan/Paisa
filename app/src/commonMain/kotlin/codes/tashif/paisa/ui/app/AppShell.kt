@@ -57,6 +57,7 @@ import codes.tashif.paisa.ui.debts.DebtsViewModel
 import codes.tashif.paisa.ui.home.HomeSummaryPane
 import codes.tashif.paisa.ui.home.RecordsScreen
 import codes.tashif.paisa.ui.platform.PageKeys
+import codes.tashif.paisa.ui.platform.isWebPlatform
 import codes.tashif.paisa.ui.platform.setWindowTitle
 import codes.tashif.paisa.ui.settings.MoreScreen
 import codes.tashif.paisa.ui.sms.SmsViewModel
@@ -98,6 +99,10 @@ fun AppShell(
     // From expanded up the navigation never goes away: transactions and
     // settings open in a pane next to the list they came from.
     val useRail = width != WindowWidth.COMPACT
+    // In a browser the add and rescan buttons sit at the top of the rail or
+    // drawer, near the mouse. On Android, tablets included, they stay
+    // floating at the bottom corner, within reach of a thumb.
+    val navButtons = useRail && isWebPlatform
     val wide = width >= WindowWidth.EXPANDED
     val large = width == WindowWidth.LARGE
     val detailPane = wide && selectedTxId != null
@@ -233,14 +238,15 @@ fun AppShell(
             when {
                 large -> AppNavDrawer(
                     currentTab = currentTab,
-                    actions = navActions,
+                    actions = navActions.takeIf { navButtons },
+                    onShowShortcuts = { showShortcuts = true },
                     onSelect = selectTab
                 )
                 useRail -> AppNavRail(
                     navTabs = navTabs,
                     currentTab = currentTab,
                     showLabels = settings?.navBarLabels != false,
-                    actions = navActions,
+                    actions = navActions.takeIf { navButtons },
                     onSelect = selectTab
                 )
             }
@@ -256,15 +262,16 @@ fun AppShell(
                 snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
                 floatingActionButtonPosition = FabPosition.End,
                 floatingActionButton = {
-                    // With a rail or drawer the add button lives at its top.
-                    if (!useRail) {
+                    // The detail pane has its own save button where the FAB sits.
+                    if (!navButtons && !detailPane) {
                         AppFab(
                             currentTab = currentTab,
                             scanRunning = scanProgress.isRunning,
                             onRescanSms = { smsViewModel.startSmsScan() },
                             onOpenSmsSetup = { state.open(FullScreen.SMS_SETUP) },
                             onAdd = { sheet -> state.open(sheet) },
-                            debtPersonOpen = openDebtPersonId != null
+                            // Side by side, the list of people is still showing.
+                            debtPersonOpen = openDebtPersonId != null && !wide
                         )
                     }
                 },

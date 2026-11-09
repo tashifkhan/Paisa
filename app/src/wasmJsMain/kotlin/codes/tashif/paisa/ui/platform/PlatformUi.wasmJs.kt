@@ -5,6 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.rememberUpdatedState
 
+actual val isWebPlatform: Boolean = true
+
 actual val dynamicColorSupported: Boolean = false
 
 @Composable

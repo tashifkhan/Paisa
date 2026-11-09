@@ -41,6 +41,8 @@ internal fun IncomeVsExpenseCard(
     }
     ChartCard(
         title = "Income vs expense",
+        info = "Income vs expense" to "Each pair of bars is one month: money in on the left, " +
+            "money out on the right. Tap a pair to see both totals.",
         subtitle = if (yearly) "Each month of ${period.short}" else "Last 6 months · tap a group"
     ) {
         GroupedBarChart(
