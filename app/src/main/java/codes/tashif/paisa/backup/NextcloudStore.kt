@@ -1,6 +1,7 @@
 package codes.tashif.paisa.backup
 
 import android.util.Xml
+import codes.tashif.paisa.ai.provider.BaseUrlSafety
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -123,7 +124,9 @@ class NextcloudStore(private val account: NextcloudAccount) : BackupStore {
         }
     }
 
+    /** Every request goes through here, so an account saved with plain http stops before sending the password. */
     private fun authed(url: HttpUrl) = Request.Builder()
+        .also { requireSafeServer(account.serverUrl) }
         .url(url)
         .header("Authorization", Credentials.basic(account.loginName, account.appPassword))
         .header("User-Agent", USER_AGENT)
@@ -185,6 +188,12 @@ class NextcloudStore(private val account: NextcloudAccount) : BackupStore {
             .writeTimeout(120, TimeUnit.SECONDS)
             .build()
 
+        /** For the sign-in token POST: a redirect would carry the token to another host. */
+        private val noRedirects = http.newBuilder()
+            .followRedirects(false)
+            .followSslRedirects(false)
+            .build()
+
         private fun davRoot(account: NextcloudAccount): HttpUrl {
             val base = account.serverUrl.toHttpUrlOrNull()
                 ?: throw IOException("Invalid Nextcloud address")
@@ -214,10 +223,35 @@ class NextcloudStore(private val account: NextcloudAccount) : BackupStore {
             return s.toHttpUrlOrNull()?.toString()?.trimEnd('/')
         }
 
+        /**
+         * Why [server] can't be used, or null when it can. The app allows
+         * cleartext traffic, so plain http is only accepted for this device,
+         * the emulator host or a private network. Pure.
+         */
+        fun serverError(server: String): String? {
+            val url = normalizeServer(server)?.toHttpUrlOrNull()
+                ?: return "Enter a full address, like cloud.example.com"
+            if (url.username.isNotEmpty() || url.password.isNotEmpty()) {
+                return "Don't put a user name or password in the address."
+            }
+            if (!url.isHttps && !BaseUrlSafety.isLocalHost(url.host)) {
+                return "Use https for Nextcloud. Plain http only works for this device or your " +
+                    "local network, and would send your password unencrypted."
+            }
+            return null
+        }
+
+        /** Returns [server] or throws an [IOException] with [serverError]'s message. */
+        fun requireSafeServer(server: String): String {
+            serverError(server)?.let { throw IOException(it) }
+            return server
+        }
+
         data class LoginFlow(val loginUrl: String, val pollEndpoint: String, val token: String)
 
         /** Starts Nextcloud Login Flow v2. Open [LoginFlow.loginUrl] in a browser, then [pollLogin]. */
         suspend fun startLogin(server: String): LoginFlow = withContext(Dispatchers.IO) {
+            requireSafeServer(server)
             val url = "$server/index.php/login/v2".toHttpUrlOrNull()
                 ?: throw IOException("Invalid Nextcloud address")
             val request = Request.Builder()
@@ -229,18 +263,37 @@ class NextcloudStore(private val account: NextcloudAccount) : BackupStore {
                 if (!res.isSuccessful) {
                     throw IOException("That doesn't look like a Nextcloud server (HTTP ${res.code})")
                 }
-                val json = JSONObject(res.body?.string().orEmpty())
-                val poll = json.getJSONObject("poll")
-                LoginFlow(
-                    loginUrl = json.getString("login"),
-                    pollEndpoint = poll.getString("endpoint"),
-                    token = poll.getString("token")
-                )
+                parseLoginFlow(res.body?.string().orEmpty())
             }
+        }
+
+        /**
+         * Reads the Login Flow v2 reply. The server names the page to open and
+         * the address to poll, so both must pass the same rule as the server
+         * address before the token goes anywhere.
+         */
+        fun parseLoginFlow(body: String): LoginFlow {
+            val json = JSONObject(body)
+            val poll = json.getJSONObject("poll")
+            val flow = LoginFlow(
+                loginUrl = json.getString("login"),
+                pollEndpoint = poll.getString("endpoint"),
+                token = poll.getString("token")
+            )
+            requireSafeLoginUrl(flow.loginUrl)
+            requireSafeLoginUrl(flow.pollEndpoint)
+            return flow
+        }
+
+        /** Throws when a server-supplied sign-in address breaks the server address rule. */
+        private fun requireSafeLoginUrl(url: String) {
+            if (url.toHttpUrlOrNull() == null) throw IOException("Nextcloud returned an invalid sign-in address")
+            serverError(url)?.let { throw IOException("Nextcloud returned an unsafe sign-in address. $it") }
         }
 
         /** Polls until the user approves in the browser. Gives up after 20 minutes. */
         suspend fun pollLogin(flow: LoginFlow): NextcloudAccount = withContext(Dispatchers.IO) {
+            requireSafeLoginUrl(flow.pollEndpoint)
             val deadline = System.currentTimeMillis() + 20 * 60 * 1000
             while (System.currentTimeMillis() < deadline) {
                 val request = Request.Builder()
@@ -248,12 +301,17 @@ class NextcloudStore(private val account: NextcloudAccount) : BackupStore {
                     .header("User-Agent", USER_AGENT)
                     .post(FormBody.Builder().add("token", flow.token).build())
                     .build()
+                var redirected = 0
                 val result = try {
-                    http.newCall(request).execute().use { res ->
+                    noRedirects.newCall(request).execute().use { res ->
+                        if (res.code in 300..399) redirected = res.code
                         if (res.code == 200) JSONObject(res.body?.string().orEmpty()) else null
                     }
                 } catch (e: IOException) {
                     null
+                }
+                if (redirected != 0) {
+                    throw IOException("Nextcloud redirected the sign-in check (HTTP $redirected). Try again with the server's final address.")
                 }
                 if (result != null) {
                     val server = normalizeServer(result.getString("server"))
@@ -275,6 +333,7 @@ class NextcloudStore(private val account: NextcloudAccount) : BackupStore {
          */
         suspend fun verify(server: String, loginName: String, appPassword: String): NextcloudAccount =
             withContext(Dispatchers.IO) {
+                requireSafeServer(server)
                 val url = "$server/ocs/v2.php/cloud/user?format=json".toHttpUrlOrNull()
                     ?: throw IOException("Invalid Nextcloud address")
                 val request = Request.Builder()

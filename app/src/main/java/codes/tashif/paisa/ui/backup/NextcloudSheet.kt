@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.backup
 
+import codes.tashif.paisa.backup.NextcloudStore
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -37,6 +38,12 @@ internal fun NextcloudSheet(
     var manual by remember { mutableStateOf(false) }
     var user by remember { mutableStateOf("") }
     var appPassword by remember { mutableStateOf("") }
+    var serverError by remember { mutableStateOf<String?>(null) }
+    // Checks the address before handing it on, so an unsafe http URL shows here.
+    fun withSafeServer(block: () -> Unit) {
+        serverError = NextcloudStore.serverError(server)
+        if (serverError == null) block()
+    }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -57,8 +64,13 @@ internal fun NextcloudSheet(
             )
             OutlinedTextField(
                 value = server,
-                onValueChange = { server = it },
+                onValueChange = {
+                    server = it
+                    serverError = null
+                },
                 label = { Text("Server address") },
+                isError = serverError != null,
+                supportingText = serverError?.let { { Text(it) } },
                 placeholder = { Text("cloud.example.com") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
@@ -66,7 +78,7 @@ internal fun NextcloudSheet(
             )
             if (!manual) {
                 Button(
-                    onClick = { onBrowserLogin(server) },
+                    onClick = { withSafeServer { onBrowserLogin(server) } },
                     enabled = server.isNotBlank(),
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Log in with browser") }
@@ -92,7 +104,7 @@ internal fun NextcloudSheet(
                     modifier = Modifier.fillMaxWidth()
                 )
                 FilledTonalButton(
-                    onClick = { onManualLogin(server, user, appPassword) },
+                    onClick = { withSafeServer { onManualLogin(server, user, appPassword) } },
                     enabled = server.isNotBlank() && user.isNotBlank() && appPassword.isNotBlank(),
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Connect") }
