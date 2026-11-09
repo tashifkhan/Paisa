@@ -34,6 +34,7 @@ import androidx.compose.material.icons.automirrored.rounded.Message
 import androidx.compose.material.icons.rounded.Savings
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Bookmark
+import androidx.compose.material.icons.rounded.Handshake
 import androidx.compose.material.icons.rounded.Tag
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -72,6 +73,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.data.PaisaViewModel
+import codes.tashif.paisa.ui.components.PersonLinkDialog
+import codes.tashif.paisa.ui.components.personLinkSubtitle
+import codes.tashif.paisa.ui.components.personLinkTitle
 import codes.tashif.paisa.ui.components.AccountPicker
 import codes.tashif.paisa.ui.components.CategoryBadge
 import codes.tashif.paisa.ui.components.CategoryPicker
@@ -98,6 +102,7 @@ fun TransactionDetailScreen(
     val selectedId by viewModel.selectedTransactionId.collectAsState()
     val categories by viewModel.categories.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
+    val debtPeople by viewModel.debtPeople.collectAsState()
     val settings by viewModel.settings.collectAsState()
     val currency = settings?.currency ?: "₹"
     val haptics = rememberHaptics()
@@ -126,6 +131,7 @@ fun TransactionDetailScreen(
     }
     var rememberMerchant by remember(current.id) { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showPersonLink by remember { mutableStateOf(false) }
     var smsExpanded by remember(current.id) { mutableStateOf(false) }
     var title by remember(current.id) { mutableStateOf(current.merchantName.orEmpty()) }
     var note by remember(current.id) { mutableStateOf(current.note) }
@@ -568,6 +574,18 @@ fun TransactionDetailScreen(
                 )
             }
 
+            // UPI to a friend, a bill you covered: put it on what they owe.
+            run {
+                Spacer(Modifier.height(MaterialTheme.spacing.small))
+                SheetToggleCard(
+                    icon = Icons.Rounded.Handshake,
+                    title = personLinkTitle(current.type == "expense"),
+                    subtitle = personLinkSubtitle(current.type == "expense"),
+                    checked = false,
+                    onCheckedChange = { showPersonLink = true }
+                )
+            }
+
             Spacer(Modifier.height(MaterialTheme.spacing.medium))
             Button(
                 onClick = {
@@ -595,6 +613,20 @@ fun TransactionDetailScreen(
                 Text("Save changes")
             }
         }
+    }
+
+    if (showPersonLink) {
+        PersonLinkDialog(
+            people = debtPeople,
+            transactionAmount = current.amount,
+            isExpense = current.type == "expense",
+            onDismiss = { showPersonLink = false },
+            onConfirm = { link ->
+                haptics.confirm()
+                viewModel.linkTransactionToDebt(current.id, link)
+                showPersonLink = false
+            }
+        )
     }
 
     if (showDeleteConfirm) {

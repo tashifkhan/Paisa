@@ -18,7 +18,9 @@ import codes.tashif.paisa.sync.SyncSchema
         RecurringTransaction::class,
         Settings::class,
         UnrecognizedSms::class,
-        MerchantMapping::class
+        MerchantMapping::class,
+        DebtPerson::class,
+        DebtEntry::class
     ],
     version = AppDatabase.SCHEMA_VERSION,
     exportSchema = false
@@ -33,10 +35,11 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun settingsDao(): SettingsDao
     abstract fun unrecognizedSmsDao(): UnrecognizedSmsDao
     abstract fun merchantMappingDao(): MerchantMappingDao
+    abstract fun debtDao(): DebtDao
 
     companion object {
         /** Bump with every migration. Backups made on a newer schema are refused. */
-        const val SCHEMA_VERSION = 11
+        const val SCHEMA_VERSION = 12
 
         @Volatile
         private var INSTANCE: AppDatabase? = null
@@ -123,7 +126,8 @@ abstract class AppDatabase : RoomDatabase() {
 
         private val MIGRATION_9_10 = object : Migration(9, 10) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                for (table in SyncSchema.TABLES) {
+                // Only tables that existed in 9; later ones are created with these columns.
+                for (table in SyncSchema.existingTables(db)) {
                     db.execSQL("ALTER TABLE `${table.name}` ADD COLUMN syncId TEXT")
                     db.execSQL(
                         "ALTER TABLE `${table.name}` ADD COLUMN syncStamp INTEGER NOT NULL DEFAULT 0"
@@ -149,6 +153,40 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** Debts (people and what they owe) and a configurable navbar. */
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `debt_people` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`name` TEXT NOT NULL, `createdAt` TEXT NOT NULL, " +
+                        "`syncId` TEXT, `syncStamp` INTEGER NOT NULL DEFAULT 0)"
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_debt_people_syncId` ON `debt_people` (`syncId`)"
+                )
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `debt_entries` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`personId` INTEGER NOT NULL, `amount` REAL NOT NULL, `note` TEXT NOT NULL, " +
+                        "`entryDate` TEXT NOT NULL, `transactionSyncId` TEXT, `createdAt` TEXT NOT NULL, " +
+                        "`syncId` TEXT, `syncStamp` INTEGER NOT NULL DEFAULT 0, " +
+                        "FOREIGN KEY(`personId`) REFERENCES `debt_people`(`id`) " +
+                        "ON UPDATE NO ACTION ON DELETE CASCADE)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_debt_entries_personId` ON `debt_entries` (`personId`)"
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_debt_entries_syncId` ON `debt_entries` (`syncId`)"
+                )
+                db.execSQL(
+                    "ALTER TABLE settings ADD COLUMN navTabs TEXT NOT NULL " +
+                        "DEFAULT '${Settings.DEFAULT_NAV_TABS}'"
+                )
+            }
+        }
+
         internal val MIGRATIONS: Array<Migration>
             get() = arrayOf(
                 MIGRATION_2_3,
@@ -159,7 +197,8 @@ abstract class AppDatabase : RoomDatabase() {
                 MIGRATION_7_8,
                 MIGRATION_8_9,
                 MIGRATION_9_10,
-                MIGRATION_10_11
+                MIGRATION_10_11,
+                MIGRATION_11_12
             )
 
         fun getDatabase(context: Context): AppDatabase {

@@ -30,6 +30,8 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -55,6 +57,13 @@ data class HomeSummary(
     /** Combined limit across credit cards, 0 when unknown. */
     val creditCardLimit: Double = 0.0,
     val creditCards: List<Account> = emptyList()
+)
+
+/** A person to tie a transaction to: someone already in Debts, or a new name. */
+data class PersonLink(
+    val personId: Int?,
+    val newName: String?,
+    val amount: Double
 )
 
 data class TxFilters(
@@ -110,11 +119,12 @@ class PaisaViewModel(application: Application) : AndroidViewModel(application) {
     private var lastForegroundScanRequestAt = 0L
 
     // --- NAVIGATION ---
-    private val _currentTab = MutableStateFlow(0)
+    private val _currentTab = MutableStateFlow(AppTab.HOME)
     val currentTab = _currentTab.asStateFlow()
 
-    fun selectTab(index: Int) {
-        _currentTab.value = index
+    /** Shows [tab], whether or not it's in the bottom bar. */
+    fun selectTab(tab: AppTab) {
+        _currentTab.value = tab
     }
 
     /**
@@ -408,12 +418,13 @@ class PaisaViewModel(application: Application) : AndroidViewModel(application) {
         note: String,
         transactionDate: String = nowIso(),
         merchantName: String? = null,
-        rememberMerchant: Boolean = false
+        rememberMerchant: Boolean = false,
+        personLink: PersonLink? = null
     ) {
         viewModelScope.launch {
             // Title maps to merchantName; note stays a separate free-text field.
             val merchant = merchantName?.trim()?.takeIf { it.isNotBlank() }
-            repository.insertTransaction(
+            val transactionId = repository.insertTransaction(
                 Transaction(
                     amount = amount,
                     type = type,
@@ -427,6 +438,7 @@ class PaisaViewModel(application: Application) : AndroidViewModel(application) {
                     source = "manual"
                 )
             )
+            personLink?.let { link -> linkToDebt(transactionId.toInt(), link) }
             if (rememberMerchant && merchant != null) {
                 val cat = repository.getCategoryById(categoryId)
                 if (cat != null) {
@@ -439,6 +451,75 @@ class PaisaViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
             showSnackbar("Transaction saved")
+        }
+    }
+
+    // --- DEBTS ---
+    val debtPeople: StateFlow<List<DebtPersonBalance>> = repository.debtPeople
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val _openDebtPersonId = MutableStateFlow<Int?>(null)
+    val openDebtPersonId: StateFlow<Int?> = _openDebtPersonId.asStateFlow()
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val openDebtEntries: StateFlow<List<DebtEntry>> = _openDebtPersonId
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else repository.debtEntries(id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun openDebtPerson(id: Int?) {
+        _openDebtPersonId.value = id
+    }
+
+    fun addDebtPerson(name: String, startingAmount: Double) {
+        viewModelScope.launch {
+            repository.addDebtPerson(name, startingAmount)
+            showSnackbar("Added ${name.trim()}")
+        }
+    }
+
+    /** [amount] > 0: they owe you more. < 0: they owe you less, or you owe them. */
+    fun addDebtEntry(personId: Int, amount: Double, note: String) {
+        viewModelScope.launch { repository.addDebtEntry(personId, amount, note) }
+    }
+
+    fun deleteDebtEntry(id: Int) {
+        viewModelScope.launch { repository.deleteDebtEntry(id) }
+    }
+
+    fun settleDebt(person: DebtPerson) {
+        viewModelScope.launch {
+            repository.settleDebt(person.id)
+            showSnackbar("Settled up with ${person.name}")
+        }
+    }
+
+    fun renameDebtPerson(person: DebtPerson, name: String) {
+        viewModelScope.launch { repository.renameDebtPerson(person, name) }
+    }
+
+    fun deleteDebtPerson(person: DebtPerson) {
+        viewModelScope.launch {
+            if (_openDebtPersonId.value == person.id) _openDebtPersonId.value = null
+            repository.deleteDebtPerson(person)
+            showSnackbar("Removed ${person.name}")
+        }
+    }
+
+    /** Ties an existing transaction (a UPI payment, a bill you covered) to someone in Debts. */
+    fun linkTransactionToDebt(transactionId: Int, link: PersonLink) {
+        viewModelScope.launch { linkToDebt(transactionId, link) }
+    }
+
+    private suspend fun linkToDebt(transactionId: Int, link: PersonLink) {
+        repository.linkTransactionToDebt(transactionId, link.personId, link.newName, link.amount)
+        val name = link.newName ?: debtPeople.value.firstOrNull { it.person.id == link.personId }?.person?.name
+        showSnackbar("Recorded in Debts" + (name?.let { " for $it" } ?: ""))
+    }
+
+    fun setNavTabs(tabs: List<AppTab>) {
+        viewModelScope.launch {
+            val current = repository.getSettingsDirect() ?: return@launch
+            repository.updateSettings(current.copy(navTabs = NavTabs.serialize(tabs)))
         }
     }
 

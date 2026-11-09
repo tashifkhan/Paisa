@@ -90,6 +90,7 @@ fun RecordsScreen(viewModel: PaisaViewModel) {
     val filters by viewModel.txFilters.collectAsState()
     val categories by viewModel.categories.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
+    val debtPeople by viewModel.debtPeople.collectAsState()
     val balancesHidden by viewModel.balancesHidden.collectAsState()
     val haptics = rememberHaptics()
 
@@ -150,6 +151,20 @@ fun RecordsScreen(viewModel: PaisaViewModel) {
                         CreditCardPanel(
                             summary = summary,
                             balancesHidden = balancesHidden
+                        )
+                        Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
+                    }
+                }
+                if (debtPeople.any { kotlin.math.abs(it.balance) >= 0.005 }) {
+                    item {
+                        DebtsPanel(
+                            people = debtPeople,
+                            currency = summary.currency,
+                            balancesHidden = balancesHidden,
+                            onOpen = {
+                                haptics.click()
+                                viewModel.selectTab(codes.tashif.paisa.data.AppTab.DEBTS)
+                            }
                         )
                         Spacer(modifier = Modifier.height(MaterialTheme.spacing.small))
                     }
@@ -422,6 +437,100 @@ private fun MultiSelectFilterChip(
                         }
                     )
                     index++
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Money between you and other people, from Debts: totals and the biggest
+ * balances. Tapping opens the Debts tab.
+ */
+@Composable
+private fun DebtsPanel(
+    people: List<codes.tashif.paisa.data.DebtPersonBalance>,
+    currency: String,
+    balancesHidden: Boolean,
+    onOpen: () -> Unit
+) {
+    val (owedToMe, iOwe) = debtTotals(people)
+    val open = people.filter { kotlin.math.abs(it.balance) >= 0.005 }
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpen),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        Column(modifier = Modifier.padding(MaterialTheme.spacing.medium)) {
+            Text(
+                text = "Debts",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.weight(1f)) {
+                    MoneyText(
+                        currency = currency,
+                        amount = owedToMe,
+                        hidden = balancesHidden,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = IncomeGreen,
+                        maskCount = 5
+                    )
+                    Text(
+                        text = "owed to you",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (iOwe >= 0.005) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        MoneyText(
+                            currency = currency,
+                            amount = iOwe,
+                            hidden = balancesHidden,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = ExpenseRed,
+                            maskCount = 5
+                        )
+                        Text(
+                            text = "you owe",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
+            open.take(4).forEach { p ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "${p.person.name} · ${debtStatus(p.balance).lowercase()}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    MoneyText(
+                        currency = currency,
+                        amount = kotlin.math.abs(p.balance),
+                        hidden = balancesHidden,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline,
+                        maskCount = 4
+                    )
                 }
             }
         }

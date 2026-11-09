@@ -56,6 +56,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import codes.tashif.paisa.data.AppTab
+import codes.tashif.paisa.data.NavTabs
+import codes.tashif.paisa.icon
 import codes.tashif.paisa.data.PaisaViewModel
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.PaisaPalette
@@ -321,6 +324,51 @@ fun AppearanceScreen(
                     }
                 )
             }
+        }
+
+        Spacer(Modifier.height(MaterialTheme.spacing.small))
+        Text(
+            text = "Tabs in the navbar",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(
+                start = MaterialTheme.spacing.extraSmall,
+                bottom = MaterialTheme.spacing.smaller
+            )
+        )
+        Text(
+            text = "Home and More always stay. Up to ${NavTabs.MAX} tabs fit; the rest open from More.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(
+                start = MaterialTheme.spacing.extraSmall,
+                bottom = MaterialTheme.spacing.smaller
+            )
+        )
+        val shownTabs = NavTabs.parse(current.navTabs)
+        AppTab.entries.filter { it !in NavTabs.REQUIRED }.forEach { tab ->
+            val on = tab in shownTabs
+            val full = !on && shownTabs.size >= NavTabs.MAX
+            ToggleCard(
+                icon = tab.icon,
+                title = tab.label,
+                subtitle = when {
+                    on -> "In the navbar"
+                    full -> "Navbar is full. Turn another tab off first"
+                    else -> "Opens from More"
+                },
+                checked = on,
+                onCheckedChange = { want ->
+                    if (want && full) {
+                        haptics.reject()
+                    } else {
+                        haptics.toggle(on = want)
+                        viewModel.setNavTabs(NavTabs.toggle(shownTabs, tab, want))
+                    }
+                }
+            )
+            Spacer(Modifier.height(MaterialTheme.spacing.smaller))
         }
         }
     }
