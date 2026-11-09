@@ -4,7 +4,7 @@ an expense manager that lives on your phone and stays there. no account, no clou
 
 it reads your bank sms on the device, turns them into transactions, and leaves the rest of your inbox alone. around 140 indian banks are covered, thanks to the parsers from [PennyWise](https://github.com/sarim2000/pennywiseai-tracker).
 
-android only for now. a web version is [planned](#roadmap).
+android first. the same app also runs in the browser, built from the same kotlin code ([see below](#the-web-version)).
 
 ## get it
 
@@ -59,35 +59,62 @@ when it breaks:
 - signature clash on install: `adb uninstall codes.tashif.paisa`
 - sms import does nothing: check Permissions → SMS, and use a phone with actual bank messages
 
+## the web version
+
+```bash
+./gradlew :app:wasmJsBrowserDevelopmentRun        # dev server
+./gradlew :app:wasmJsBrowserDistribution          # static files in app/build/dist/wasmJs/productionExecutable
+```
+
+open it with `?demo` on the end of the url to get three months of sample data.
+
+it's the same screens, viewmodels and database as the phone. the database lives in the browser's origin private file system, so nothing leaves the tab. what the web can't do yet:
+
+- read sms. browsers can't, so the sms screen says so
+- google drive, nextcloud and sync. backup and restore work with a `.paisa` file you download or pick
+- pdf export and pdf statement import. csv export works
+- app lock
+- most ai providers block browser requests (cors), so statement import with ai may fail until something proxies it
+- the aed and sar currency symbols show as boxes, because the web build has no arabic font
+
 ## where stuff lives
 
 ```text
-app/src/main/java/codes/tashif/paisa/
-├── data/       room database, repository, viewmodel
-├── sms/        inbox scan, live receiver, category mapping
-├── backup/     drive, nextcloud and .paisa backups
-├── ai/         bring-your-own-key statement import
-├── widget/     home screen widgets
-├── security/   biometric lock
-└── ui/         theme, components, screens
-parser-core/    bank sms parsers, from PennyWise (AGPL)
+app/src/
+├── commonMain/       everything both platforms share
+│   ├── data/         room 3 database, daos, repositories, demo data
+│   ├── sync/         change files and merge rules
+│   ├── backup/       the .paisa format and its crypto
+│   ├── ai/           bring-your-own-key statement import
+│   ├── platform/     dates, numbers and a calendar that work everywhere
+│   └── ui/           theme, components, every screen and viewmodel
+├── androidMain/      sms, widgets, workmanager, biometrics, drive sign-in, pdf
+└── wasmJsMain/       the web host, browser storage, file downloads
+app/sqlite-worker/    sqlite in a web worker, for room on the web
+shared/               the .paisa container, tested on jvm and in node
+parser-core/          bank sms parsers, from PennyWise (AGPL)
+tools/PORTING.md      how to move android code into commonMain
 ```
 
 ## roadmap
 
 - [ ] recurring transactions
 - [ ] better material 3 charts. the current ones work, they're just not pretty
-- [ ] a web app, which also means ios. no sms parsing there, because browsers can't read sms and ios won't let anyone read them anyway
+- [x] a web app, from the same compose multiplatform code. see [the web version](#the-web-version) for what's missing
+- [ ] ios, which the shared code now makes much shorter work
 - [ ] swap paisa's own relayroom code (`ai/provider/RelayRoomStyle.kt` and the relayroom bits in `ai/catalog/`) for the official kotlin client, `sh.taf.relayroom:relayroom-kotlin`
 
-the web version won't be a rewrite in typescript. been there, not going back. the plan is kotlin multiplatform:
+the web version is kotlin multiplatform, not a typescript rewrite. done so far:
 
-1. **ui:** move compose to compose multiplatform and add a `wasmJs` target. android-only bits like `Context` and intents go behind `expect`/`actual`
-2. **database:** room multiplatform with a wasm sqlite driver, stored in the browser's origin private file system so it stays local and fast
-3. **pwa shell:** a manifest so it installs to the home screen, and a service worker that caches everything so it opens in airplane mode
-4. **exports:** the file system access api instead of android's file pickers
+1. **ui:** compose multiplatform with a `wasmJs` target. android-only bits like `Context` and intents sit behind `expect`/`actual`
+2. **database:** room 3 with a wasm sqlite worker, stored in the browser's origin private file system
+3. **exports:** downloads on the web, the system file picker on android
 
-the web and ios versions get manual entry, statement import and exports. sms stays android only.
+still to do:
+
+- a pwa shell: a manifest so it installs to the home screen, and a service worker so it opens offline
+- google drive and nextcloud on the web, then sync
+- pdf on the web
 
 ## license
 
