@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0B6E4F">
+  <!-- Google Drive backup and sync on the web: a "Web application" OAuth client ID
+       from Google Cloud, with this site's origin allowed. Empty turns Drive off. -->
+  <meta name="paisa-google-client-id" content="">
+  <title>Paisa</title>
+  <style>
+    html, body { height: 100%; margin: 0; overflow: hidden; }
+    body { background: #f4f8f1; }
+    @media (prefers-color-scheme: dark) { body { background: #10140f; } }
+  </style>
+  <script>
+    // Chrome's "Desktop site" mode on a phone lays the page out about 1000px
+    // wide or more but shows it at normal zoom, so only a strip is on screen
+    // and the canvas can't be panned. On touch screens, size the app to the
+    // part of the page that's actually visible, so it picks the phone layout.
+    (function () {
+      var vv = window.visualViewport;
+      if (!vv || !matchMedia('(pointer: coarse)').matches) return;
+      var last = '';
+      function fit(force) {
+        var s = document.body && document.body.style;
+        if (!s) return;
+        var layoutWidth = document.documentElement.clientWidth;
+        if (vv.width < layoutWidth - 1) {
+          s.position = 'fixed';
+          s.width = vv.width + 'px';
+          s.height = vv.height + 'px';
+          s.left = vv.offsetLeft + 'px';
+          s.top = vv.offsetTop + 'px';
+        } else {
+          s.position = s.width = s.height = s.left = s.top = '';
+        }
+        // Compose measures on the window's resize event, not the body's.
+        var now = s.width + 'x' + s.height;
+        if (force === true || now !== last) {
+          last = now;
+          window.dispatchEvent(new Event('resize'));
+        }
+      }
+      vv.addEventListener('resize', fit);
+      vv.addEventListener('scroll', fit);
+      document.addEventListener('DOMContentLoaded', fit);
+      // The app mounts after the page loads; tell it the size once it's up.
+      window.addEventListener('load', function () {
+        setTimeout(function () { fit(true); }, 1500);
+      });
+    })();
+  </script>
+  <script type="application/javascript" src="paisa-web.js"></script>
+</head>
+<body></body>
+</html>
