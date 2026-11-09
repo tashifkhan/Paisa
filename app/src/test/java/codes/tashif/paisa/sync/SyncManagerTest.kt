@@ -7,7 +7,6 @@ import codes.tashif.paisa.backup.BackupPrefs
 import codes.tashif.paisa.backup.BackupStore
 import codes.tashif.paisa.backup.RemoteBackup
 import codes.tashif.paisa.data.AppDatabase
-import codes.tashif.paisa.data.Repository
 import codes.tashif.paisa.data.Transaction
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -20,6 +19,10 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.IOException
+import codes.tashif.paisa.data.repository.AccountRepository
+import codes.tashif.paisa.data.repository.DebtRepository
+import codes.tashif.paisa.data.repository.SettingsRepository
+import codes.tashif.paisa.data.repository.TransactionRepository
 
 /** Full pull/push cycle between devices sharing one fake cloud folder. */
 @RunWith(RobolectricTestRunner::class)
@@ -56,13 +59,16 @@ class SyncManagerTest {
             .also { dbs += it; it.openHelper.writableDatabase }
         val prefs = BackupPrefs(context, "sync-test-$name")
         val sync = SyncManager(context, db, prefs, cloud)
-        val repo = Repository(db)
+        val accountRepo = AccountRepository(db)
+        val transactionRepo = TransactionRepository(db, accountRepo)
+        val settingsRepo = SettingsRepository(db)
+        val debtRepo = DebtRepository(db)
 
         fun add(amount: Double, note: String) = runBlocking {
             val cat = db.openHelper.writableDatabase
                 .query("SELECT id FROM categories WHERE type = 'expense' LIMIT 1")
                 .use { it.moveToFirst(); it.getInt(0) }
-            repo.insertTransaction(
+            transactionRepo.insertTransaction(
                 Transaction(
                     amount = amount, type = "expense", categoryId = cat, accountId = 1, note = note,
                     transactionDate = "2026-11-08T10:00:00", createdAt = "c", updatedAt = "u"
@@ -97,7 +103,7 @@ class SyncManagerTest {
         tablet.sync.syncNow()
         phone.sync.syncNow()
         assertEquals(setOf("before sync", "from tablet"), phone.notes())
-        assertEquals(phone.repo.getAccountById(1)!!.currentBalance, tablet.repo.getAccountById(1)!!.currentBalance, 0.001)
+        assertEquals(phone.accountRepo.getAccountById(1)!!.currentBalance, tablet.accountRepo.getAccountById(1)!!.currentBalance, 0.001)
 
         // Nothing new: a second sync uploads nothing.
         val before = cloud.files.size
@@ -142,18 +148,18 @@ class SyncManagerTest {
         tablet.sync.enable("correct horse".toCharArray())
         tablet.sync.syncNow()
 
-        val radhika = phone.repo.addDebtPerson("Radhika", 5000.0)
-        phone.repo.addDebtEntry(radhika, -1000.0, "Paid back")
+        val radhika = phone.debtRepo.addDebtPerson("Radhika", 5000.0)
+        phone.debtRepo.addDebtEntry(radhika, -1000.0, "Paid back")
         phone.sync.syncNow()
         tablet.sync.syncNow()
-        val onTablet = tablet.repo.debtPeople.first()
+        val onTablet = tablet.debtRepo.debtPeople.first()
         assertEquals(listOf("Radhika" to 4000.0), onTablet.map { it.person.name to it.balance })
 
         // Settling on the tablet reaches the phone.
-        tablet.repo.settleDebt(onTablet.single().person.id)
+        tablet.debtRepo.settleDebt(onTablet.single().person.id)
         tablet.sync.syncNow()
         phone.sync.syncNow()
-        assertEquals(0.0, phone.repo.debtPeople.first().single().balance, 0.001)
+        assertEquals(0.0, phone.debtRepo.debtPeople.first().single().balance, 0.001)
     }
 
     @Test
