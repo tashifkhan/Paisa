@@ -1,5 +1,7 @@
 package codes.tashif.paisa.ui.accounts
 
+import codes.tashif.paisa.ui.home.DayHeader
+import codes.tashif.paisa.ui.components.TransactionGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -161,12 +163,24 @@ private fun AccountTransactions(
                 ),
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)
             ) {
-                items(accountTx, key = { it.id }) { tx ->
-                    TransactionRow(
-                        tx = tx,
-                        currency = currency,
-                        onClick = { onOpenTransaction(tx.id) }
-                    )
+                accountTx.groupBy { it.transactionDate.take(10) }.forEach { (day, dayTxs) ->
+                    item(key = "h$day") {
+                        DayHeader(
+                            day = day,
+                            currency = currency,
+                            spent = dayTxs.filter { it.type == "expense" }.sumOf { it.amount }
+                        )
+                    }
+                    item(key = "g$day") {
+                        TransactionGroup(dayTxs) { tx, position ->
+                            TransactionRow(
+                                tx = tx,
+                                currency = currency,
+                                position = position,
+                                onClick = { onOpenTransaction(tx.id) }
+                            )
+                        }
+                    }
                 }
             }
             VerticalScrollbarFor(listState, Modifier.align(Alignment.CenterEnd).fillMaxHeight())
@@ -237,12 +251,24 @@ private fun AccountCarousel(
                 ),
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)
             ) {
-                items(accountTx, key = { it.id }) { tx ->
-                    TransactionRow(
-                        tx = tx,
-                        currency = currency,
-                        onClick = { onOpenTransaction(tx.id) }
-                    )
+                accountTx.groupBy { it.transactionDate.take(10) }.forEach { (day, dayTxs) ->
+                    item(key = "h$day") {
+                        DayHeader(
+                            day = day,
+                            currency = currency,
+                            spent = dayTxs.filter { it.type == "expense" }.sumOf { it.amount }
+                        )
+                    }
+                    item(key = "g$day") {
+                        TransactionGroup(dayTxs) { tx, position ->
+                            TransactionRow(
+                                tx = tx,
+                                currency = currency,
+                                position = position,
+                                onClick = { onOpenTransaction(tx.id) }
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -48,6 +48,8 @@ fun TransactionRow(
     selected: Boolean = false,
     /** Adds Delete to the right-click menu. */
     onDelete: (() -> Unit)? = null,
+    /** Where the row sits in a day's group, which sets its corners, like More's rows. */
+    position: GroupPosition = GroupPosition.Single,
     onClick: () -> Unit = {}
 ) {
     var menuAt by remember { mutableStateOf<DpOffset?>(null) }
@@ -75,7 +77,7 @@ fun TransactionRow(
                 onClick()
             }
             .handCursor(),
-        shape = MaterialTheme.shapes.large,
+        shape = groupShape(position),
         colors = CardDefaults.cardColors(
             containerColor = if (selected) {
                 MaterialTheme.colorScheme.secondaryContainer

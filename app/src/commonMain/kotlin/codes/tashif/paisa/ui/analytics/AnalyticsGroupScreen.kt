@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.analytics
 
+import codes.tashif.paisa.ui.components.TransactionGroup
 import codes.tashif.paisa.platform.PaisaCalendar
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -216,13 +217,16 @@ internal fun AnalyticsGroupScreen(
                         )
                     }
                 }
-                items(txs, key = { "t${it.id}" }) { tx ->
-                    TransactionRow(
-                        tx = tx,
-                        currency = currency,
-                        balancesHidden = balancesHidden,
-                        onClick = { onOpenTransaction(tx.id) }
-                    )
+                item(key = "g$day") {
+                    TransactionGroup(txs) { tx, position ->
+                        TransactionRow(
+                            tx = tx,
+                            currency = currency,
+                            balancesHidden = balancesHidden,
+                            position = position,
+                            onClick = { onOpenTransaction(tx.id) }
+                        )
+                    }
                 }
             }
         }

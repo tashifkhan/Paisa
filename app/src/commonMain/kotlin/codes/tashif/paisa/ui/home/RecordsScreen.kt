@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.home
 
+import codes.tashif.paisa.ui.components.TransactionGroup
 import androidx.compose.foundation.layout.Arrangement
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.layout.Box
@@ -133,15 +134,18 @@ fun RecordsScreen(viewModel: HomeViewModel = koinViewModel()) {
                                     balancesHidden = balancesHidden
                                 )
                             }
-                            items(dayTxs, key = { it.id }) { tx ->
-                                TransactionRow(
-                                    tx = tx,
-                                    currency = summary.currency,
-                                    balancesHidden = balancesHidden,
-                                    selected = tx.id == selectedId,
-                                    onDelete = { confirmDelete = tx },
-                                    onClick = { viewModel.openTransaction(tx.id) }
-                                )
+                            item(key = "group_$day") {
+                                TransactionGroup(dayTxs) { tx, position ->
+                                    TransactionRow(
+                                        tx = tx,
+                                        currency = summary.currency,
+                                        balancesHidden = balancesHidden,
+                                        selected = tx.id == selectedId,
+                                        onDelete = { confirmDelete = tx },
+                                        position = position,
+                                        onClick = { viewModel.openTransaction(tx.id) }
+                                    )
+                                }
                             }
                         }
                     }
