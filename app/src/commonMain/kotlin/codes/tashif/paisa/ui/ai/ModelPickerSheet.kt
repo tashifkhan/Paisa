@@ -1,5 +1,7 @@
 package codes.tashif.paisa.ui.ai
 
+import codes.tashif.paisa.ui.components.AdaptiveSheet
+
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Row
@@ -15,7 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -66,7 +67,7 @@ internal fun ModelPickerSheet(
     val filtered = remember(groups, query) {
         groups.map { it.copy(models = filterModels(it.models, query)) }.filter { it.models.isNotEmpty() }
     }
-    ModalBottomSheet(
+    AdaptiveSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surface

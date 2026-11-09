@@ -128,4 +128,7 @@ class HomeViewModel(
     fun selectTab(tab: AppTab) = navigator.selectTab(tab)
 
     fun openTransaction(id: Int) = navigator.openTransaction(id)
+
+    /** The transaction open in the detail pane, to highlight its row. */
+    val selectedTransactionId = navigator.selectedTransactionId
 }

@@ -10,6 +10,14 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.unit.dp
+import codes.tashif.paisa.ui.platform.VerticalScrollbarFor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -107,16 +115,8 @@ fun AnalysisScreen(viewModel: AnalyticsViewModel = koinViewModel()) {
             return
         }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = MaterialTheme.spacing.medium,
-                end = MaterialTheme.spacing.medium,
-                bottom = MaterialTheme.spacing.extraLarge
-            ),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)
-        ) {
-            item {
+        val header: List<@Composable () -> Unit> = listOf(
+            {
                 PeriodPicker(
                     kind = periodKind,
                     label = period.label,
@@ -130,9 +130,8 @@ fun AnalysisScreen(viewModel: AnalyticsViewModel = koinViewModel()) {
                     onShift = viewModel::shiftAnalytics,
                     onCustom = viewModel::setAnalyticsCustomRange
                 )
-            }
-
-            item {
+            },
+            {
                 SummaryCards(
                     periodKind = periodKind,
                     period = period,
@@ -143,8 +142,9 @@ fun AnalysisScreen(viewModel: AnalyticsViewModel = koinViewModel()) {
                     prevExpense = prevExpense
                 )
             }
-
-            item {
+        )
+        val cards: List<@Composable () -> Unit> = buildList {
+            add {
                 AnalyticsQuickStats(
                     period = period,
                     periodTx = periodTx,
@@ -155,8 +155,7 @@ fun AnalysisScreen(viewModel: AnalyticsViewModel = koinViewModel()) {
                     onOpenTransaction = { viewModel.openTransaction(it) }
                 )
             }
-
-            item {
+            add {
                 ByCategoryCard(
                     breakdownIncome = breakdownIncome,
                     onBreakdownChange = { breakdownIncome = it },
@@ -171,9 +170,8 @@ fun AnalysisScreen(viewModel: AnalyticsViewModel = koinViewModel()) {
                     onSeeAll = seeAll
                 )
             }
-
             if (expenses.isNotEmpty()) {
-                item {
+                add {
                     RunningTotalCard(
                         periodKind = periodKind,
                         period = period,
@@ -182,16 +180,12 @@ fun AnalysisScreen(viewModel: AnalyticsViewModel = koinViewModel()) {
                         money = money
                     )
                 }
-
-                item { SpendingBarsCard(period = period, expenses = expenses, money = money) }
-
+                add { SpendingBarsCard(period = period, expenses = expenses, money = money) }
                 if (periodKind == AnalyticsPeriod.MONTH) {
-                    item { SpendingHeatmapCard(period = period, expenses = expenses, money = money) }
+                    add { SpendingHeatmapCard(period = period, expenses = expenses, money = money) }
                 }
-
-                item { DayOfWeekCard(period = period, expenses = expenses, money = money) }
-
-                item {
+                add { DayOfWeekCard(period = period, expenses = expenses, money = money) }
+                add {
                     TopPlacesCard(
                         expenses = expenses,
                         totalExpense = totalExpense,
@@ -200,8 +194,7 @@ fun AnalysisScreen(viewModel: AnalyticsViewModel = koinViewModel()) {
                         onSeeAll = seeAll
                     )
                 }
-
-                item {
+                add {
                     ByAccountCard(
                         expenses = expenses,
                         totalExpense = totalExpense,
@@ -210,14 +203,59 @@ fun AnalysisScreen(viewModel: AnalyticsViewModel = koinViewModel()) {
                     )
                 }
             }
-
-            item {
+            add {
                 IncomeVsExpenseCard(
                     periodKind = periodKind,
                     period = period,
                     transactions = transactions,
                     money = money
                 )
+            }
+        }
+
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val columns = if (maxWidth >= 760.dp) 2 else 1
+            val gap = MaterialTheme.spacing.smaller
+            if (columns == 1) {
+                val listState = rememberLazyListState()
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = MaterialTheme.spacing.medium,
+                        end = MaterialTheme.spacing.medium,
+                        bottom = MaterialTheme.spacing.extraLarge
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(gap)
+                ) {
+                    (header + cards).forEach { card -> item { card() } }
+                }
+                VerticalScrollbarFor(listState, Modifier.align(Alignment.CenterEnd).fillMaxHeight())
+            } else {
+                // A dashboard: the period and totals across the top, cards in
+                // two columns under it, dealt left and right so they stay even.
+                val scroll = rememberScrollState()
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scroll)
+                        .padding(horizontal = MaterialTheme.spacing.medium)
+                        .padding(bottom = MaterialTheme.spacing.extraLarge),
+                    verticalArrangement = Arrangement.spacedBy(gap)
+                ) {
+                    header.forEach { it() }
+                    Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                        repeat(columns) { col ->
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(gap)
+                            ) {
+                                cards.filterIndexed { i, _ -> i % columns == col }.forEach { it() }
+                            }
+                        }
+                    }
+                }
+                VerticalScrollbarFor(scroll, Modifier.align(Alignment.CenterEnd).fillMaxHeight())
             }
         }
     }

@@ -5,7 +5,12 @@ package codes.tashif.paisa.ui.platform
  * key. The newest handler wins, like Android's back dispatcher.
  */
 internal object BrowserBack {
-    private val handlers = mutableListOf<Pair<Int, () -> Unit>>()
+    private class Entry(val token: Int, val handler: () -> Unit) {
+        /** False once back has used up this entry's history state. */
+        var hasHistory = true
+    }
+
+    private val handlers = mutableListOf<Entry>()
     private var next = 0
     private var installed = false
     private var ignorePops = 0
@@ -13,23 +18,23 @@ internal object BrowserBack {
     fun push(handler: () -> Unit): Int {
         install()
         val token = next++
-        handlers += token to handler
+        handlers += Entry(token, handler)
         jsPushState()
         return token
     }
 
     fun remove(token: Int) {
-        val index = handlers.indexOfFirst { it.first == token }
+        val index = handlers.indexOfFirst { it.token == token }
         if (index < 0) return
-        handlers.removeAt(index)
+        val entry = handlers.removeAt(index)
         // Drop the history entry this handler added, unless back already did.
-        if (!handlingPop) {
+        // The screen usually leaves a frame after back runs, so this can't
+        // rely on being inside the popstate event.
+        if (entry.hasHistory) {
             ignorePops++
             jsBack()
         }
     }
-
-    private var handlingPop = false
 
     private fun onBack() {
         if (ignorePops > 0) {
@@ -37,11 +42,15 @@ internal object BrowserBack {
             return
         }
         val top = handlers.lastOrNull() ?: return
-        handlingPop = true
-        try {
-            top.second()
-        } finally {
-            handlingPop = false
+        top.hasHistory = false
+        top.handler()
+        // A handler that kept its screen open still needs a history entry,
+        // or the next back would leave the app.
+        jsAfter(300) {
+            if (handlers.contains(top) && !top.hasHistory) {
+                top.hasHistory = true
+                jsPushState()
+            }
         }
     }
 
@@ -57,6 +66,8 @@ internal object BrowserBack {
         }
     }
 }
+
+private fun jsAfter(ms: Int, callback: () -> Unit): Unit = js("setTimeout(() => callback(), ms)")
 
 private fun jsPushState(): Unit = js("history.pushState({ paisa: true }, '')")
 

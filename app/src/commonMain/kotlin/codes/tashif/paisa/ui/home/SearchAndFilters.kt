@@ -32,6 +32,16 @@ import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
+import codes.tashif.paisa.ui.app.LocalShellState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,6 +72,17 @@ internal fun SearchAndFilters(
     accounts: List<FilterMenuOption>
 ) {
     val haptics = rememberHaptics()
+    // "/" and Ctrl K jump here on a keyboard.
+    val focus = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val shell = LocalShellState.current
+    val focusPending = shell?.searchFocusPending == true
+    LaunchedEffect(focusPending) {
+        if (focusPending) {
+            runCatching { focus.requestFocus() }
+            shell?.searchFocused()
+        }
+    }
     Column(modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium)) {
         // M3 search bar — collapsed input that filters the list in place.
         SearchBar(
@@ -79,7 +100,18 @@ internal fun SearchAndFilters(
                             onClear = { onSearchChange("") }
                         )
                     },
-                    trailingIcon = null
+                    trailingIcon = null,
+                    modifier = Modifier
+                        .focusRequester(focus)
+                        // Esc leaves the box, so single-key shortcuts work again.
+                        .onPreviewKeyEvent { e ->
+                            if (e.key == Key.Escape && e.type == KeyEventType.KeyDown) {
+                                focusManager.clearFocus()
+                                true
+                            } else {
+                                false
+                            }
+                        }
                 )
             },
             expanded = false,

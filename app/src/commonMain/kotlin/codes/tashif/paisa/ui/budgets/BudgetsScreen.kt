@@ -7,8 +7,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.ui.unit.dp
+import codes.tashif.paisa.ui.platform.VerticalScrollbarFor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -44,14 +49,20 @@ fun BudgetsScreen(viewModel: BudgetsViewModel = koinViewModel()) {
                 )
             }
         } else {
-            LazyColumn(
+            // One column on a phone; side by side once there's room for two.
+            val gridState = rememberLazyGridState()
+            Box(Modifier.fillMaxSize()) {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 340.dp),
+                state = gridState,
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                     start = MaterialTheme.spacing.medium,
                     end = MaterialTheme.spacing.medium,
                     bottom = MaterialTheme.spacing.extraLarge
                 ),
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)
             ) {
                 items(budgets, key = { it.id }) { budget ->
                     val category = budget.categoryId?.let { id ->
@@ -76,6 +87,8 @@ fun BudgetsScreen(viewModel: BudgetsViewModel = koinViewModel()) {
                         categoryColor = category?.color
                     )
                 }
+            }
+            VerticalScrollbarFor(gridState, Modifier.align(Alignment.CenterEnd).fillMaxHeight())
             }
         }
     }

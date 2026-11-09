@@ -11,7 +11,23 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.DpOffset
+import codes.tashif.paisa.ui.platform.handCursor
+import codes.tashif.paisa.ui.platform.onSecondaryClick
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -28,8 +44,14 @@ fun TransactionRow(
     tx: TransactionWithDetails,
     currency: String,
     balancesHidden: Boolean = false,
+    /** Shown in the detail pane next to the list, on wide windows. */
+    selected: Boolean = false,
+    /** Adds Delete to the right-click menu. */
+    onDelete: (() -> Unit)? = null,
     onClick: () -> Unit = {}
 ) {
+    var menuAt by remember { mutableStateOf<DpOffset?>(null) }
+    val density = LocalDensity.current
     val isIncome = tx.type == "income"
     val amountColor = if (isIncome) IncomeGreen else ExpenseRed
     val sign = if (isIncome) "+" else "−"
@@ -40,16 +62,26 @@ fun TransactionRow(
     }
     val haptics = rememberHaptics()
 
+    var rowHeight by remember { mutableStateOf(0.dp) }
+    Box(Modifier.onSizeChanged { rowHeight = with(density) { it.height.toDp() } }) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .onSecondaryClick { at ->
+                menuAt = with(density) { DpOffset(at.x.toDp(), at.y.toDp()) }
+            }
             .clickable {
                 haptics.click()
                 onClick()
-            },
+            }
+            .handCursor(),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            containerColor = if (selected) {
+                MaterialTheme.colorScheme.secondaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerLow
+            }
         )
     ) {
         Row(
@@ -95,5 +127,32 @@ fun TransactionRow(
                 maskCount = 5
             )
         }
+    }
+    // Right-click menu, anchored where the click happened.
+    DropdownMenu(
+        expanded = menuAt != null,
+        onDismissRequest = { menuAt = null },
+        // The offset counts from the row's bottom edge.
+        offset = menuAt?.let { DpOffset(it.x, it.y - rowHeight) } ?: DpOffset.Zero
+    ) {
+        DropdownMenuItem(
+            text = { Text("Open") },
+            leadingIcon = { Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null) },
+            onClick = {
+                menuAt = null
+                onClick()
+            }
+        )
+        if (onDelete != null) {
+            DropdownMenuItem(
+                text = { Text("Delete…") },
+                leadingIcon = { Icon(Icons.Rounded.Delete, contentDescription = null) },
+                onClick = {
+                    menuAt = null
+                    onDelete()
+                }
+            )
+        }
+    }
     }
 }

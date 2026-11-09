@@ -70,6 +70,17 @@ open it with `?demo` on the end of the url to get three months of sample data.
 
 it's the same screens, viewmodels and database as the phone. the database lives in the browser's origin private file system, so nothing leaves the tab unless you turn on backup or sync.
 
+### big screens
+
+the layout follows the window, not the platform, so a tablet and a browser get the same thing at the same width:
+
+- **under 600dp (phones):** bottom bar and bottom sheets, as before
+- **600 to 840dp (small tablets, phones in landscape):** a side rail with the add button at its top
+- **840 to 1200dp (tablets in landscape):** a transaction opens beside the list. debts and settings become a list on the left with the open item on the right. analytics goes to two columns, budgets and accounts to grids, and sheets open as centered dialogs
+- **1200dp and up (laptops, desktops):** a drawer with every tab, and home's balances move to a pane beside the transactions
+
+with a keyboard: `n` adds, `/` or `ctrl k` searches, `1` to `6` switch tabs, `esc` closes things and `?` lists all of it. right click a transaction to open or delete it. charts show their tooltip on hover, lists get a scrollbar on the web, and the browser tab title follows the screen.
+
 ### backup and sync on the web
 
 backup and sync are the same code as on the phone, so a browser and a phone can share one nextcloud or google drive and stay in step. the browser syncs when the page opens, every 15 minutes, when it comes back online or into view, and 20 seconds after an edit. there's no background sync once the tab is closed. sync now covers the rest.

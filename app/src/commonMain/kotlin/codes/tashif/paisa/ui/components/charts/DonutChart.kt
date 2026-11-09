@@ -22,6 +22,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntSize
+import codes.tashif.paisa.ui.platform.hoverIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -63,37 +66,40 @@ fun DonutChart(
             }
         }
 
+        val strokePx = with(LocalDensity.current) { 28.dp.toPx() }
+        // Which slice is under a point, or null off the ring.
+        val sliceAt: (Offset, IntSize) -> Int? = { point, size ->
+            val cx = size.width / 2f
+            val cy = size.height / 2f
+            val outer = size.width.coerceAtMost(size.height) / 2f
+            val inner = outer - strokePx * 1.5f
+            val dist = hypot(point.x - cx, point.y - cy)
+            if (dist !in inner..outer + strokePx / 2f) {
+                null
+            } else {
+                var angle = radiansToDegrees(
+                    atan2((point.y - cy).toDouble(), (point.x - cx).toDouble())
+                ) + 90.0
+                if (angle < 0) angle += 360.0
+                var cumulative = 0.0
+                entries.indexOfFirst { entry ->
+                    val sweep = entry.value / total * 360.0
+                    val inSlice = angle >= cumulative && angle < cumulative + sweep
+                    cumulative += sweep
+                    inSlice
+                }.takeIf { it >= 0 }
+            }
+        }
+
         Box(
             modifier = Modifier
                 .size(200.dp)
+                // A mouse shows the tooltip on hover; touch still taps.
+                .hoverIndex(entries, { pos, size -> sliceAt(pos, size) }) { selected = it }
                 .pointerInput(entries) {
                     detectTapGestures { tap ->
-                        val cx = size.width / 2f
-                        val cy = size.height / 2f
-                        val strokePx = 28.dp.toPx()
-                        val outer = size.width.coerceAtMost(size.height) / 2f
-                        val inner = outer - strokePx * 1.5f
-                        val dist = hypot(tap.x - cx, tap.y - cy)
-                        if (dist !in inner..outer + strokePx / 2f) {
-                            selected = null
-                            return@detectTapGestures
-                        }
-                        var angle = radiansToDegrees(
-                            atan2((tap.y - cy).toDouble(), (tap.x - cx).toDouble())
-                        ) + 90.0
-                        if (angle < 0) angle += 360.0
-                        var cumulative = 0.0
-                        val hit = entries.indexOfFirst { entry ->
-                            val sweep = entry.value / total * 360.0
-                            val inSlice = angle >= cumulative && angle < cumulative + sweep
-                            cumulative += sweep
-                            inSlice
-                        }
-                        val next = when {
-                            hit == -1 -> null
-                            hit == selected -> null
-                            else -> hit
-                        }
+                        val hit = sliceAt(tap, size)
+                        val next = if (hit == selected) null else hit
                         if (next != selected) haptics.tick()
                         selected = next
                     }

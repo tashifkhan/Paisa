@@ -1,5 +1,7 @@
 package codes.tashif.paisa.ui.budgets
 
+import codes.tashif.paisa.ui.components.AdaptiveSheet
+
 import androidx.compose.foundation.layout.Arrangement
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.layout.Column
@@ -43,7 +45,7 @@ fun AddBudgetSheet(
     val haptics = rememberHaptics()
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss) {
+    AdaptiveSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

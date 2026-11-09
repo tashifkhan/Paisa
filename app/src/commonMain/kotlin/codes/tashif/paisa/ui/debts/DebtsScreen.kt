@@ -3,7 +3,17 @@ package codes.tashif.paisa.ui.debts
 import codes.tashif.paisa.ui.platform.PlatformBackHandler
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.material3.VerticalDivider
+import codes.tashif.paisa.data.DebtPersonBalance
+import codes.tashif.paisa.ui.app.CenteredContent
+import codes.tashif.paisa.ui.app.ListPaneWidth
+import codes.tashif.paisa.ui.app.LocalWindowWidth
+import codes.tashif.paisa.ui.app.PanePlaceholder
+import codes.tashif.paisa.ui.app.WindowWidth
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +31,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -43,22 +54,35 @@ fun DebtsScreen(viewModel: DebtsViewModel = koinViewModel()) {
     var splittingBill by remember { mutableStateOf(false) }
 
     val open = people.firstOrNull { it.person.id == openId }
-    if (open != null) {
+    val person: @Composable (DebtPersonBalance) -> Unit = { p ->
         PlatformBackHandler { viewModel.closeDebtPerson() }
         val entries by viewModel.openDebtEntries.collectAsState()
         DebtPersonScreen(
-            entry = open,
+            entry = p,
             entries = entries,
             currency = currency,
             onBack = { viewModel.closeDebtPerson() },
-            onAddEntry = { amount, note -> viewModel.addDebtEntry(open.person.id, amount, note) },
+            onAddEntry = { amount, note -> viewModel.addDebtEntry(p.person.id, amount, note) },
             onUpdateEntry = viewModel::updateDebtEntry,
             onDeleteEntry = { viewModel.deleteDebtEntry(it) },
             onOpenTransaction = viewModel::openLinkedTransaction,
-            onSettle = { viewModel.settleDebt(open.person) },
-            onRename = { viewModel.renameDebtPerson(open.person, it) },
-            onDelete = { viewModel.deleteDebtPerson(open.person) }
+            onSettle = { viewModel.settleDebt(p.person) },
+            onRename = { viewModel.renameDebtPerson(p.person, it) },
+            onDelete = { viewModel.deleteDebtPerson(p.person) }
         )
+    }
+    // Wide windows: people on the left, the open person on the right.
+    val wide = LocalWindowWidth.current >= WindowWidth.EXPANDED
+    // Side by side, an empty pane is wasted space: start on the first person.
+    var autoOpened by remember { mutableStateOf(false) }
+    LaunchedEffect(wide, people.isEmpty()) {
+        if (wide && !autoOpened && openId == null && people.isNotEmpty()) {
+            autoOpened = true
+            viewModel.openDebtPerson(people.first().person.id)
+        }
+    }
+    if (open != null && !wide) {
+        person(open)
         return
     }
 
@@ -74,7 +98,8 @@ fun DebtsScreen(viewModel: DebtsViewModel = koinViewModel()) {
         )
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Row(Modifier.fillMaxSize()) {
+    Column(modifier = if (wide && people.isNotEmpty()) Modifier.width(ListPaneWidth).fillMaxHeight() else Modifier.fillMaxSize()) {
         PaisaTopBar(title = "Debts") {
             TextButton(onClick = { splittingBill = true }) {
                 Icon(Icons.AutoMirrored.Rounded.CallSplit, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -110,9 +135,21 @@ fun DebtsScreen(viewModel: DebtsViewModel = koinViewModel()) {
                     currency = currency,
                     index = index,
                     count = people.size,
+                    selected = wide && p.person.id == openId,
                     onClick = { viewModel.openDebtPerson(p.person.id) }
                 )
             }
         }
+    }
+    if (wide && people.isNotEmpty()) {
+        VerticalDivider()
+        Box(Modifier.weight(1f).fillMaxHeight()) {
+            if (open != null) {
+                CenteredContent { person(open) }
+            } else {
+                PanePlaceholder(title = "Debts", subtitle = "Pick someone to see what you owe each other")
+            }
+        }
+    }
     }
 }

@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -29,19 +30,34 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusTarget
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.data.AppTab
 import codes.tashif.paisa.ui.accounts.AccountsScreen
 import codes.tashif.paisa.ui.analytics.AnalysisScreen
 import codes.tashif.paisa.ui.budgets.BudgetsScreen
 import codes.tashif.paisa.ui.debts.DebtsScreen
 import codes.tashif.paisa.ui.debts.DebtsViewModel
+import codes.tashif.paisa.ui.home.HomeSummaryPane
 import codes.tashif.paisa.ui.home.RecordsScreen
+import codes.tashif.paisa.ui.platform.PageKeys
+import codes.tashif.paisa.ui.platform.setWindowTitle
 import codes.tashif.paisa.ui.settings.MoreScreen
 import codes.tashif.paisa.ui.sms.SmsViewModel
 import codes.tashif.paisa.ui.transaction.TransactionDetailScreen
@@ -61,6 +77,7 @@ fun AppShell(
     val openDebtPersonId by debtsViewModel.openDebtPersonId.collectAsState()
     val state = rememberShellState()
     val snackbarHostState = remember { SnackbarHostState() }
+    var showShortcuts by remember { mutableStateOf(false) }
 
     // Widget deep links open the matching destination once, then clear so a
     // config change or back press doesn't reopen it.
@@ -77,34 +94,46 @@ fun AppShell(
     }
 
     val width = windowWidth()
-    // Wide windows get a side rail. Expanded ones also show a transaction next
-    // to the list it came from instead of covering it.
+    // Wide windows get a side rail, and laptops and desktops a full drawer.
+    // From expanded up the navigation never goes away: transactions and
+    // settings open in a pane next to the list they came from.
     val useRail = width != WindowWidth.COMPACT
-    val detailPane = width == WindowWidth.EXPANDED && selectedTxId != null
-
-    // Full-screen secondary destinations take priority over tabs.
-    if (selectedTxId != null && !detailPane) {
-        CenteredContent {
-            TransactionDetailScreen(onBack = viewModel::closeTransaction)
-        }
-        return
-    }
+    val wide = width >= WindowWidth.EXPANDED
+    val large = width == WindowWidth.LARGE
+    val detailPane = wide && selectedTxId != null
     val topScreen = state.topScreen
-    if (topScreen != null) {
-        CenteredContent {
-            FullScreenHost(
-                screen = topScreen,
-                state = state,
-                onExternalActivityLaunched = viewModel::onExternalActivityLaunched
-            )
-        }
-        return
+
+    LaunchedEffect(currentTab, topScreen) {
+        setWindowTitle(
+            listOfNotNull(topScreen?.title ?: currentTab.label, "Paisa").joinToString(" · ")
+        )
     }
 
-    // Switching tabs with a detail pane open closes it, since it belongs to
-    // the list that was showing.
+    // Narrower windows: secondary destinations cover the tabs, as on a phone.
+    if (!wide) {
+        if (selectedTxId != null) {
+            CenteredContent {
+                TransactionDetailScreen(onBack = viewModel::closeTransaction)
+            }
+            return
+        }
+        if (topScreen != null) {
+            CenteredContent {
+                FullScreenHost(
+                    screen = topScreen,
+                    state = state,
+                    onExternalActivityLaunched = viewModel::onExternalActivityLaunched
+                )
+            }
+            return
+        }
+    }
+
+    // Switching tabs with a detail pane or setting open closes it, since it
+    // belongs to the list that was showing.
     val selectTab: (AppTab) -> Unit = { tab ->
         if (selectedTxId != null) viewModel.closeTransaction()
+        if (wide && tab != currentTab) topScreen?.let { state.close(it) }
         viewModel.selectTab(tab)
     }
 
@@ -126,99 +155,234 @@ fun AppShell(
     }
 
     // A screen opened from More (its tab is hidden from the bar) goes back to More.
-    PlatformBackHandler(enabled = currentTab !in navTabs) {
+    PlatformBackHandler(enabled = currentTab !in navTabs && !large) {
         viewModel.selectTab(AppTab.MORE)
     }
 
-    Row(modifier = Modifier.fillMaxSize()) {
-        if (useRail) {
-            AppNavRail(
-                navTabs = navTabs,
-                currentTab = currentTab,
-                showLabels = settings?.navBarLabels != false,
-                onSelect = selectTab
+    val navActions = NavActions(
+        scanRunning = scanProgress.isRunning,
+        onRescanSms = { smsViewModel.startSmsScan() },
+        onOpenSmsSetup = { state.open(FullScreen.SMS_SETUP) },
+        onAdd = { sheet -> state.open(sheet) },
+        onShowShortcuts = { showShortcuts = true }
+    )
+
+    // Keyboard shortcuts for windows with a hardware keyboard nearby. The
+    // shell holds focus whenever nothing else does, so keys reach it.
+    val shellFocus = remember { FocusRequester() }
+    val shortcutTabs = if (large) AppTab.entries else navTabs
+    val keys = Modifier
+        .onFocusChanged { focus ->
+            if (!focus.hasFocus) runCatching { shellFocus.requestFocus() }
+        }
+        .focusRequester(shellFocus)
+        // A focus target with no semantics, so TalkBack still sees each button.
+        .focusTarget()
+        .onKeyEvent { event ->
+            handleShortcut(
+                event = event,
+                // Text fields consume the characters typed into them, so a
+                // key only gets here when nobody is typing.
+                typing = false,
+                tabs = shortcutTabs,
+                onTab = selectTab,
+                onAdd = { state.open(addSheetFor(currentTab)) },
+                onSearch = {
+                    selectTab(AppTab.HOME)
+                    state.requestSearchFocus()
+                },
+                onShowShortcuts = { showShortcuts = true }
             )
         }
-        Scaffold(
-            modifier = Modifier.weight(1f),
-            // The rail already pads for the system bars on its side.
-            contentWindowInsets = if (useRail) {
-                WindowInsets.systemBars.union(WindowInsets.displayCutout)
-                    .only(WindowInsetsSides.Bottom + WindowInsetsSides.End)
-            } else {
-                WindowInsets.systemBars.union(WindowInsets.displayCutout)
-            },
-            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-            floatingActionButtonPosition = FabPosition.End,
-            floatingActionButton = {
-                // The detail pane has its own save button where the FAB sits.
-                if (!detailPane) {
-                    AppFab(
-                        currentTab = currentTab,
-                        scanRunning = scanProgress.isRunning,
-                        onRescanSms = { smsViewModel.startSmsScan() },
-                        onOpenSmsSetup = { state.open(FullScreen.SMS_SETUP) },
-                        onAdd = { sheet -> state.open(sheet) },
-                        debtPersonOpen = openDebtPersonId != null
-                    )
-                }
-            },
-            bottomBar = {
-                if (!useRail) {
-                    AppNavBar(
-                        navTabs = navTabs,
-                        currentTab = currentTab,
-                        floating = settings?.floatingNavBar == true,
-                        showLabels = settings?.navBarLabels != false,
-                        onSelect = selectTab
-                    )
-                }
-            }
-        ) { innerPadding ->
-            val layoutDirection = LocalLayoutDirection.current
-            Row(
-                modifier = Modifier
-                    .padding(
-                        start = innerPadding.calculateStartPadding(layoutDirection),
-                        end = innerPadding.calculateEndPadding(layoutDirection),
-                        bottom = innerPadding.calculateBottomPadding()
-                    )
-                    .fillMaxSize()
-            ) {
-                // Two equal panes, so on a book-style foldable the split lands
-                // on the hinge.
-                CenteredContent(modifier = Modifier.weight(1f)) {
-                    AnimatedContent(
-                        targetState = currentTab,
-                        transitionSpec = { fadeIn() togetherWith fadeOut() },
-                        label = "tab_content"
-                    ) { page ->
-                        TabContent(
-                            page = page,
-                            navTabs = navTabs,
-                            state = state,
-                            viewModel = viewModel
-                        )
-                    }
-                }
-                if (detailPane) {
-                    VerticalDivider()
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            // The row already pads for the gesture bar; the
-                            // detail screen would pad for it again.
-                            .consumeWindowInsets(WindowInsets.navigationBars)
-                    ) {
-                        TransactionDetailScreen(onBack = viewModel::closeTransaction)
-                    }
-                }
-            }
+    if (useRail) {
+        LaunchedEffect(Unit) { runCatching { shellFocus.requestFocus() } }
+        PageKeys { key, command ->
+            handlePageShortcut(
+                key = key,
+                command = command,
+                tabs = shortcutTabs,
+                onTab = selectTab,
+                onAdd = { state.open(addSheetFor(currentTab)) },
+                onSearch = {
+                    selectTab(AppTab.HOME)
+                    state.requestSearchFocus()
+                },
+                onShowShortcuts = { showShortcuts = true }
+            )
         }
     }
 
-    AddSheetsHost(state = state)
+    CompositionLocalProvider(
+        LocalWindowWidth provides width,
+        LocalShellState provides state
+    ) {
+        val focusManager = LocalFocusManager.current
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(if (useRail) keys else Modifier)
+                // Clicking empty space leaves a text field, as on a desktop.
+                .then(
+                    if (useRail) {
+                        Modifier.pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } }
+                    } else {
+                        Modifier
+                    }
+                )
+        ) {
+            when {
+                large -> AppNavDrawer(
+                    currentTab = currentTab,
+                    actions = navActions,
+                    onSelect = selectTab
+                )
+                useRail -> AppNavRail(
+                    navTabs = navTabs,
+                    currentTab = currentTab,
+                    showLabels = settings?.navBarLabels != false,
+                    actions = navActions,
+                    onSelect = selectTab
+                )
+            }
+            Scaffold(
+                modifier = Modifier.weight(1f),
+                // The rail already pads for the system bars on its side.
+                contentWindowInsets = if (useRail) {
+                    WindowInsets.systemBars.union(WindowInsets.displayCutout)
+                        .only(WindowInsetsSides.Bottom + WindowInsetsSides.End)
+                } else {
+                    WindowInsets.systemBars.union(WindowInsets.displayCutout)
+                },
+                snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+                floatingActionButtonPosition = FabPosition.End,
+                floatingActionButton = {
+                    // With a rail or drawer the add button lives at its top.
+                    if (!useRail) {
+                        AppFab(
+                            currentTab = currentTab,
+                            scanRunning = scanProgress.isRunning,
+                            onRescanSms = { smsViewModel.startSmsScan() },
+                            onOpenSmsSetup = { state.open(FullScreen.SMS_SETUP) },
+                            onAdd = { sheet -> state.open(sheet) },
+                            debtPersonOpen = openDebtPersonId != null
+                        )
+                    }
+                },
+                bottomBar = {
+                    if (!useRail) {
+                        AppNavBar(
+                            navTabs = navTabs,
+                            currentTab = currentTab,
+                            floating = settings?.floatingNavBar == true,
+                            showLabels = settings?.navBarLabels != false,
+                            onSelect = selectTab
+                        )
+                    }
+                }
+            ) { innerPadding ->
+                val layoutDirection = LocalLayoutDirection.current
+                Row(
+                    modifier = Modifier
+                        .padding(
+                            start = innerPadding.calculateStartPadding(layoutDirection),
+                            end = innerPadding.calculateEndPadding(layoutDirection),
+                            bottom = innerPadding.calculateBottomPadding()
+                        )
+                        .fillMaxSize()
+                ) {
+                    if (wide && (topScreen != null || currentTab == AppTab.MORE)) {
+                        SettingsPanes(
+                            topScreen = topScreen,
+                            showMoreList = currentTab == AppTab.MORE,
+                            state = state,
+                            navTabs = if (large) AppTab.entries else navTabs,
+                            viewModel = viewModel
+                        )
+                    } else {
+                        // Two equal panes on expanded, so on a book-style
+                        // foldable the split lands on the hinge.
+                        Box(modifier = Modifier.weight(1f)) {
+                            AnimatedContent(
+                                targetState = currentTab,
+                                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                                label = "tab_content"
+                            ) { page ->
+                                if (wide) {
+                                    TabContent(page, navTabs, state, viewModel)
+                                } else {
+                                    CenteredContent {
+                                        TabContent(page, navTabs, state, viewModel)
+                                    }
+                                }
+                            }
+                        }
+                        when {
+                            detailPane -> {
+                                VerticalDivider()
+                                Box(
+                                    modifier = Modifier
+                                        .then(if (large) Modifier.width(480.dp) else Modifier.weight(1f))
+                                        .fillMaxHeight()
+                                        // The row already pads for the gesture bar; the
+                                        // detail screen would pad for it again.
+                                        .consumeWindowInsets(WindowInsets.navigationBars)
+                                ) {
+                                    TransactionDetailScreen(onBack = viewModel::closeTransaction)
+                                }
+                            }
+                            large && currentTab == AppTab.HOME -> {
+                                HomeSummaryPane(modifier = Modifier.width(400.dp).fillMaxHeight())
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        AddSheetsHost(state = state)
+        if (showShortcuts) {
+            ShortcutsDialog(tabs = shortcutTabs, onDismiss = { showShortcuts = false })
+        }
+    }
+}
+
+/**
+ * Settings on a wide window: the More list on the left and the open setting
+ * on the right, the way desktop settings apps work. A setting opened from
+ * elsewhere, like SMS setup from Home, fills the content area instead.
+ */
+@Composable
+private fun SettingsPanes(
+    topScreen: FullScreen?,
+    showMoreList: Boolean,
+    state: ShellState,
+    navTabs: List<AppTab>,
+    viewModel: AppViewModel
+) {
+    Row(Modifier.fillMaxSize()) {
+        if (showMoreList) {
+            Box(Modifier.width(ListPaneWidth).fillMaxHeight()) {
+                TabContent(AppTab.MORE, navTabs, state, viewModel, selected = topScreen)
+            }
+            VerticalDivider()
+        }
+        Box(Modifier.weight(1f).fillMaxHeight()) {
+            if (topScreen != null) {
+                CenteredContent {
+                    FullScreenHost(
+                        screen = topScreen,
+                        state = state,
+                        onExternalActivityLaunched = viewModel::onExternalActivityLaunched
+                    )
+                }
+            } else {
+                PanePlaceholder(
+                    title = "Settings",
+                    subtitle = "Pick something on the left"
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -226,8 +390,12 @@ private fun TabContent(
     page: AppTab,
     navTabs: List<AppTab>,
     state: ShellState,
-    viewModel: AppViewModel
+    viewModel: AppViewModel,
+    selected: FullScreen? = null
 ) {
+    val wide = LocalWindowWidth.current >= WindowWidth.EXPANDED
+    // In the side-by-side layout one setting shows at a time.
+    val open: (FullScreen) -> Unit = { if (wide) state.show(it) else state.open(it) }
     when (page) {
         AppTab.HOME -> RecordsScreen()
         AppTab.ANALYTICS -> AnalysisScreen()
@@ -237,16 +405,17 @@ private fun TabContent(
         AppTab.MORE -> MoreScreen(
             hiddenTabs = AppTab.entries.filter { it !in navTabs },
             onOpenTab = viewModel::selectTab,
-            onOpenSmsSetup = { state.open(FullScreen.SMS_SETUP) },
-            onOpenAppearance = { state.open(FullScreen.APPEARANCE) },
-            onOpenAiSettings = { state.open(FullScreen.AI) },
-            onOpenStatementImport = { state.open(FullScreen.STATEMENT_IMPORT) },
-            onOpenMerchantMappings = { state.open(FullScreen.MERCHANT_MAPPINGS) },
-            onOpenCategories = { state.open(FullScreen.CATEGORIES) },
-            onOpenCurrency = { state.open(FullScreen.CURRENCY) },
-            onOpenBackup = { state.open(FullScreen.BACKUP) },
-            onOpenAbout = { state.open(FullScreen.ABOUT) },
-            onExternalActivityLaunched = viewModel::onExternalActivityLaunched
+            onOpenSmsSetup = { open(FullScreen.SMS_SETUP) },
+            onOpenAppearance = { open(FullScreen.APPEARANCE) },
+            onOpenAiSettings = { open(FullScreen.AI) },
+            onOpenStatementImport = { open(FullScreen.STATEMENT_IMPORT) },
+            onOpenMerchantMappings = { open(FullScreen.MERCHANT_MAPPINGS) },
+            onOpenCategories = { open(FullScreen.CATEGORIES) },
+            onOpenCurrency = { open(FullScreen.CURRENCY) },
+            onOpenBackup = { open(FullScreen.BACKUP) },
+            onOpenAbout = { open(FullScreen.ABOUT) },
+            onExternalActivityLaunched = viewModel::onExternalActivityLaunched,
+            selected = selected?.title
         )
     }
 }

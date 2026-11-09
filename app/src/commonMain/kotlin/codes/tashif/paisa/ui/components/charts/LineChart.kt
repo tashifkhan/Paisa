@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import codes.tashif.paisa.ui.platform.hoverIndex
 import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 
@@ -69,6 +70,8 @@ fun LineChart(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(160.dp)
+                // A mouse shows the tooltip on hover; touch still taps.
+                .hoverIndex(labels, { pos, size -> (pos.x / (if (labels.size > 1) size.width / (labels.size - 1).toFloat() else size.width.toFloat()) + 0.5f).toInt().coerceIn(0, labels.lastIndex) }) { selected = it }
                 .pointerInput(labels) {
                     detectTapGestures { tap ->
                         val step = if (labels.size > 1) size.width / (labels.size - 1).toFloat() else size.width.toFloat()

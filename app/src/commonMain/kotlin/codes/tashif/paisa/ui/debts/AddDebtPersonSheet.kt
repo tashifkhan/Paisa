@@ -1,5 +1,7 @@
 package codes.tashif.paisa.ui.debts
 
+import codes.tashif.paisa.ui.components.AdaptiveSheet
+
 import androidx.compose.foundation.layout.Arrangement
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.layout.Column
@@ -13,7 +15,6 @@ import androidx.compose.material.icons.automirrored.rounded.CallReceived
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,7 +44,7 @@ fun AddDebtPersonSheet(
     var amountText by remember { mutableStateOf("") }
     var theyOwe by remember { mutableStateOf(true) }
     val haptics = rememberHaptics()
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    AdaptiveSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

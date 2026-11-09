@@ -1,5 +1,7 @@
 package codes.tashif.paisa.ui.transaction
 
+import codes.tashif.paisa.ui.components.AdaptiveSheet
+
 import codes.tashif.paisa.platform.formatDate
 import codes.tashif.paisa.platform.PaisaCalendar
 import androidx.compose.foundation.layout.Column
@@ -16,7 +18,6 @@ import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -102,7 +103,7 @@ fun AddTransactionSheet(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    ModalBottomSheet(
+    AdaptiveSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface

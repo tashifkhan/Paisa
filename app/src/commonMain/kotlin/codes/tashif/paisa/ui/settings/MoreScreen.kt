@@ -13,7 +13,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Alignment
+import codes.tashif.paisa.ui.components.LocalSelectedSetting
+import codes.tashif.paisa.ui.platform.VerticalScrollbarFor
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +52,8 @@ fun MoreScreen(
     hiddenTabs: List<AppTab> = emptyList(),
     onOpenTab: (AppTab) -> Unit = {},
     onExternalActivityLaunched: () -> Unit = {},
+    /** Title of the setting open beside this list on wide windows. */
+    selected: String? = null,
     viewModel: SettingsViewModel = koinViewModel()
 ) {
     val settings by viewModel.settings.collectAsState()
@@ -60,6 +68,8 @@ fun MoreScreen(
     val scope = rememberCoroutineScope()
     var showExportOptions by remember { mutableStateOf(false) }
     val exportSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    // A dialog has no sheet to slide away first.
+    val sheetDialogs = codes.tashif.paisa.ui.components.sheetsAsDialogs()
 
     val stamp = remember {
         formatDate(nowMillis(), "yyyyMMdd")
@@ -90,13 +100,16 @@ fun MoreScreen(
         exportHandler("PDF", viewModel::exportTransactionsToPdf)
     )
 
+    val scroll = rememberScrollState()
+    Box(modifier = Modifier.fillMaxSize()) {
+    CompositionLocalProvider(LocalSelectedSetting provides selected) {
     Column(modifier = Modifier.fillMaxSize()) {
         PaisaTopBar(title = "More")
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scroll)
                 .padding(horizontal = MaterialTheme.spacing.medium)
                 .padding(bottom = MaterialTheme.spacing.large)
         ) {
@@ -146,6 +159,9 @@ fun MoreScreen(
             MoreAboutSection(onOpenAbout = onOpenAbout)
         }
     }
+    }
+        VerticalScrollbarFor(scroll, Modifier.align(Alignment.CenterEnd).fillMaxHeight())
+    }
 
     if (showExportOptions) {
         ExportSheet(
@@ -154,7 +170,7 @@ fun MoreScreen(
             onDismiss = { showExportOptions = false },
             onPickCsv = {
                 scope.launch {
-                    exportSheetState.hide()
+                    if (!sheetDialogs) exportSheetState.hide()
                     showExportOptions = false
                     onExternalActivityLaunched()
                     csvExportLauncher("paisa_transactions_$stamp.csv")
@@ -162,7 +178,7 @@ fun MoreScreen(
             },
             onPickPdf = {
                 scope.launch {
-                    exportSheetState.hide()
+                    if (!sheetDialogs) exportSheetState.hide()
                     showExportOptions = false
                     onExternalActivityLaunched()
                     pdfExportLauncher("paisa_transactions_$stamp.pdf")

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -15,7 +16,13 @@ import androidx.compose.ui.unit.dp
  * landscape. Expanded is a tablet in landscape or an unfolded foldable turned
  * sideways.
  */
-enum class WindowWidth { COMPACT, MEDIUM, EXPANDED }
+enum class WindowWidth { COMPACT, MEDIUM, EXPANDED, LARGE }
+
+/**
+ * The width class the shell picked, for screens that lay themselves out in
+ * panes. Large is a laptop or desktop browser, or a big tablet in landscape.
+ */
+val LocalWindowWidth = staticCompositionLocalOf { WindowWidth.COMPACT }
 
 /**
  * The width class of this window, not the whole display, so split screen and
@@ -28,7 +35,8 @@ fun windowWidth(): WindowWidth {
     return when {
         widthDp < 600 -> WindowWidth.COMPACT
         widthDp < 840 -> WindowWidth.MEDIUM
-        else -> WindowWidth.EXPANDED
+        widthDp < 1200 -> WindowWidth.EXPANDED
+        else -> WindowWidth.LARGE
     }
 }
 
@@ -53,3 +61,6 @@ fun CenteredContent(
         )
     }
 }
+
+/** Width of the list pane when a screen shows a list next to its detail. */
+val ListPaneWidth = 380.dp

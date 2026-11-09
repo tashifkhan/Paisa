@@ -75,26 +75,26 @@ fun AppFab(
             FloatingActionButton(
                 onClick = {
                     haptics.click()
-                    onAdd(
-                        when (currentTab) {
-                            AppTab.BUDGETS -> AddSheet.BUDGET
-                            AppTab.ACCOUNTS -> AddSheet.ACCOUNT
-                            AppTab.DEBTS -> AddSheet.DEBT_PERSON
-                            else -> AddSheet.TRANSACTION
-                        }
-                    )
+                    onAdd(addSheetFor(currentTab))
                 }
             ) {
-                Icon(
-                    Icons.Rounded.Add,
-                    contentDescription = when (currentTab) {
-                        AppTab.BUDGETS -> "Add budget"
-                        AppTab.ACCOUNTS -> "Add account"
-                        AppTab.DEBTS -> "Add person"
-                        else -> "Add transaction"
-                    }
-                )
+                Icon(Icons.Rounded.Add, contentDescription = addLabelFor(currentTab))
             }
         }
     }
+}
+
+/** What + adds on [tab]. Tabs with nothing of their own add a transaction. */
+internal fun addSheetFor(tab: AppTab): AddSheet = when (tab) {
+    AppTab.BUDGETS -> AddSheet.BUDGET
+    AppTab.ACCOUNTS -> AddSheet.ACCOUNT
+    AppTab.DEBTS -> AddSheet.DEBT_PERSON
+    else -> AddSheet.TRANSACTION
+}
+
+internal fun addLabelFor(tab: AppTab): String = when (tab) {
+    AppTab.BUDGETS -> "Add budget"
+    AppTab.ACCOUNTS -> "Add account"
+    AppTab.DEBTS -> "Add person"
+    else -> "Add transaction"
 }

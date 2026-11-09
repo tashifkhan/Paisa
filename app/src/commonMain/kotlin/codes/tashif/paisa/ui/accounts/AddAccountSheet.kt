@@ -1,5 +1,7 @@
 package codes.tashif.paisa.ui.accounts
 
+import codes.tashif.paisa.ui.components.AdaptiveSheet
+
 import androidx.compose.foundation.layout.Arrangement
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.layout.Column
@@ -15,7 +17,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -98,7 +99,7 @@ internal fun AddAccountSheet(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    AdaptiveSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

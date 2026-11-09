@@ -23,6 +23,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import codes.tashif.paisa.ui.platform.hoverIndex
 import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 
@@ -66,6 +67,8 @@ fun BarChart(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(148.dp)
+                // A mouse shows the tooltip on hover; touch still taps.
+                .hoverIndex(entries, { pos, size -> (pos.x / (size.width / entries.size.toFloat())).toInt().coerceIn(0, entries.lastIndex) }) { selected = it }
                 .pointerInput(entries) {
                     detectTapGestures { tap ->
                         val slot = size.width / entries.size.toFloat()

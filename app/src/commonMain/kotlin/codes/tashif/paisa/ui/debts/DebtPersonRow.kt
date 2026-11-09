@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import codes.tashif.paisa.ui.platform.handCursor
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -36,6 +37,8 @@ internal fun DebtPersonRow(
     currency: String,
     index: Int,
     count: Int,
+    /** Open in the pane beside the list, on wide windows. */
+    selected: Boolean = false,
     onClick: () -> Unit
 ) {
     val haptics = rememberHaptics()
@@ -45,9 +48,14 @@ internal fun DebtPersonRow(
             .clickable {
                 haptics.click()
                 onClick()
-            },
+            }
+            .handCursor(),
         shape = groupShape(groupPositionOf(index, count)),
-        color = MaterialTheme.colorScheme.surfaceContainerLow
+        color = if (selected) {
+            MaterialTheme.colorScheme.secondaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerLow
+        }
     ) {
         Row(
             modifier = Modifier.padding(

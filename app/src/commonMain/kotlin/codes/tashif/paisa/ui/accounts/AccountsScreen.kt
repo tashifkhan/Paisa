@@ -17,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import codes.tashif.paisa.data.Account
+import codes.tashif.paisa.ui.app.CenteredContent
 import codes.tashif.paisa.ui.components.EmptyState
 import codes.tashif.paisa.ui.components.PaisaTopBar
 import codes.tashif.paisa.ui.haptics.rememberHaptics
@@ -66,6 +67,7 @@ fun AccountsScreen(viewModel: AccountsViewModel = koinViewModel()) {
         }
 
         if (listView) {
+            CenteredContent {
             AccountListView(
                 accounts = accounts,
                 currency = currency,
@@ -79,6 +81,7 @@ fun AccountsScreen(viewModel: AccountsViewModel = koinViewModel()) {
                 onMergeClick = { showMergeDialog = true },
                 onAutoMerge = { viewModel.autoMergeDuplicateAccounts() }
             )
+            }
         } else {
             AccountCardsView(
                 accounts = accounts,

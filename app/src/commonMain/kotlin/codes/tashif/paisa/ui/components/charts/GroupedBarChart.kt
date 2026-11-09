@@ -21,6 +21,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import codes.tashif.paisa.ui.platform.hoverIndex
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.ui.haptics.rememberHaptics
@@ -66,6 +67,8 @@ fun GroupedBarChart(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(148.dp)
+                // A mouse shows the tooltip on hover; touch still taps.
+                .hoverIndex(labels, { pos, size -> (pos.x / (size.width / labels.size.toFloat())).toInt().coerceIn(0, labels.lastIndex) }) { selected = it }
                 .pointerInput(labels) {
                     detectTapGestures { tap ->
                         val slot = size.width / labels.size.toFloat()

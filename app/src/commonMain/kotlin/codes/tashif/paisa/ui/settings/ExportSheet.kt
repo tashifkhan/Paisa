@@ -1,5 +1,7 @@
 package codes.tashif.paisa.ui.settings
 
+import codes.tashif.paisa.ui.components.AdaptiveSheet
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,7 +21,6 @@ import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,7 +46,7 @@ fun ExportSheet(
     onPickPdf: () -> Unit
 ) {
     val haptics = rememberHaptics()
-    ModalBottomSheet(
+    AdaptiveSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface

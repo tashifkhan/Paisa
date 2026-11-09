@@ -1,5 +1,7 @@
 package codes.tashif.paisa.ui.debts
 
+import codes.tashif.paisa.ui.components.AdaptiveSheet
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,7 +11,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,7 +36,7 @@ internal fun AddDebtEntrySheet(
     var amountText by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     val amount = amountText.toDoubleOrNull()?.takeIf { it > 0 }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    AdaptiveSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

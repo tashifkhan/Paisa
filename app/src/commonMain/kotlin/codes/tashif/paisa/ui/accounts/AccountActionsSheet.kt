@@ -1,5 +1,7 @@
 package codes.tashif.paisa.ui.accounts
 
+import codes.tashif.paisa.ui.components.AdaptiveSheet
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -9,7 +11,6 @@ import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -31,7 +32,7 @@ internal fun AccountActionsSheet(
     onDelete: () -> Unit
 ) {
     val actionCount = if (account.isDefault) 3 else 4
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    AdaptiveSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .padding(horizontal = MaterialTheme.spacing.medium)

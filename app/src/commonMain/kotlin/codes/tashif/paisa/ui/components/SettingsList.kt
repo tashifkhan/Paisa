@@ -17,6 +17,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
+import codes.tashif.paisa.ui.platform.handCursor
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -56,6 +58,12 @@ fun groupShape(position: GroupPosition): Shape {
         )
     }
 }
+
+/**
+ * Title of the settings row whose screen is open next to the list, on wide
+ * windows. That row is highlighted, like a selected item in a sidebar.
+ */
+val LocalSelectedSetting = staticCompositionLocalOf<String?> { null }
 
 /** Section label shown above a settings group. */
 @Composable
@@ -124,20 +132,27 @@ fun SettingsItem(
     leading: (@Composable () -> Unit)? = null
 ) {
     val haptics = rememberHaptics()
+    val selected = onClick != null && LocalSelectedSetting.current == title
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = groupShape(position),
-        color = MaterialTheme.colorScheme.surfaceContainerLow
+        color = if (selected) {
+            MaterialTheme.colorScheme.secondaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerLow
+        }
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .then(
                     if (onClick != null) {
-                        Modifier.clickable {
-                            haptics.click()
-                            onClick()
-                        }
+                        Modifier
+                            .clickable {
+                                haptics.click()
+                                onClick()
+                            }
+                            .handCursor()
                     } else {
                         Modifier
                     }
