@@ -194,3 +194,20 @@ fun SettingsItem(
         }
     }
 }
+
+/** An icon's container and content colors for one settings row. */
+data class RowTone(val container: Color, val content: Color)
+
+/**
+ * The primary, secondary and tertiary tones in turn, the way More colors its
+ * rows, so a group's icons don't all look the same.
+ */
+@Composable
+fun rowTone(index: Int): RowTone {
+    val scheme = MaterialTheme.colorScheme
+    return when (index % 3) {
+        0 -> RowTone(scheme.primaryContainer, scheme.onPrimaryContainer)
+        1 -> RowTone(scheme.secondaryContainer, scheme.onSecondaryContainer)
+        else -> RowTone(scheme.tertiaryContainer, scheme.onTertiaryContainer)
+    }
+}

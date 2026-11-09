@@ -40,6 +40,7 @@ import codes.tashif.paisa.ai.ladder.LadderState
 import codes.tashif.paisa.ui.components.DetailHeader
 import codes.tashif.paisa.ui.components.SettingsGroup
 import codes.tashif.paisa.ui.components.SettingsItem
+import codes.tashif.paisa.ui.components.rowTone
 import codes.tashif.paisa.ui.components.SettingsSectionLabel
 import codes.tashif.paisa.ui.components.groupPositionOf
 import codes.tashif.paisa.ui.theme.spacing
@@ -149,10 +150,14 @@ private fun ServicesSection(
                 } else {
                     ladderSummary(ladder.effective, catalog, providers)
                 },
-                icon = if (ladder.service.needsImage) Icons.Rounded.Image else Icons.Rounded.UploadFile,
+                icon = when (ladder.service) {
+                    AiService.STATEMENT_IMPORT -> Icons.Rounded.UploadFile
+                    AiService.STATEMENT_PHOTOS -> Icons.Rounded.Image
+                    AiService.QUICK_ADD -> Icons.Rounded.AutoAwesome
+                },
                 position = groupPositionOf(index, ladders.services.size),
-                iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                iconContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                iconContainerColor = rowTone(index).container,
+                iconContentColor = rowTone(index).content,
                 onClick = { onOpenLadder(ladder.service) }
             )
         }

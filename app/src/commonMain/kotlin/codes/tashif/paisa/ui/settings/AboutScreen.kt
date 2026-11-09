@@ -43,6 +43,7 @@ import codes.tashif.paisa.ui.components.SettingsGroup
 import codes.tashif.paisa.ui.components.SettingsItem
 import codes.tashif.paisa.ui.components.SettingsSectionLabel
 import codes.tashif.paisa.ui.components.groupPositionOf
+import codes.tashif.paisa.ui.components.rowTone
 import codes.tashif.paisa.ui.platform.PlatformBackHandler
 import codes.tashif.paisa.ui.platform.isWebPlatform
 import codes.tashif.paisa.ui.sms.smsImportSupported
@@ -95,8 +96,8 @@ fun AboutScreen(
                         subtitle = body,
                         icon = icon,
                         position = groupPositionOf(i, privacy.size),
-                        iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        iconContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        iconContainerColor = rowTone(i).container,
+                        iconContentColor = rowTone(i).content
                     )
                 }
             }
@@ -108,6 +109,8 @@ fun AboutScreen(
                     subtitle = "Currency, theme and SMS access, then shortcuts to get going",
                     icon = Icons.Rounded.Replay,
                     position = groupPositionOf(0, 2),
+                    iconContainerColor = rowTone(0).container,
+                    iconContentColor = rowTone(0).content,
                     onClick = onReplayOnboarding
                 )
                 SettingsItem(
@@ -115,6 +118,8 @@ fun AboutScreen(
                     subtitle = "Open an issue on GitHub",
                     icon = Icons.Rounded.BugReport,
                     position = groupPositionOf(1, 2),
+                    iconContainerColor = MaterialTheme.colorScheme.errorContainer,
+                    iconContentColor = MaterialTheme.colorScheme.onErrorContainer,
                     onClick = { open("$REPO/issues") },
                     trailing = { ExternalIcon() }
                 )
@@ -139,8 +144,9 @@ fun AboutScreen(
                         subtitle = row.subtitle,
                         icon = row.icon,
                         position = groupPositionOf(i, project.size),
-                        iconContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        iconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        // Offset by one so the group doesn't start on the same tone as Help.
+                        iconContainerColor = rowTone(i + 1).container,
+                        iconContentColor = rowTone(i + 1).content,
                         onClick = { open(row.url) },
                         trailing = { ExternalIcon() }
                     )
