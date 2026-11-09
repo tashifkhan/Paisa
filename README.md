@@ -78,6 +78,7 @@ parser-core/    bank sms parsers, from PennyWise (AGPL)
 - [ ] recurring transactions
 - [ ] better material 3 charts. the current ones work, they're just not pretty
 - [ ] a web app, which also means ios. no sms parsing there, because browsers can't read sms and ios won't let anyone read them anyway
+- [ ] swap paisa's own relayroom code (`ai/provider/RelayRoomStyle.kt` and the relayroom bits in `ai/catalog/`) for the official kotlin client, `sh.taf.relayroom:relayroom-kotlin`
 
 the web version won't be a rewrite in typescript. been there, not going back. the plan is kotlin multiplatform:
 
