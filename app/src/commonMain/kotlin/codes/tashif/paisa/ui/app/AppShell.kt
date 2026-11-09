@@ -62,8 +62,14 @@ import codes.tashif.paisa.ui.platform.setWindowTitle
 import codes.tashif.paisa.ui.settings.MoreScreen
 import codes.tashif.paisa.ui.sms.SmsViewModel
 import codes.tashif.paisa.ui.transaction.TransactionDetailScreen
-import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.layout.Column
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.saveable.SaveableStateHolder
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -87,6 +93,8 @@ fun AppShell(
     // and coming back shouldn't jump the list to the top.
     val tabStates = rememberSaveableStateHolder()
     val snackbarHostState = remember { SnackbarHostState() }
+    // How far the FABs lift while a snackbar shows above a bottom bar.
+    var snackbarHeightPx by remember { mutableFloatStateOf(0f) }
     var showShortcuts by remember { mutableStateOf(false) }
 
     // Widget deep links open the matching destination once, then clear so a
@@ -269,14 +277,25 @@ fun AppShell(
                 } else {
                     WindowInsets.systemBars.union(WindowInsets.displayCutout)
                 },
-                // With a bottom bar the snackbar sits on top of it and the
-                // FABs move up out of its way, instead of it floating over
-                // the list above the FABs.
+                // With a bottom bar the snackbar is drawn just above it (see
+                // the content below) and the FABs slide up out of its way,
+                // instead of it floating over the list above the FABs.
                 snackbarHost = { if (useRail) SnackbarHost(hostState = snackbarHostState) },
                 floatingActionButtonPosition = FabPosition.End,
                 floatingActionButton = {
                     // The detail pane has its own save button where the FAB sits.
                     if (!navButtons && !detailPane) {
+                        // A visual shift only, so nothing re-measures while it moves.
+                        val lift by animateFloatAsState(
+                            targetValue = if (!useRail && snackbarHostState.currentSnackbarData != null) {
+                                snackbarHeightPx
+                            } else {
+                                0f
+                            },
+                            animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
+                            label = "fab_lift"
+                        )
+                        Box(Modifier.graphicsLayer { translationY = -lift }) {
                         AppFab(
                             currentTab = currentTab,
                             scanRunning = scanProgress.isRunning,
@@ -286,24 +305,23 @@ fun AppShell(
                             // Side by side, the list of people is still showing.
                             debtPersonOpen = openDebtPersonId != null && !wide
                         )
+                        }
                     }
                 },
                 bottomBar = {
                     if (!useRail) {
-                        Column(Modifier.animateContentSize()) {
-                            SnackbarHost(hostState = snackbarHostState)
-                            AppNavBar(
+                        AppNavBar(
                             navTabs = navTabs,
                             currentTab = currentTab,
                             floating = settings?.floatingNavBar == true,
                             showLabels = settings?.navBarLabels != false,
                             onSelect = selectTab
                         )
-                        }
                     }
                 }
             ) { innerPadding ->
                 val layoutDirection = LocalLayoutDirection.current
+                Box(Modifier.fillMaxSize()) {
                 Row(
                     modifier = Modifier
                         .padding(
@@ -358,6 +376,22 @@ fun AppShell(
                             }
                         }
                     }
+                }
+                if (!useRail) {
+                    // Over the content, just above the bottom bar. It takes
+                    // no layout space, so the list doesn't shift under it.
+                    val density = LocalDensity.current
+                    SnackbarHost(
+                        hostState = snackbarHostState,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = innerPadding.calculateBottomPadding())
+                            .onSizeChanged { if (it.height > 0) snackbarHeightPx = it.height.toFloat() }
+                    )
+                    LaunchedEffect(density) {
+                        if (snackbarHeightPx == 0f) snackbarHeightPx = with(density) { 72.dp.toPx() }
+                    }
+                }
                 }
             }
         }
