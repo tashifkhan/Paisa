@@ -12,19 +12,7 @@ internal fun ByAccountCard(
     currency: String,
     onOpen: (AnalyticsGroup) -> Unit
 ) {
-        val ranks = expenses.groupBy { it.accountId }
-            .map { (id, list) ->
-                val sum = list.sumOf { it.amount }
-                RankItem(
-                    group = AnalyticsGroup(AnalyticsGroup.Kind.ACCOUNT, id.toString()),
-                    label = list.first().accountName,
-                    amount = sum,
-                    count = list.size,
-                    share = (sum / totalExpense).toFloat(),
-                    color = Color.Unspecified
-                )
-            }
-            .sortedByDescending { it.amount }
+        val ranks = accountRanks(expenses, totalExpense)
         ChartCard(title = "By account", subtitle = "Which account paid") {
             RankList(ranks, currency, onClick = onOpen)
         }

@@ -23,8 +23,60 @@ internal data class RankItem(
     val share: Float,
     val color: Color,
     val iconName: String? = null,
-    val colorHex: String? = null
+    val colorHex: String? = null,
+    /** Second line, such as "Rent & Housing · 1 payment". */
+    val subtitle: String? = null,
+    /** A plain icon (accounts), drawn on a Material You tone picked by [tone]. */
+    val icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    val tone: Int = 0
 )
+
+/** "1 payment", "3 payments". */
+internal fun countLabel(count: Int, noun: String = "payment"): String =
+    if (count == 1) "1 $noun" else "$count ${noun}s"
+
+/**
+ * A place's look comes from where most of its money went: its main
+ * category's icon and colour, with that category named in the subtitle.
+ */
+internal fun placeRanks(expenses: List<TransactionWithDetails>, totalExpense: Double): List<RankItem> =
+    expenses.groupBy { merchantKey(it) }
+        .map { (name, list) ->
+            val sum = list.sumOf { it.amount }
+            val main = list.groupBy { it.categoryName }.maxByOrNull { (_, l) -> l.sumOf { it.amount } }!!.value.first()
+            RankItem(
+                group = AnalyticsGroup(AnalyticsGroup.Kind.MERCHANT, name),
+                label = name,
+                amount = sum,
+                count = list.size,
+                share = if (totalExpense > 0) (sum / totalExpense).toFloat() else 0f,
+                color = parseColor(main.categoryColor) ?: Color.Unspecified,
+                iconName = main.categoryIcon,
+                colorHex = main.categoryColor,
+                subtitle = "${main.categoryName} · ${countLabel(list.size)}"
+            )
+        }
+        .sortedByDescending { it.amount }
+
+/** Accounts ranked by what they paid, each with its own icon. */
+internal fun accountRanks(expenses: List<TransactionWithDetails>, totalExpense: Double): List<RankItem> =
+    expenses.groupBy { it.accountId }
+        .map { (id, list) ->
+            val sum = list.sumOf { it.amount }
+            val first = list.first()
+            RankItem(
+                group = AnalyticsGroup(AnalyticsGroup.Kind.ACCOUNT, id.toString()),
+                label = first.accountName,
+                amount = sum,
+                count = list.size,
+                share = if (totalExpense > 0) (sum / totalExpense).toFloat() else 0f,
+                color = Color.Unspecified,
+                icon = codes.tashif.paisa.ui.components.AccountVisuals.icon(null, first.accountIcon),
+                subtitle = countLabel(list.size)
+            )
+        }
+        .sortedByDescending { it.amount }
+        .mapIndexed { index, item -> item.copy(tone = index) }
 
 internal fun merchantKey(tx: TransactionWithDetails): String =
     tx.merchantName?.trim()?.takeIf { it.isNotEmpty() }
@@ -56,7 +108,8 @@ internal fun categoryRanks(txs: List<TransactionWithDetails>): List<RankItem> {
                 share = if (total > 0) (sum / total).toFloat() else 0f,
                 color = parseColor(first.categoryColor) ?: fallbackChartColors[index % fallbackChartColors.size],
                 iconName = first.categoryIcon,
-                colorHex = first.categoryColor
+                colorHex = first.categoryColor,
+                subtitle = countLabel(list.size, "transaction")
             )
         }
 }
