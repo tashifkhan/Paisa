@@ -52,6 +52,7 @@ kotlin {
 
 dependencies {
     implementation(project(":parser-core"))
+    implementation(project(":shared"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)

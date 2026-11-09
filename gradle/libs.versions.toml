@@ -18,11 +18,11 @@ navigationCompose = "2.8.9"
 roomRuntime = "2.8.5"
 roomKtx = "2.8.5"
 roomCompiler = "2.8.5"
-kotlinxCoroutinesTest = "1.10.1"
+kotlinxCoroutinesTest = "1.11.0"
 core = "1.6.1"
 runner = "1.6.2"
-kotlinxCoroutinesAndroid = "1.10.1"
-kotlinxCoroutinesCore = "1.10.1"
+kotlinxCoroutinesAndroid = "1.11.0"
+kotlinxCoroutinesCore = "1.11.0"
 kotlinxDatetime = "0.6.2"
 workRuntimeKtx = "2.10.0"
 glance = "1.1.1"
@@ -34,6 +34,11 @@ pdfboxAndroid = "2.0.27.0"
 playServicesAuth = "21.3.0"
 hilt = "2.58"
 androidxHilt = "1.2.0"
+kotlinxSerialization = "1.10.0"
+kotlinxBrowser = "0.5.0"
+composeMultiplatform = "1.12.2"
+room3 = "3.0.3"
+sqliteWeb = "2.7.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -79,11 +84,20 @@ hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.r
 androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "androidxHilt" }
 androidx-hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "androidxHilt" }
 androidx-hilt-compiler = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "androidxHilt" }
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+kotlinx-browser = { group = "org.jetbrains.kotlinx", name = "kotlinx-browser", version.ref = "kotlinxBrowser" }
+room3-runtime = { group = "androidx.room3", name = "room3-runtime", version.ref = "room3" }
+room3-compiler = { group = "androidx.room3", name = "room3-compiler", version.ref = "room3" }
+sqlite-web = { group = "androidx.sqlite", name = "sqlite-web", version.ref = "sqliteWeb" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
+room3 = { id = "androidx.room3", version.ref = "room3" }
 google-devtools-ksp = { id = "com.google.devtools.ksp", version.ref = "googleDevtoolsKsp" }
 hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }

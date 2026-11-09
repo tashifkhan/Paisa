@@ -17,13 +17,30 @@ plugins {
 }
 
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    // Kotlin/Wasm adds its own Node.js and Yarn repositories to the root
+    // project. Prefer these settings ones and ignore those, instead of failing.
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
         google()
         mavenCentral()
+        // Node.js and Yarn for the web build and its tests.
+        ivy("https://nodejs.org/dist") {
+            name = "Node.js"
+            patternLayout { artifact("v[revision]/[artifact](-v[revision]-[classifier]).[ext]") }
+            metadataSources { artifact() }
+            content { includeModule("org.nodejs", "node") }
+        }
+        ivy("https://github.com/yarnpkg/yarn/releases/download") {
+            name = "Yarn"
+            patternLayout { artifact("v[revision]/[artifact](-v[revision]).[ext]") }
+            metadataSources { artifact() }
+            content { includeModule("com.yarnpkg", "yarn") }
+        }
     }
 }
 
 rootProject.name = "Paisa"
 include(":app")
 include(":parser-core")
+include(":shared")
+// include(":web")
