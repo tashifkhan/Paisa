@@ -10,15 +10,22 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import androidx.hilt.work.HiltWorker
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
 import codes.tashif.paisa.MainActivity
 import codes.tashif.paisa.R
 import java.io.IOException
 
 /** Scheduled backup. Runs silently; only failures that need the user post a notification. */
-class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+@HiltWorker
+class BackupWorker @AssistedInject constructor(
+    @Assisted context: Context,
+    @Assisted params: WorkerParameters,
+    private val manager: BackupManager
+) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val manager = BackupManager(applicationContext)
         if (manager.prefs.load().provider == BackupProvider.NONE) return Result.success()
         return try {
             manager.backupNow()

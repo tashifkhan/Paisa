@@ -1,18 +1,25 @@
 package codes.tashif.paisa.ai
 
 import codes.tashif.paisa.data.Account
-import codes.tashif.paisa.data.Repository
 import codes.tashif.paisa.data.Transaction
+import codes.tashif.paisa.data.repository.AccountRepository
+import codes.tashif.paisa.data.repository.CategoryRepository
+import codes.tashif.paisa.data.repository.TransactionRepository
 import com.pennywiseai.parser.core.md5Hex
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Commits reviewed [ExtractedTransaction] rows into Room with category resolution + hash dedup.
  */
-class StatementImportUseCase(
-    private val repository: Repository
+@Singleton
+class StatementImportUseCase @Inject constructor(
+    private val accountRepository: AccountRepository,
+    private val categoryRepository: CategoryRepository,
+    private val transactionRepository: TransactionRepository
 ) {
     data class CommitResult(
         val imported: Int,
@@ -42,13 +49,13 @@ class StatementImportUseCase(
             val type = if (row.type.equals("income", ignoreCase = true)) "income" else "expense"
             val merchant = row.merchant.ifBlank { "Unknown Merchant" }
             val categoryName = row.categoryName?.takeIf { it.isNotBlank() }
-                ?: repository.resolveCategoryName(merchant, type)
-            val categoryId = repository.findOrCreateCategory(categoryName, type)
+                ?: categoryRepository.resolveCategoryName(merchant, type)
+            val categoryId = categoryRepository.findOrCreateCategory(categoryName, type)
 
             val dateIso = toIsoDateTime(row.date)
             val hash = buildHash(row, accountId)
 
-            if (repository.getTransactionByHash(hash) != null) {
+            if (transactionRepository.getTransactionByHash(hash) != null) {
                 duplicates++
                 continue
             }
@@ -82,7 +89,7 @@ class StatementImportUseCase(
                 reference = row.reference
             )
 
-            val id = repository.insertSmsTransaction(tx, absoluteBalance = null)
+            val id = transactionRepository.insertSmsTransaction(tx, absoluteBalance = null)
             if (id == -1L) {
                 duplicates++
             } else {
@@ -94,8 +101,8 @@ class StatementImportUseCase(
     }
 
     suspend fun ensureImportAccount(): Int {
-        repository.getAccountByName("Statement import")?.let { return it.id }
-        return repository.insertAccount(
+        accountRepository.getAccountByName("Statement import")?.let { return it.id }
+        return accountRepository.insertAccount(
             Account(
                 name = "Statement import",
                 type = "Bank Account",

@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import java.util.Locale
+import codes.tashif.paisa.ui.format.formatMoneyAmount
 
 /**
  * Material You–style privacy mask: each “dot” is a different shape and a
@@ -116,10 +117,6 @@ private fun maskShape(index: Int): Shape = when (index % 8) {
         bottomStart = 2.dp,
         bottomEnd = 12.dp
     )
-}
-
-fun formatMoneyAmount(currency: String, amount: Double): String {
-    return String.format(Locale.getDefault(), "%s%,.2f", currency, amount)
 }
 
 /**

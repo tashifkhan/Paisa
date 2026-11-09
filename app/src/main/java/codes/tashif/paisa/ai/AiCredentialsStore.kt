@@ -3,12 +3,16 @@ package codes.tashif.paisa.ai
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Stores BYOK API keys in EncryptedSharedPreferences (Android Keystore-backed).
  * Never write keys into Room or logs.
  */
-class AiCredentialsStore(context: Context) {
+@Singleton
+class AiCredentialsStore @Inject constructor(@ApplicationContext context: Context) {
 
     private val prefs = try {
         val masterKey = MasterKey.Builder(context.applicationContext)

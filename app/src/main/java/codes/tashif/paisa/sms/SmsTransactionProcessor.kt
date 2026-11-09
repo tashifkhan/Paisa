@@ -2,10 +2,12 @@ package codes.tashif.paisa.sms
 
 import android.util.Log
 import codes.tashif.paisa.data.Account
-import codes.tashif.paisa.data.AppDatabase
-import codes.tashif.paisa.data.Repository
 import codes.tashif.paisa.data.Transaction
 import codes.tashif.paisa.data.UnrecognizedSms
+import codes.tashif.paisa.data.repository.AccountRepository
+import codes.tashif.paisa.data.repository.CategoryRepository
+import codes.tashif.paisa.data.repository.SmsInboxRepository
+import codes.tashif.paisa.data.repository.TransactionRepository
 import com.pennywiseai.parser.core.ParsedTransaction
 import com.pennywiseai.parser.core.TransactionType
 import com.pennywiseai.parser.core.bank.BankParserFactory
@@ -13,14 +15,19 @@ import com.pennywiseai.parser.core.md5Hex
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Parses bank SMS via [BankParserFactory] and persists transactions into Paisa Room DB.
  * Shared by the real-time [SmsBroadcastReceiver] and the bulk [SmsReaderWorker].
  */
-class SmsTransactionProcessor(
-    private val db: AppDatabase,
-    private val repository: Repository = Repository(db)
+@Singleton
+class SmsTransactionProcessor @Inject constructor(
+    private val accountRepository: AccountRepository,
+    private val categoryRepository: CategoryRepository,
+    private val transactionRepository: TransactionRepository,
+    private val smsInboxRepository: SmsInboxRepository
 ) {
     companion object {
         private const val TAG = "SmsTransactionProcessor"
@@ -78,7 +85,7 @@ class SmsTransactionProcessor(
             val hash = parsed.transactionHash?.takeIf { it.isNotBlank() }
                 ?: parsed.generateTransactionId()
 
-            val existing = repository.getTransactionByHash(hash)
+            val existing = transactionRepository.getTransactionByHash(hash)
             if (existing != null) {
                 if (existing.isDeleted) {
                     return ProcessingResult(false, reason = "Previously deleted")
@@ -96,11 +103,11 @@ class SmsTransactionProcessor(
             val type = mapType(parsed.type)
             val merchant = normalizeMerchant(parsed.merchant)
             // User merchant mapping → keyword rules → Others (canonical seed names)
-            val categoryName = repository.resolveCategoryName(
+            val categoryName = categoryRepository.resolveCategoryName(
                 merchantName = merchant,
                 transactionType = type
             )
-            val categoryId = repository.findOrCreateCategory(categoryName, type)
+            val categoryId = categoryRepository.findOrCreateCategory(categoryName, type)
             val accountId = resolveAccount(parsed)
             if (parsed.creditLimit != null) {
                 applyAccountUpdates(accountId, parsed, applyBalance = false)
@@ -137,7 +144,7 @@ class SmsTransactionProcessor(
                 reference = parsed.reference
             )
 
-            val rowId = repository.insertSmsTransaction(transaction, parsed.balance?.toDouble())
+            val rowId = transactionRepository.insertSmsTransaction(transaction, parsed.balance?.toDouble())
             if (rowId == -1L) {
                 return ProcessingResult(false, reason = "Duplicate transaction")
             }
@@ -159,7 +166,7 @@ class SmsTransactionProcessor(
         parsed: ParsedTransaction,
         applyBalance: Boolean = true
     ) {
-        val account = repository.getAccountById(accountId) ?: return
+        val account = accountRepository.getAccountById(accountId) ?: return
         var updated = account
         parsed.creditLimit?.let { limit ->
             updated = updated.copy(
@@ -169,10 +176,10 @@ class SmsTransactionProcessor(
             )
         }
         if (updated != account) {
-            repository.updateAccount(updated)
+            accountRepository.updateAccount(updated)
         }
         if (applyBalance && parsed.balance != null) {
-            repository.applyReportedBalance(
+            accountRepository.applyReportedBalance(
                 accountId,
                 parsed.balance!!.toDouble(),
                 isoFromMillis(parsed.timestamp)
@@ -185,12 +192,12 @@ class SmsTransactionProcessor(
         val bank = parsed.bankName
 
         if (last4 != null) {
-            repository.getAccountByBankAndLast4(bank, last4)?.let { return it.id }
+            accountRepository.getAccountByBankAndLast4(bank, last4)?.let { return it.id }
         } else {
             // No digits in the SMS: reuse the bank-level account instead of
             // creating one per message (survives user renames via bankName).
-            repository.getAccountByBankWithoutLast4(bank)?.let { return it.id }
-            repository.getAccountByName(bank)?.let { return it.id }
+            accountRepository.getAccountByBankWithoutLast4(bank)?.let { return it.id }
+            accountRepository.getAccountByName(bank)?.let { return it.id }
         }
 
         val name = when {
@@ -209,7 +216,7 @@ class SmsTransactionProcessor(
         val color = bankColors[kotlin.math.abs(bank.hashCode()) % bankColors.size]
         val opening = parsed.balance?.toDouble() ?: 0.0
 
-        return repository.insertAccount(
+        return accountRepository.insertAccount(
             Account(
                 name = name,
                 type = type,
@@ -226,7 +233,7 @@ class SmsTransactionProcessor(
 
     private suspend fun storeUnrecognized(sender: String, body: String, timestamp: Long) {
         val hash = md5Hex(body).take(16)
-        repository.insertUnrecognizedSms(
+        smsInboxRepository.insertUnrecognizedSms(
             UnrecognizedSms(
                 sender = sender,
                 body = body,

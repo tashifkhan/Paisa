@@ -11,7 +11,8 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import codes.tashif.paisa.MainActivity
 import codes.tashif.paisa.R
-import codes.tashif.paisa.data.AppDatabase
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,7 +21,11 @@ import kotlinx.coroutines.launch
 /**
  * Real-time SMS interceptor — parses bank alerts as they arrive.
  */
+@AndroidEntryPoint
 class SmsBroadcastReceiver : BroadcastReceiver() {
+
+    @Inject
+    lateinit var processor: SmsTransactionProcessor
 
     companion object {
         private const val TAG = "SmsBroadcastReceiver"
@@ -50,8 +55,6 @@ class SmsBroadcastReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         scope.launch {
             try {
-                val db = AppDatabase.getDatabase(context.applicationContext)
-                val processor = SmsTransactionProcessor(db)
                 for ((sender, data) in smsMap) {
                     val result = processor.processAndSaveTransaction(
                         sender = sender,
