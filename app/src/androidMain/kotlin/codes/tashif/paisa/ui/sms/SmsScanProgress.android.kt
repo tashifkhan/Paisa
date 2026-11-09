@@ -6,15 +6,6 @@ import codes.tashif.paisa.sms.SmsReaderWorker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-data class SmsScanProgress(
-    val isRunning: Boolean = false,
-    val total: Int = 0,
-    val processed: Int = 0,
-    val saved: Int = 0,
-    val duplicates: Int = 0,
-    val unrecognized: Int = 0
-)
-
 /** Progress of the SMS reader worker, read from WorkManager. */
 fun WorkManager.smsScanProgress(): Flow<SmsScanProgress> =
     getWorkInfosForUniqueWorkFlow(SmsReaderWorker.WORK_NAME)

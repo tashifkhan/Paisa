@@ -1,6 +1,5 @@
 package codes.tashif.paisa.ui.backup
 
-import codes.tashif.paisa.backup.NextcloudStore
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,6 +29,7 @@ import codes.tashif.paisa.ui.theme.spacing
 @Composable
 internal fun NextcloudSheet(
     initialServer: String,
+    serverError: (String) -> String?,
     onDismiss: () -> Unit,
     onBrowserLogin: (server: String) -> Unit,
     onManualLogin: (server: String, user: String, appPassword: String) -> Unit
@@ -38,11 +38,11 @@ internal fun NextcloudSheet(
     var manual by remember { mutableStateOf(false) }
     var user by remember { mutableStateOf("") }
     var appPassword by remember { mutableStateOf("") }
-    var serverError by remember { mutableStateOf<String?>(null) }
+    var serverErrorText by remember { mutableStateOf<String?>(null) }
     // Checks the address before handing it on, so an unsafe http URL shows here.
     fun withSafeServer(block: () -> Unit) {
-        serverError = NextcloudStore.serverError(server)
-        if (serverError == null) block()
+        serverErrorText = serverError(server)
+        if (serverErrorText == null) block()
     }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -66,11 +66,11 @@ internal fun NextcloudSheet(
                 value = server,
                 onValueChange = {
                     server = it
-                    serverError = null
+                    serverErrorText = null
                 },
                 label = { Text("Server address") },
-                isError = serverError != null,
-                supportingText = serverError?.let { { Text(it) } },
+                isError = serverErrorText != null,
+                supportingText = serverErrorText?.let { { Text(it) } },
                 placeholder = { Text("cloud.example.com") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),

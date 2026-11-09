@@ -1,30 +1,23 @@
 package codes.tashif.paisa.ui.sms
 
-import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
-import androidx.core.content.ContextCompat
+import codes.tashif.paisa.platform.nowMillis
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.work.ExistingWorkPolicy
-import androidx.work.WorkManager
 import codes.tashif.paisa.core.SnackbarManager
 import codes.tashif.paisa.data.Settings
 import codes.tashif.paisa.data.UnrecognizedSms
 import codes.tashif.paisa.data.repository.SettingsRepository
 import codes.tashif.paisa.data.repository.SmsInboxRepository
-import codes.tashif.paisa.sms.SmsReaderWorker
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class SmsViewModel(
-    private val context: Context,
     private val settingsRepository: SettingsRepository,
     private val smsInboxRepository: SmsInboxRepository,
     private val snackbarManager: SnackbarManager,
-    workManager: WorkManager
+    private val smsScan: SmsScanService
 ) : ViewModel() {
 
     private var lastForegroundScanRequestAt = 0L
@@ -32,7 +25,7 @@ class SmsViewModel(
     val settings: StateFlow<Settings?> = settingsRepository.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    val smsScanProgress: StateFlow<SmsScanProgress> = workManager.smsScanProgress()
+    val smsScanProgress: StateFlow<SmsScanProgress> = smsScan.scanProgress()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SmsScanProgress())
 
     val unrecognizedSmsCount: StateFlow<Int> = smsInboxRepository.pendingUnrecognizedCount
@@ -42,11 +35,15 @@ class SmsViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun startSmsScan(forceFull: Boolean = false) {
+        if (!smsImportSupported) {
+            snackbarManager.show(SMS_UNSUPPORTED_MESSAGE)
+            return
+        }
         if (!hasReadSmsPermission()) {
             snackbarManager.show("Grant SMS permission to scan your inbox")
             return
         }
-        SmsReaderWorker.enqueue(context, forceFull = forceFull)
+        smsScan.startScan(forceFull)
         snackbarManager.show(if (forceFull) "Full SMS scan started" else "SMS scan started")
     }
 
@@ -57,23 +54,19 @@ class SmsViewModel(
     fun scanSmsOnAppForeground() {
         if (!hasReadSmsPermission()) return
 
-        val now = System.currentTimeMillis()
+        val now = nowMillis()
         if (now - lastForegroundScanRequestAt < FOREGROUND_SCAN_DEBOUNCE_MS) return
         lastForegroundScanRequestAt = now
 
         viewModelScope.launch {
             val current = settingsRepository.getSettings() ?: return@launch
             if (!current.onboardingCompleted || !current.smsScanEnabled) return@launch
-            SmsReaderWorker.enqueue(
-                context = context,
-                forceFull = false,
-                existingWorkPolicy = ExistingWorkPolicy.KEEP
-            )
+            smsScan.startScanIfIdle()
         }
     }
 
     fun cancelSmsScan() {
-        SmsReaderWorker.cancel(context)
+        smsScan.cancelScan()
         snackbarManager.show("SMS scan cancelled")
     }
 
@@ -89,11 +82,13 @@ class SmsViewModel(
         }
     }
 
-    private fun hasReadSmsPermission(): Boolean =
-        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) ==
-            PackageManager.PERMISSION_GRANTED
+    private fun hasReadSmsPermission(): Boolean = smsScan.hasReadSmsPermission()
 
-    private companion object {
-        const val FOREGROUND_SCAN_DEBOUNCE_MS = 30_000L
+    companion object {
+        private const val FOREGROUND_SCAN_DEBOUNCE_MS = 30_000L
+
+        /** Shown where the platform can't read SMS. */
+        const val SMS_UNSUPPORTED_MESSAGE =
+            "SMS import needs the Android app. Browsers can't read text messages."
     }
 }

@@ -1,6 +1,5 @@
 package codes.tashif.paisa.ui.backup
 
-import android.net.Uri
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.Cloud
@@ -51,7 +50,7 @@ internal fun BackupDestinationSection(
             subtitle = when {
                 nextcloudLoginUrl != null -> "Waiting for you to approve in the browser…"
                 config.provider == BackupProvider.NEXTCLOUD && config.nextcloud != null ->
-                    "${config.nextcloud!!.loginName} · ${Uri.parse(config.nextcloud!!.serverUrl).host}"
+                    "${config.nextcloud!!.loginName} · ${urlHost(config.nextcloud!!.serverUrl)}"
                 else -> "Your own server, saved in a Paisa folder"
             },
             icon = Icons.Rounded.Storage,

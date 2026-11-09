@@ -1,12 +1,7 @@
 package codes.tashif.paisa.ui.sms
 
-import android.Manifest
+import codes.tashif.paisa.ui.platform.PlatformBackHandler
 import org.koin.compose.viewmodel.koinViewModel
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -28,14 +23,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.core.content.ContextCompat
 import codes.tashif.paisa.ui.components.DetailHeader
 import codes.tashif.paisa.ui.theme.spacing
 
@@ -49,68 +39,17 @@ fun SmsSetupScreen(
     onExternalActivityLaunched: () -> Unit = {},
     viewModel: SmsViewModel = koinViewModel()
 ) {
-    val context = LocalContext.current
     val scan by viewModel.smsScanProgress.collectAsState()
     val settings by viewModel.settings.collectAsState()
     val unrecognized by viewModel.unrecognizedSms.collectAsState()
     val unrecognizedCount by viewModel.unrecognizedSmsCount.collectAsState()
 
-    BackHandler(onBack = onBack)
+    PlatformBackHandler(onBack = onBack)
 
-    var hasReadSms by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) ==
-                PackageManager.PERMISSION_GRANTED
-        )
-    }
-    var hasReceiveSms by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) ==
-                PackageManager.PERMISSION_GRANTED
-        )
-    }
-    var hasNotifications by remember {
-        mutableStateOf(
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) true
-            else ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-        )
-    }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { result ->
-        hasReadSms = result[Manifest.permission.READ_SMS] == true ||
-            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) ==
-            PackageManager.PERMISSION_GRANTED
-        hasReceiveSms = result[Manifest.permission.RECEIVE_SMS] == true ||
-            ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) ==
-            PackageManager.PERMISSION_GRANTED
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            hasNotifications = result[Manifest.permission.POST_NOTIFICATIONS] == true ||
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED
-        }
-        if (hasReadSms) {
-            viewModel.startSmsScan(forceFull = true)
-        }
-    }
-
-    fun requestPermissions() {
-        val perms = buildList {
-            add(Manifest.permission.READ_SMS)
-            add(Manifest.permission.RECEIVE_SMS)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                add(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
-        onExternalActivityLaunched()
-        permissionLauncher.launch(perms.toTypedArray())
-    }
+    val permissions = rememberSmsPermissions(
+        onExternalActivityLaunched = onExternalActivityLaunched,
+        onReadSmsGranted = { viewModel.startSmsScan(forceFull = true) }
+    )
 
     Column(modifier = Modifier.fillMaxSize()) {
         DetailHeader(title = "SMS Import", onBack = onBack)
@@ -144,7 +83,11 @@ fun SmsSetupScreen(
                             tint = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Text(
-                            "Paisa reads bank SMS on-device only. Nothing leaves your phone.",
+                            if (smsImportSupported) {
+                                "Paisa reads bank SMS on-device only. Nothing leaves your phone."
+                            } else {
+                                SmsViewModel.SMS_UNSUPPORTED_MESSAGE
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
@@ -152,17 +95,19 @@ fun SmsSetupScreen(
                 }
             }
 
-            item {
-                SmsPermissionsSection(
-                    hasReadSms = hasReadSms,
-                    hasReceiveSms = hasReceiveSms,
-                    hasNotifications = hasNotifications,
-                    isScanning = scan.isRunning,
-                    onGrantAndScan = ::requestPermissions,
-                    onScanNew = { viewModel.startSmsScan(forceFull = false) },
-                    onFullRescan = { viewModel.startSmsScan(forceFull = true) },
-                    onCancelScan = viewModel::cancelSmsScan
-                )
+            if (smsImportSupported) {
+                item {
+                    SmsPermissionsSection(
+                        hasReadSms = permissions.hasReadSms,
+                        hasReceiveSms = permissions.hasReceiveSms,
+                        hasNotifications = permissions.hasNotifications,
+                        isScanning = scan.isRunning,
+                        onGrantAndScan = permissions::request,
+                        onScanNew = { viewModel.startSmsScan(forceFull = false) },
+                        onFullRescan = { viewModel.startSmsScan(forceFull = true) },
+                        onCancelScan = viewModel::cancelSmsScan
+                    )
+                }
             }
 
             if (scan.isRunning || scan.saved > 0 || scan.processed > 0) {

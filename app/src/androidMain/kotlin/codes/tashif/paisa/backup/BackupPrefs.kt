@@ -6,56 +6,6 @@ import android.util.Base64
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
-enum class BackupProvider(val id: String, val label: String) {
-    NONE("none", "Not set up"),
-    GOOGLE_DRIVE("gdrive", "Google Drive"),
-    NEXTCLOUD("nextcloud", "Nextcloud");
-
-    companion object {
-        fun fromId(id: String?) = entries.firstOrNull { it.id == id } ?: NONE
-    }
-}
-
-enum class BackupFrequency(val id: String, val label: String, val days: Long) {
-    MANUAL("manual", "Only when I tap \"Back up\"", 0),
-    DAILY("daily", "Daily", 1),
-    WEEKLY("weekly", "Weekly", 7),
-    MONTHLY("monthly", "Monthly", 30);
-
-    companion object {
-        fun fromId(id: String?) = entries.firstOrNull { it.id == id } ?: MANUAL
-    }
-}
-
-data class NextcloudAccount(
-    val serverUrl: String,
-    val loginName: String,
-    val userId: String,
-    val appPassword: String
-)
-
-data class BackupConfig(
-    val provider: BackupProvider,
-    val frequency: BackupFrequency,
-    val allowCellular: Boolean,
-    val encrypted: Boolean,
-    val googleEmail: String?,
-    val nextcloud: NextcloudAccount?,
-    val lastBackupAt: Long,
-    val lastBackupSize: Long,
-    val lastError: String?,
-    val sync: SyncStatus
-)
-
-/** What the backup screen shows about multi-device sync. */
-data class SyncStatus(
-    val enabled: Boolean,
-    val lastSyncAt: Long,
-    val error: String?,
-    /** Names of the other devices this one has received changes from. */
-    val peers: List<String>
-)
-
 /**
  * Backup settings, the Nextcloud app password, and the derived encryption key.
  *
