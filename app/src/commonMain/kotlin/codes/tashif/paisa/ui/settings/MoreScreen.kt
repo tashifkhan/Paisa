@@ -1,8 +1,8 @@
 package codes.tashif.paisa.ui.settings
 
-import androidx.activity.compose.rememberLauncherForActivityResult
+import codes.tashif.paisa.platform.formatDate
+import codes.tashif.paisa.platform.nowMillis
 import org.koin.compose.viewmodel.koinViewModel
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,14 +21,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import codes.tashif.paisa.data.AppTab
 import codes.tashif.paisa.ui.components.PaisaTopBar
 import codes.tashif.paisa.ui.theme.spacing
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
  * The More tab. [onExternalActivityLaunched] runs right before the export file
@@ -61,58 +57,38 @@ fun MoreScreen(
     val transactionCount by viewModel.transactionCount.collectAsState()
     val isExporting by viewModel.isExporting.collectAsState()
 
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var showExportOptions by remember { mutableStateOf(false) }
     val exportSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val stamp = remember {
-        SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
+        formatDate(nowMillis(), "yyyyMMdd")
     }
 
-    val csvExportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("text/csv")
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        try {
-            val outStream = context.contentResolver.openOutputStream(uri)
-            if (outStream != null) {
-                viewModel.exportTransactionsToCsv(outStream) { success ->
+    fun exportHandler(kind: String, export: (ExportSink, (Boolean) -> Unit) -> Unit) =
+        { sink: ExportSink?, error: String? ->
+            when {
+                sink != null -> export(sink) { success ->
                     if (success) {
-                        viewModel.showSnackbar("Exported $transactionCount transactions to CSV")
+                        viewModel.showSnackbar("Exported $transactionCount transactions to $kind")
                     } else {
-                        viewModel.showSnackbar("Failed to export CSV")
+                        viewModel.showSnackbar("Failed to export $kind")
                     }
                 }
-            } else {
-                viewModel.showSnackbar("Failed to open CSV destination")
+                error == "Failed to open destination" -> viewModel.showSnackbar("Failed to open $kind destination")
+                error != null -> viewModel.showSnackbar("$kind export error: $error")
             }
-        } catch (e: Exception) {
-            viewModel.showSnackbar("CSV export error: ${e.message}")
         }
-    }
 
-    val pdfExportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/pdf")
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        try {
-            val outStream = context.contentResolver.openOutputStream(uri)
-            if (outStream != null) {
-                viewModel.exportTransactionsToPdf(outStream) { success ->
-                    if (success) {
-                        viewModel.showSnackbar("Exported $transactionCount transactions to PDF")
-                    } else {
-                        viewModel.showSnackbar("Failed to export PDF")
-                    }
-                }
-            } else {
-                viewModel.showSnackbar("Failed to open PDF destination")
-            }
-        } catch (e: Exception) {
-            viewModel.showSnackbar("PDF export error: ${e.message}")
-        }
-    }
+    val csvExportLauncher = rememberCreateDocument(
+        "text/csv",
+        exportHandler("CSV", viewModel::exportTransactionsToCsv)
+    )
+
+    val pdfExportLauncher = rememberCreateDocument(
+        "application/pdf",
+        exportHandler("PDF", viewModel::exportTransactionsToPdf)
+    )
 
     Column(modifier = Modifier.fillMaxSize()) {
         PaisaTopBar(title = "More")
@@ -181,7 +157,7 @@ fun MoreScreen(
                     exportSheetState.hide()
                     showExportOptions = false
                     onExternalActivityLaunched()
-                    csvExportLauncher.launch("paisa_transactions_$stamp.csv")
+                    csvExportLauncher("paisa_transactions_$stamp.csv")
                 }
             },
             onPickPdf = {
@@ -189,7 +165,7 @@ fun MoreScreen(
                     exportSheetState.hide()
                     showExportOptions = false
                     onExternalActivityLaunched()
-                    pdfExportLauncher.launch("paisa_transactions_$stamp.pdf")
+                    pdfExportLauncher("paisa_transactions_$stamp.pdf")
                 }
             }
         )

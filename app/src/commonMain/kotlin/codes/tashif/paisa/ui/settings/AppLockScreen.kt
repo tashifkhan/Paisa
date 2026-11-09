@@ -1,6 +1,6 @@
 package codes.tashif.paisa.ui.settings
 
-import androidx.activity.compose.BackHandler
+import codes.tashif.paisa.ui.platform.PlatformBackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,7 +44,7 @@ fun AppLockScreen(
 ) {
     val haptics = rememberHaptics()
 
-    BackHandler(enabled = true) {
+    PlatformBackHandler(enabled = true) {
         // Block back while locked — user must authenticate.
     }
 

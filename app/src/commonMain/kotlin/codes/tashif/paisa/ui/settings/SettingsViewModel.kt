@@ -2,7 +2,6 @@ package codes.tashif.paisa.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.work.WorkManager
 import codes.tashif.paisa.ai.AiRepository
 import codes.tashif.paisa.core.PrivacySession
 import codes.tashif.paisa.core.SnackbarManager
@@ -14,7 +13,7 @@ import codes.tashif.paisa.data.repository.SettingsRepository
 import codes.tashif.paisa.data.repository.SmsInboxRepository
 import codes.tashif.paisa.data.repository.TransactionRepository
 import codes.tashif.paisa.ui.sms.SmsScanProgress
-import codes.tashif.paisa.ui.sms.smsScanProgress
+import codes.tashif.paisa.ui.sms.SmsScanService
 import codes.tashif.paisa.ui.ai.AiSummary
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -35,7 +34,7 @@ class SettingsViewModel(
     categoryRepository: CategoryRepository,
     transactionRepository: TransactionRepository,
     smsInboxRepository: SmsInboxRepository,
-    workManager: WorkManager
+    smsScan: SmsScanService
 ) : ViewModel() {
 
     val settings: StateFlow<Settings?> = settingsRepository.settings
@@ -56,7 +55,7 @@ class SettingsViewModel(
     val unrecognizedSmsCount: StateFlow<Int> = smsInboxRepository.pendingUnrecognizedCount
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
-    val smsScanProgress: StateFlow<SmsScanProgress> = workManager.smsScanProgress()
+    val smsScanProgress: StateFlow<SmsScanProgress> = smsScan.scanProgress()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SmsScanProgress())
 
     /** The model statement import would run first, for the AI and import rows. */
@@ -112,26 +111,26 @@ class SettingsViewModel(
     val isExporting: StateFlow<Boolean> = _isExporting.asStateFlow()
 
     /**
-     * Writes all non-deleted transactions to [outStream] as CSV.
-     * Call from a CreateDocument result; [onComplete] runs on the main thread.
+     * Writes all non-deleted transactions to [sink] as CSV.
+     * [onComplete] runs on the main thread.
      */
-    fun exportTransactionsToCsv(outStream: java.io.OutputStream, onComplete: (Boolean) -> Unit) {
+    fun exportTransactionsToCsv(sink: ExportSink, onComplete: (Boolean) -> Unit) {
         _isExporting.value = true
         viewModelScope.launch {
-            val success = exporter.writeCsv(outStream)
+            val success = exporter.writeCsv(sink)
             _isExporting.value = false
             onComplete(success)
         }
     }
 
     /**
-     * Writes a multi-page PDF statement of all transactions to [outStream].
+     * Writes a multi-page PDF statement of all transactions to [sink].
      * [onComplete] runs on the main thread.
      */
-    fun exportTransactionsToPdf(outStream: java.io.OutputStream, onComplete: (Boolean) -> Unit) {
+    fun exportTransactionsToPdf(sink: ExportSink, onComplete: (Boolean) -> Unit) {
         _isExporting.value = true
         viewModelScope.launch {
-            val success = exporter.writePdf(outStream)
+            val success = exporter.writePdf(sink)
             _isExporting.value = false
             onComplete(success)
         }

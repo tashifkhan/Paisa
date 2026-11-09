@@ -161,3 +161,8 @@ dependencies {
 room3 {
     schemaDirectory("$projectDir/schemas")
 }
+
+compose.resources {
+    packageOfResClass = "codes.tashif.paisa.resources"
+    publicResClass = false
+}

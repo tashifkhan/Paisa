@@ -1,6 +1,6 @@
 package codes.tashif.paisa.ui.app
 
-import androidx.activity.compose.BackHandler
+import codes.tashif.paisa.ui.platform.PlatformBackHandler
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -45,7 +45,6 @@ import codes.tashif.paisa.ui.home.RecordsScreen
 import codes.tashif.paisa.ui.settings.MoreScreen
 import codes.tashif.paisa.ui.sms.SmsViewModel
 import codes.tashif.paisa.ui.transaction.TransactionDetailScreen
-import codes.tashif.paisa.widget.WidgetDeepLink
 
 /** The unlocked app: tabs, nav bar, FABs, snackbars and the screens they open. */
 @Composable
@@ -68,11 +67,11 @@ fun AppShell(
     val widgetDestination by viewModel.pendingWidgetDestination.collectAsState()
     LaunchedEffect(widgetDestination) {
         when (widgetDestination) {
-            WidgetDeepLink.DEST_ADD_TRANSACTION -> state.open(AddSheet.TRANSACTION)
-            WidgetDeepLink.DEST_STATEMENT_IMPORT -> state.open(FullScreen.STATEMENT_IMPORT)
-            WidgetDeepLink.DEST_SMS_SETUP -> state.open(FullScreen.SMS_SETUP)
-            WidgetDeepLink.DEST_ACCOUNTS -> viewModel.selectTab(AppTab.ACCOUNTS)
-            WidgetDeepLink.DEST_HOME -> viewModel.selectTab(AppTab.HOME)
+            AppDestinations.ADD_TRANSACTION -> state.open(AddSheet.TRANSACTION)
+            AppDestinations.STATEMENT_IMPORT -> state.open(FullScreen.STATEMENT_IMPORT)
+            AppDestinations.SMS_SETUP -> state.open(FullScreen.SMS_SETUP)
+            AppDestinations.ACCOUNTS -> viewModel.selectTab(AppTab.ACCOUNTS)
+            AppDestinations.HOME -> viewModel.selectTab(AppTab.HOME)
         }
         if (widgetDestination != null) viewModel.consumeWidgetDestination()
     }
@@ -127,7 +126,7 @@ fun AppShell(
     }
 
     // A screen opened from More (its tab is hidden from the bar) goes back to More.
-    BackHandler(enabled = currentTab !in navTabs) {
+    PlatformBackHandler(enabled = currentTab !in navTabs) {
         viewModel.selectTab(AppTab.MORE)
     }
 

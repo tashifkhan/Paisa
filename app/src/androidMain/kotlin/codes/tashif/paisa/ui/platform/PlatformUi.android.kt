@@ -27,3 +27,11 @@ actual fun isImeVisible(): Boolean = WindowInsets.isImeVisible
 
 @Composable
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) = BackHandler(enabled, onBack)
+
+@Composable
+actual fun dynamicAccentColor(): androidx.compose.ui.graphics.Color? =
+    if (dynamicColorSupported) {
+        androidx.compose.ui.res.colorResource(android.R.color.system_accent1_400)
+    } else {
+        null
+    }

@@ -1,6 +1,6 @@
 package codes.tashif.paisa.ui.settings
 
-import androidx.activity.compose.BackHandler
+import codes.tashif.paisa.ui.platform.PlatformBackHandler
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -65,7 +65,7 @@ fun CurrencyScreen(
 ) {
     val settings by viewModel.settings.collectAsState()
 
-    BackHandler(onBack = onBack)
+    PlatformBackHandler(onBack = onBack)
 
     Column(modifier = Modifier.fillMaxSize()) {
         DetailHeader(title = "Currency", onBack = onBack)

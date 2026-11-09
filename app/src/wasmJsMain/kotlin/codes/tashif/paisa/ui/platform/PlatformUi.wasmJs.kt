@@ -26,3 +26,6 @@ actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) {
         onDispose { BrowserBack.remove(token) }
     }
 }
+
+@Composable
+actual fun dynamicAccentColor(): androidx.compose.ui.graphics.Color? = null

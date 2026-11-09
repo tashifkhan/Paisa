@@ -1,6 +1,6 @@
 package codes.tashif.paisa.ui.settings
 
-import androidx.activity.compose.BackHandler
+import codes.tashif.paisa.ui.platform.PlatformBackHandler
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,7 +39,7 @@ fun MerchantMappingsScreen(
 ) {
     val mappings by viewModel.merchantMappings.collectAsState()
 
-    BackHandler(onBack = onBack)
+    PlatformBackHandler(onBack = onBack)
 
     Column(modifier = Modifier.fillMaxSize()) {
         DetailHeader(title = "Merchant rules", onBack = onBack)

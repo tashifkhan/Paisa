@@ -1,69 +1,17 @@
 package codes.tashif.paisa.ui.settings
 
-import codes.tashif.paisa.data.repository.SettingsRepository
-import codes.tashif.paisa.data.repository.TransactionRepository
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withContext
+import codes.tashif.paisa.data.TransactionWithDetails
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 
-/** Writes every non-deleted transaction to a CSV file or a PDF statement. */
-class TransactionExporter(
-    private val transactionsRepository: TransactionRepository,
-    private val settingsRepository: SettingsRepository
-) {
-
-    /** Writes CSV to [outStream] on the IO dispatcher and closes it. Returns false on any error. */
-    suspend fun writeCsv(outStream: java.io.OutputStream): Boolean = withContext(Dispatchers.IO) {
-        try {
-            val txList = transactionsRepository.allTransactions.first()
-            java.io.BufferedWriter(java.io.OutputStreamWriter(outStream)).use { writer ->
-                writer.write(
-                    "Transaction ID,Date,Type,Amount,Currency,Note,Category,Account," +
-                        "Merchant,Bank,Source,Reference,Tags\n"
-                )
-                txList.forEach { tx ->
-                    writer.write(
-                        listOf(
-                            tx.id.toString(),
-                            tx.transactionDate,
-                            tx.type,
-                            tx.amount.toString(),
-                            tx.currency,
-                            csvEscape(tx.note),
-                            csvEscape(tx.categoryName),
-                            csvEscape(tx.accountName),
-                            csvEscape(tx.merchantName.orEmpty()),
-                            csvEscape(tx.bankName.orEmpty()),
-                            tx.source,
-                            csvEscape(tx.reference.orEmpty()),
-                            csvEscape(tx.tags)
-                        ).joinToString(",") + "\n"
-                    )
-                }
-            }
-            true
-        } catch (e: Exception) {
-            e.printStackTrace()
-            false
-        } finally {
-            try {
-                outStream.close()
-            } catch (_: Exception) {
-            }
-        }
-    }
-
-    /**
-     * Writes a multi-page PDF statement to [outStream] on the IO dispatcher and
-     * closes it. Returns false on any error.
-     */
-    suspend fun writePdf(outStream: java.io.OutputStream): Boolean = withContext(Dispatchers.IO) {
-        try {
-            val currency = settingsRepository.settings.first()?.currency ?: "₹"
-            val txList = transactionsRepository.allTransactions.first().sortedBy { it.transactionDate }
+/** The multi-page A4 PDF statement, drawn with Android's PdfDocument. */
+class AndroidPdfStatementRenderer : PdfStatementRenderer {
+    override suspend fun render(currency: String, txList: List<TransactionWithDetails>): ByteArray =
+        withContext(Dispatchers.IO) {
             val pdfDocument = android.graphics.pdf.PdfDocument()
 
             val pageWidth = 595 // A4
@@ -228,7 +176,7 @@ class TransactionExporter(
                         )
                     }
                     canvas.drawText(
-                        tx.type.uppercase(Locale.getDefault()),
+                        tx.type.uppercase(),
                         colTypeX,
                         rowTextY,
                         typePaint
@@ -258,24 +206,11 @@ class TransactionExporter(
                 pdfDocument.finishPage(page)
             }
 
-            pdfDocument.writeTo(outStream)
+            val out = ByteArrayOutputStream()
+            pdfDocument.writeTo(out)
             pdfDocument.close()
-            true
-        } catch (e: Exception) {
-            e.printStackTrace()
-            false
-        } finally {
-            try {
-                outStream.close()
-            } catch (_: Exception) {
-            }
+            out.toByteArray()
         }
-    }
-
-    private fun csvEscape(value: String): String {
-        val escaped = value.replace("\"", "\"\"")
-        return "\"$escaped\""
-    }
 
     private fun truncateForPdf(value: String, maxLen: Int): String =
         if (value.length > maxLen) value.take(maxLen - 2) + ".." else value

@@ -17,3 +17,7 @@ expect fun isImeVisible(): Boolean
 /** Handles the system back gesture while [enabled]. */
 @Composable
 expect fun PlatformBackHandler(enabled: Boolean = true, onBack: () -> Unit)
+
+/** The system's Material You accent (system_accent1_400), or null where there is none. */
+@Composable
+expect fun dynamicAccentColor(): androidx.compose.ui.graphics.Color?

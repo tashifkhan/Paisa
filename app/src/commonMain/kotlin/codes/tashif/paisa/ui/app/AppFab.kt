@@ -1,7 +1,7 @@
 package codes.tashif.paisa.ui.app
 
-import android.Manifest
-import android.content.pm.PackageManager
+import codes.tashif.paisa.ui.sms.SmsScanService
+import org.koin.compose.koinInject
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -22,9 +22,7 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import codes.tashif.paisa.data.AppTab
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.spacing
@@ -43,7 +41,7 @@ fun AppFab(
     onAdd: (AddSheet) -> Unit,
     debtPersonOpen: Boolean
 ) {
-    val context = LocalContext.current
+    val smsScan = koinInject<SmsScanService>()
     val haptics = rememberHaptics()
 
     AnimatedVisibility(
@@ -62,10 +60,7 @@ fun AppFab(
                     onClick = {
                         if (!scanRunning) {
                             haptics.click()
-                            val canReadSms = ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.READ_SMS
-                            ) == PackageManager.PERMISSION_GRANTED
+                            val canReadSms = smsScan.hasReadSmsPermission()
                             if (canReadSms) onRescanSms() else onOpenSmsSetup()
                         }
                     }

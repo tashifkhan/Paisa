@@ -1,6 +1,5 @@
 package codes.tashif.paisa.ui.app
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import codes.tashif.paisa.core.AppLockGuard
@@ -14,7 +13,6 @@ import codes.tashif.paisa.data.Settings
 import codes.tashif.paisa.data.repository.AccountRepository
 import codes.tashif.paisa.data.repository.SettingsRepository
 import codes.tashif.paisa.data.repository.TransactionRepository
-import codes.tashif.paisa.widget.PaisaWidgets
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,7 +28,7 @@ import kotlinx.coroutines.launch
  * activity and starts a fresh navigation and privacy session.
  */
 class AppViewModel(
-    private val context: Context,
+    private val platform: AppPlatform,
     accountRepository: AccountRepository,
     transactionRepository: TransactionRepository,
     settingsRepository: SettingsRepository,
@@ -122,7 +120,7 @@ class AppViewModel(
         // the running balance, so this covers transaction changes too.
         viewModelScope.launch {
             accountRepository.allAccounts.collect {
-                PaisaWidgets.refresh(context)
+                platform.refreshWidgets()
             }
         }
     }

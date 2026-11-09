@@ -1,6 +1,6 @@
 package codes.tashif.paisa.ui.settings
 
-import androidx.activity.compose.BackHandler
+import codes.tashif.paisa.ui.platform.PlatformBackHandler
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -49,7 +49,7 @@ fun CategoriesScreen(
     var showAdd by remember { mutableStateOf(false) }
     val haptics = rememberHaptics()
 
-    BackHandler(onBack = onBack)
+    PlatformBackHandler(onBack = onBack)
 
     Column(modifier = Modifier.fillMaxSize()) {
         DetailHeader(

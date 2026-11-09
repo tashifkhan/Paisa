@@ -1,8 +1,7 @@
 package codes.tashif.paisa.ui.app
 
-import android.content.Context
+import codes.tashif.paisa.ui.settings.rememberBiometrics
 import org.koin.compose.viewmodel.koinViewModel
-import android.content.ContextWrapper
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,9 +14,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.fragment.app.FragmentActivity
-import codes.tashif.paisa.security.BiometricAuth
 import codes.tashif.paisa.ui.backup.BackupScreen
 import codes.tashif.paisa.ui.onboarding.OnboardingScreen
 import codes.tashif.paisa.ui.settings.AppLockScreen
@@ -83,15 +79,13 @@ fun PaisaApp(viewModel: AppViewModel = koinViewModel()) {
 
 @Composable
 private fun LockGate(onUnlocked: () -> Unit) {
-    val activity = LocalContext.current.findFragmentActivity()
+    val biometrics = rememberBiometrics()
     var lockError by remember { mutableStateOf<String?>(null) }
-    val biometricAvailable = remember { BiometricAuth.isAvailable(activity) }
     AppLockScreen(
         errorMessage = lockError,
-        biometricAvailable = biometricAvailable,
+        biometricAvailable = biometrics.available,
         onUnlockClick = {
-            BiometricAuth.authenticate(
-                activity = activity,
+            biometrics.authenticate(
                 onSuccess = {
                     lockError = null
                     onUnlocked()
@@ -101,10 +95,4 @@ private fun LockGate(onUnlocked: () -> Unit) {
             )
         }
     )
-}
-
-private tailrec fun Context.findFragmentActivity(): FragmentActivity = when (this) {
-    is FragmentActivity -> this
-    is ContextWrapper -> baseContext.findFragmentActivity()
-    else -> error("PaisaApp must be hosted in a FragmentActivity")
 }

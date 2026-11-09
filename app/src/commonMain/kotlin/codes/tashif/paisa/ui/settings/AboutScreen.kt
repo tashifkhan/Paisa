@@ -1,6 +1,9 @@
 package codes.tashif.paisa.ui.settings
 
-import androidx.activity.compose.BackHandler
+import codes.tashif.paisa.ui.app.AppPlatform
+import codes.tashif.paisa.ui.app.appIconPainter
+import org.koin.compose.koinInject
+import codes.tashif.paisa.ui.platform.PlatformBackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.clip
@@ -30,8 +33,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.ui.components.DetailHeader
@@ -40,23 +41,15 @@ import codes.tashif.paisa.ui.components.SettingsItem
 import codes.tashif.paisa.ui.components.SettingsSectionLabel
 import codes.tashif.paisa.ui.components.groupPositionOf
 import codes.tashif.paisa.ui.theme.spacing
-import codes.tashif.paisa.R
 
 @Composable
 fun AboutScreen(
     onBack: () -> Unit,
     onReplayOnboarding: () -> Unit = {}
 ) {
-    val context = LocalContext.current
-    val versionName = remember {
-        runCatching {
-            context.packageManager
-                .getPackageInfo(context.packageName, 0)
-                .versionName
-        }.getOrNull() ?: "1.0.0"
-    }
+    val versionName = koinInject<AppPlatform>().versionName
 
-    BackHandler(onBack = onBack)
+    PlatformBackHandler(onBack = onBack)
 
     Column(modifier = Modifier.fillMaxSize()) {
         DetailHeader(title = "About", onBack = onBack)
@@ -84,7 +77,7 @@ fun AboutScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Image(
-                        painter = painterResource(R.drawable.ic_launcher_legacy),
+                        painter = appIconPainter(),
                         contentDescription = "Paisa app icon",
                         modifier = Modifier
                             .size(72.dp)

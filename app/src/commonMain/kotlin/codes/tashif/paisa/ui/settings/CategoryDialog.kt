@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.settings
 
+import codes.tashif.paisa.ui.platform.parseColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -179,5 +180,5 @@ private fun ColorSwatch(hex: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 private fun parseHex(hex: String): Color =
-    runCatching { Color(android.graphics.Color.parseColor(hex)) }
+    runCatching { (parseColor(hex)) }
         .getOrDefault(Color(0xFFD0D0D0))

@@ -8,10 +8,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
-import androidx.fragment.app.FragmentActivity
-import codes.tashif.paisa.security.BiometricAuth
-import codes.tashif.paisa.security.BiometricStatus
 import codes.tashif.paisa.ui.components.SettingsGroup
 import codes.tashif.paisa.ui.components.SettingsItem
 import codes.tashif.paisa.ui.components.SettingsSectionLabel
@@ -30,15 +26,12 @@ fun PrivacySecuritySection(
     onSetBiometricLockEnabled: (Boolean) -> Unit,
     onShowMessage: (String) -> Unit
 ) {
-    val context = LocalContext.current
     val haptics = rememberHaptics()
-    val biometricStatus = remember(context) { BiometricAuth.status(context) }
-    val biometricAvailable = biometricStatus == BiometricStatus.Available
-    val activity = context as? FragmentActivity
+    val biometrics = rememberBiometrics()
+    val biometricAvailable = biometrics.available
 
-    fun enableWithBiometrics(activity: FragmentActivity) {
-        BiometricAuth.authenticate(
-            activity = activity,
+    fun enableWithBiometrics() {
+        biometrics.authenticate(
             title = "Enable app lock",
             subtitle = "Confirm it's you to require unlock next time",
             onSuccess = {
@@ -81,10 +74,10 @@ fun PrivacySecuritySection(
                 if (biometricEnabled) {
                     "Require biometrics when opening Paisa"
                 } else {
-                    BiometricAuth.statusMessage(biometricStatus)
+                    biometrics.statusMessage
                 }
             } else {
-                BiometricAuth.statusMessage(biometricStatus)
+                biometrics.statusMessage
             },
             icon = if (biometricEnabled) Icons.Rounded.Lock else Icons.Rounded.Fingerprint,
             position = groupPositionOf(1, 2),
@@ -103,13 +96,13 @@ fun PrivacySecuritySection(
                     if (biometricEnabled) {
                         haptics.toggle(on = false)
                         onSetBiometricLockEnabled(false)
-                    } else if (activity != null) {
-                        enableWithBiometrics(activity)
+                    } else {
+                        enableWithBiometrics()
                     }
                 }
             } else {
                 {
-                    onShowMessage(BiometricAuth.statusMessage(biometricStatus))
+                    onShowMessage(biometrics.statusMessage)
                 }
             },
             trailing = {
@@ -118,7 +111,7 @@ fun PrivacySecuritySection(
                     enabled = biometricAvailable,
                     onCheckedChange = { enabled ->
                         if (!biometricAvailable) {
-                            onShowMessage(BiometricAuth.statusMessage(biometricStatus))
+                            onShowMessage(biometrics.statusMessage)
                             return@Switch
                         }
                         if (!enabled) {
@@ -126,8 +119,7 @@ fun PrivacySecuritySection(
                             onSetBiometricLockEnabled(false)
                             return@Switch
                         }
-                        if (activity == null) return@Switch
-                        enableWithBiometrics(activity)
+                        enableWithBiometrics()
                     }
                 )
             }

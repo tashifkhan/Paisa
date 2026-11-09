@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.settings
 
+import codes.tashif.paisa.ui.platform.dynamicAccentColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -30,7 +31,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.ui.haptics.rememberHaptics
@@ -146,14 +146,7 @@ private fun PaletteCard(
     modifier: Modifier = Modifier
 ) {
     val isDynamic = palette == PaisaPalette.Dynamic
-    val accent = if (
-        isDynamic &&
-        android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
-    ) {
-        colorResource(android.R.color.system_accent1_400)
-    } else {
-        palette.seed
-    }
+    val accent = (if (isDynamic) dynamicAccentColor() else null) ?: palette.seed
 
     Card(
         modifier = modifier.clickable(onClick = onClick),

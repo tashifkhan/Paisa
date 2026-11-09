@@ -46,6 +46,10 @@ import codes.tashif.paisa.ui.onboarding.OnboardingViewModel
 import codes.tashif.paisa.ui.settings.CategoriesViewModel
 import codes.tashif.paisa.ui.settings.SettingsViewModel
 import codes.tashif.paisa.ui.settings.TransactionExporter
+import codes.tashif.paisa.ui.settings.PdfStatementRenderer
+import codes.tashif.paisa.ui.settings.AndroidPdfStatementRenderer
+import codes.tashif.paisa.ui.app.AppPlatform
+import codes.tashif.paisa.ui.app.AndroidAppPlatform
 import codes.tashif.paisa.ui.sms.SmsViewModel
 import codes.tashif.paisa.ui.statement.StatementImportViewModel
 import codes.tashif.paisa.ui.transaction.TransactionViewModel
@@ -105,7 +109,9 @@ val appModule = module {
     singleOf(::BackupManager)
     single { SyncManager(androidContext(), get(), get()) }
 
-    factoryOf(::TransactionExporter)
+    factory { TransactionExporter(get(), get(), getOrNull()) }
+    single<PdfStatementRenderer> { AndroidPdfStatementRenderer() }
+    single<AppPlatform> { AndroidAppPlatform(androidContext()) }
 }
 
 val viewModelModule = module {

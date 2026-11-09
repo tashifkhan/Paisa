@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 
 /**
@@ -25,7 +24,7 @@ enum class WindowWidth { COMPACT, MEDIUM, EXPANDED }
  */
 @Composable
 fun windowWidth(): WindowWidth {
-    val widthDp = LocalConfiguration.current.screenWidthDp
+    val widthDp = windowWidthDp()
     return when {
         widthDp < 600 -> WindowWidth.COMPACT
         widthDp < 840 -> WindowWidth.MEDIUM
