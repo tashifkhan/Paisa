@@ -83,9 +83,7 @@ class CanaraBankParser : BaseIndianBankParser() {
         )
         upiCounterpartyPattern.find(message)?.let { match ->
             val raw = match.groupValues[1].trim()
-            // Paisa: collapse doubled spaces in payee names ("Pabitra  Sin" -> "Pabitra Sin").
             val merchant = cleanMerchantName(if ('@' in raw) raw.substringBefore('@') else raw)
-                .replace(Regex("""\s+"""), " ")
             if (merchant.isNotEmpty() && (isValidMerchantName(merchant) || '@' in raw)) {
                 return merchant
             }
