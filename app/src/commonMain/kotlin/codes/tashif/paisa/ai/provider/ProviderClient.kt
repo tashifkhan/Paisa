@@ -98,6 +98,10 @@ class ProviderClient() : ModelCaller {
     }
 
     private suspend fun execute(spec: HttpSpec, timeoutSeconds: Long? = null): Reply {
+        directFetch(spec.url, spec.headers, spec.body?.toString(), timeoutSeconds ?: CALL_TIMEOUT_SECONDS)?.let {
+            checkRedirect(it.status)
+            return Reply(it.status, it.body)
+        }
         val response = try {
             send(spec, timeoutSeconds ?: CALL_TIMEOUT_SECONDS)
         } catch (e: CancellationException) {
@@ -121,17 +125,7 @@ class ProviderClient() : ModelCaller {
             throw e
         }
         val status = response.status.value
-        // Never follow redirects: the client would carry the key headers to
-        // whatever host the server names, past the base URL check. A browser
-        // reports a redirect it was told not to follow as status 0.
-        if (status in 300..399 || status == 0) {
-            throw LlmException(
-                "the server redirected to another address (HTTP $status). " +
-                    "Paisa doesn't follow redirects with your key. Check the base URL",
-                LlmFailure.HTTP,
-                status
-            )
-        }
+        checkRedirect(status)
         val body = try {
             response.bodyAsText()
         } catch (e: CancellationException) {
@@ -145,6 +139,22 @@ class ProviderClient() : ModelCaller {
             throw networkError(e)
         }
         return Reply(status, body)
+    }
+
+    /**
+     * Never follow redirects: the client would carry the key headers to
+     * whatever host the server names, past the base URL check. A browser
+     * reports a redirect it was told not to follow as status 0.
+     */
+    private fun checkRedirect(status: Int) {
+        if (status in 300..399 || status == 0) {
+            throw LlmException(
+                "the server redirected to another address (HTTP $status). " +
+                    "Paisa doesn't follow redirects with your key. Check the base URL",
+                LlmFailure.HTTP,
+                status
+            )
+        }
     }
 
     private suspend fun send(spec: HttpSpec, timeoutSeconds: Long): HttpResponse {

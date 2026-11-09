@@ -19,6 +19,7 @@ android first. the same app also runs in the browser, built from the same kotlin
 - **accounts.** wallets and bank accounts you can reorder, merge, set a default on, or correct the balance of by hand when the bank and the app disagree
 - **backups** to google drive, nextcloud or a `.paisa` file. set a password and the file is AES-256-GCM encrypted before it goes anywhere
 - **ai statement import, if you want it.** bring your own key (openai compatible, gemini or anthropic), then feed it pdf, csv or image statements, several at once. duplicates across files get dropped
+- **add with ai.** in the add sheet, switch to "With AI" and type something like "lunch 240 yesterday, uber 180 today", attach receipts, bills, screenshots or pdfs, or both. you get a list of drafts to edit, ask the ai to change ("the uber one was cash"), then save the ones you want. it uses the same models as statement import, and has its own ladder under More → AI
 - **app lock** with biometrics or your screen lock
 - **export** to csv or pdf
 - **home screen widgets** for your balance and quick actions

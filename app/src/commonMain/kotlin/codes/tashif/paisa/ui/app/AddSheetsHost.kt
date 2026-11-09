@@ -10,7 +10,13 @@ import codes.tashif.paisa.ui.transaction.AddTransactionSheet
 @Composable
 fun AddSheetsHost(state: ShellState) {
     if (state.isOpen(AddSheet.TRANSACTION)) {
-        AddTransactionSheet(onDismiss = { state.close(AddSheet.TRANSACTION) })
+        AddTransactionSheet(
+            onDismiss = { state.close(AddSheet.TRANSACTION) },
+            onOpenAiSettings = {
+                state.close(AddSheet.TRANSACTION)
+                state.open(FullScreen.AI)
+            }
+        )
     }
     if (state.isOpen(AddSheet.BUDGET)) {
         AddBudgetSheet(onDismiss = { state.close(AddSheet.BUDGET) })

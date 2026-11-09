@@ -35,7 +35,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.ui.components.AccountPicker
 import codes.tashif.paisa.ui.components.CategoryPicker
+import codes.tashif.paisa.ui.components.PillTabs
 import codes.tashif.paisa.ui.components.SheetToggleCard
+import codes.tashif.paisa.ui.statement.rememberPhotoPicker
+import codes.tashif.paisa.ui.statement.rememberStatementPicker
+import androidx.compose.runtime.saveable.rememberSaveable
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.spacing
 
@@ -43,8 +47,16 @@ import codes.tashif.paisa.ui.theme.spacing
 @Composable
 fun AddTransactionSheet(
     onDismiss: () -> Unit,
-    viewModel: TransactionViewModel = koinViewModel()
+    onOpenAiSettings: () -> Unit = {},
+    viewModel: TransactionViewModel = koinViewModel(),
+    aiViewModel: AiAddViewModel = koinViewModel()
 ) {
+    val aiState by aiViewModel.state.collectAsState()
+    // Come back to the AI side when a draft is running or waiting for review.
+    var withAi by rememberSaveable { mutableStateOf(aiState.inProgress) }
+    val aiReady = remember(withAi) { aiViewModel.canRun() }
+    val openPhotos = rememberPhotoPicker { aiViewModel.addFiles(it) }
+    val openFiles = rememberStatementPicker { aiViewModel.addFiles(it) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val haptics = rememberHaptics()
     val accounts by viewModel.accounts.collectAsState()
@@ -122,13 +134,67 @@ fun AddTransactionSheet(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Log a manual expense or income",
+                text = when {
+                    !withAi -> "Log a manual expense or income"
+                    aiState.reviewing -> "Edit anything that looks off, then save"
+                    else -> "Describe it, or attach receipts, bills and PDFs"
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(Modifier.height(MaterialTheme.spacing.medium))
 
+            if (!(withAi && aiState.reviewing)) {
+                PillTabs(
+                    options = listOf("Manual" to false, "With AI" to true),
+                    selected = withAi,
+                    onSelect = { withAi = it }
+                )
+                Spacer(Modifier.height(MaterialTheme.spacing.medium))
+            }
+
+            if (withAi) {
+                if (aiState.reviewing) {
+                    AiReviewStep(
+                        state = aiState,
+                        categories = categories,
+                        accounts = accounts,
+                        currency = currency,
+                        onBack = aiViewModel::backToNote,
+                        onUpdate = aiViewModel::updateRow,
+                        onRemove = aiViewModel::removeRow,
+                        onSelectAll = aiViewModel::setAllSelected,
+                        onRefine = aiViewModel::refine,
+                        onSave = {
+                            haptics.confirm()
+                            aiViewModel.save(onSaved = onDismiss)
+                        }
+                    )
+                } else {
+                    AiNoteStep(
+                        state = aiState,
+                        aiReady = aiReady,
+                        onNoteChange = aiViewModel::setNote,
+                        onAddPhotos = {
+                            aiViewModel.onExternalActivityLaunched()
+                            openPhotos()
+                        },
+                        onAddFiles = {
+                            aiViewModel.onExternalActivityLaunched()
+                            openFiles()
+                        },
+                        onRemoveFile = aiViewModel::removeFile,
+                        onDraft = {
+                            keyboardController?.hide()
+                            focusManager.clearFocus()
+                            aiViewModel.draft()
+                        },
+                        onCancel = aiViewModel::cancel,
+                        onOpenAiSettings = onOpenAiSettings
+                    )
+                }
+            } else {
             TransactionTypeChoice(
                 type = type,
                 onTypeChange = { type = it }
@@ -251,6 +317,7 @@ fun AddTransactionSheet(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
+            }
             }
         }
     }

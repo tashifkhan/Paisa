@@ -27,3 +27,11 @@ internal actual fun Throwable.isPlatformTimeout(): Boolean = this is Interrupted
 
 /** On Android every connection failure is an IOException, which the client handles already. */
 internal actual fun Throwable.isPlatformNetworkError(): Boolean = false
+
+/** OkHttp reports failures properly, so Android always goes through Ktor. */
+internal actual suspend fun directFetch(
+    url: String,
+    headers: Map<String, String>,
+    body: String?,
+    timeoutSeconds: Long,
+): DirectReply? = null

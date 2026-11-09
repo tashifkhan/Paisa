@@ -25,6 +25,12 @@ enum class AiService(
         label = "Statement photos",
         description = "Photos of statements. Needs a model that reads images",
         needsImage = true,
+    ),
+    QUICK_ADD(
+        id = "quick_add",
+        label = "Add with AI",
+        description = "Notes, receipts and bills from the add sheet. Photos need a model that reads images",
+        needsImage = false,
     );
 
     companion object {

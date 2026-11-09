@@ -11,3 +11,11 @@ import codes.tashif.paisa.ai.StatementSource
  */
 @Composable
 internal expect fun rememberStatementPicker(onPicked: (List<StatementSource>) -> Unit): () -> Unit
+
+/**
+ * The platform's photo picker, for receipts and payment screenshots. Android
+ * uses the system photo picker, the web an image-only `<input type=file>`,
+ * which phones offer the camera for.
+ */
+@Composable
+internal expect fun rememberPhotoPicker(onPicked: (List<StatementSource>) -> Unit): () -> Unit

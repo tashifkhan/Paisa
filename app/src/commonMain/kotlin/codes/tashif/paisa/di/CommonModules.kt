@@ -27,6 +27,8 @@ import codes.tashif.paisa.ui.settings.CategoriesViewModel
 import codes.tashif.paisa.ui.settings.SettingsViewModel
 import codes.tashif.paisa.ui.sms.SmsViewModel
 import codes.tashif.paisa.ui.statement.StatementImportViewModel
+import codes.tashif.paisa.ui.transaction.AiAddViewModel
+import codes.tashif.paisa.ai.QuickAddService
 import codes.tashif.paisa.ui.transaction.TransactionViewModel
 import codes.tashif.paisa.ai.AiRepository
 import codes.tashif.paisa.ai.StatementExtractionService
@@ -82,6 +84,7 @@ val aiServicesModule = module {
     singleOf(::AiRepository)
     singleOf(::StatementExtractionService)
     singleOf(::StatementImportUseCase)
+    singleOf(::QuickAddService)
 }
 
 /** Every screen's viewmodel. */
@@ -93,6 +96,7 @@ val viewModelModule = module {
     viewModelOf(::AccountsViewModel)
     viewModelOf(::DebtsViewModel)
     viewModelOf(::TransactionViewModel)
+    viewModelOf(::AiAddViewModel)
     viewModelOf(::OnboardingViewModel)
     viewModelOf(::SettingsViewModel)
     viewModelOf(::CategoriesViewModel)
