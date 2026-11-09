@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.automirrored.rounded.TrendingDown
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.Bookmark
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Handshake
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -58,6 +60,10 @@ import codes.tashif.paisa.ui.components.ChoiceCards
 import codes.tashif.paisa.ui.components.ChoiceOption
 import codes.tashif.paisa.ui.components.SheetFieldCard
 import codes.tashif.paisa.ui.components.SheetToggleCard
+import codes.tashif.paisa.ui.components.PersonLinkFields
+import codes.tashif.paisa.ui.components.personLinkOrNull
+import codes.tashif.paisa.ui.components.personLinkSubtitle
+import codes.tashif.paisa.ui.components.personLinkTitle
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.spacing
 import java.text.SimpleDateFormat
@@ -85,6 +91,12 @@ fun AddTransactionSheet(
     var selectedCategoryId by remember { mutableStateOf<Int?>(null) }
     var selectedAccountId by remember { mutableStateOf<Int?>(null) }
     var rememberMerchant by remember { mutableStateOf(false) }
+    // "Someone owes me for this": who, and how much of the amount
+    var linkPerson by remember { mutableStateOf(false) }
+    var linkPersonId by remember { mutableStateOf<Int?>(null) }
+    var linkNewName by remember { mutableStateOf("") }
+    var linkAmountText by remember { mutableStateOf("") }
+    val people by viewModel.debtPeople.collectAsState()
 
     val now = remember { Calendar.getInstance() }
     var year by remember { mutableStateOf(now.get(Calendar.YEAR)) }
@@ -348,6 +360,36 @@ fun AddTransactionSheet(
                 onSelect = { selectedAccountId = it }
             )
 
+            run {
+                Spacer(Modifier.height(MaterialTheme.spacing.small))
+                SheetToggleCard(
+                    icon = Icons.Rounded.Handshake,
+                    title = personLinkTitle(type == "expense"),
+                    subtitle = personLinkSubtitle(type == "expense"),
+                    checked = linkPerson,
+                    onCheckedChange = { on ->
+                        linkPerson = on
+                        if (on) {
+                            if (linkPersonId == null) linkPersonId = people.firstOrNull()?.person?.id
+                            if (linkAmountText.isEmpty()) linkAmountText = amountText
+                        }
+                    }
+                )
+                AnimatedVisibility(visible = linkPerson) {
+                    PersonLinkFields(
+                        people = people,
+                        selectedPersonId = linkPersonId,
+                        onSelectPerson = { linkPersonId = it },
+                        newName = linkNewName,
+                        onNewNameChange = { linkNewName = it },
+                        amountText = linkAmountText,
+                        onAmountChange = { linkAmountText = it },
+                        amountLabel = if (type == "expense") "How much they owe" else "Amount",
+                        modifier = Modifier.padding(top = MaterialTheme.spacing.smaller)
+                    )
+                }
+            }
+
             if (title.isNotBlank()) {
                 Spacer(Modifier.height(MaterialTheme.spacing.small))
                 SheetToggleCard(
@@ -383,6 +425,16 @@ fun AddTransactionSheet(
                     val iso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
                         .format(cal.time)
                     val merchant = title.trim().takeIf { it.isNotBlank() }
+                    val link = if (linkPerson) {
+                        personLinkOrNull(linkPersonId, linkNewName, linkAmountText.ifEmpty { amountText })
+                            ?: run {
+                                haptics.reject()
+                                viewModel.showSnackbar("Pick who it's with and how much")
+                                return@Button
+                            }
+                    } else {
+                        null
+                    }
                     haptics.confirm()
                     viewModel.addTransaction(
                         amount = amount,
@@ -392,7 +444,8 @@ fun AddTransactionSheet(
                         note = note.trim(),
                         transactionDate = iso,
                         merchantName = merchant,
-                        rememberMerchant = rememberMerchant && merchant != null
+                        rememberMerchant = rememberMerchant && merchant != null,
+                        personLink = link
                     )
                     onDismiss()
                 },
