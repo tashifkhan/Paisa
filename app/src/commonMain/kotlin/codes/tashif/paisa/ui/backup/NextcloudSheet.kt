@@ -45,7 +45,11 @@ internal fun NextcloudSheet(
     // Checks the address before handing it on, so an unsafe http URL shows here.
     fun withSafeServer(block: () -> Unit) {
         serverErrorText = serverError(server)
-        if (serverErrorText == null) block()
+        if (serverErrorText == null) {
+            // Saved once here, not per keystroke: each save reloads the backup settings.
+            onProxyChange?.invoke(proxy)
+            block()
+        }
     }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -83,10 +87,7 @@ internal fun NextcloudSheet(
             if (onProxyChange != null) {
                 OutlinedTextField(
                     value = proxy,
-                    onValueChange = {
-                        proxy = it
-                        onProxyChange(it)
-                    },
+                    onValueChange = { proxy = it },
                     label = { Text("CORS proxy") },
                     supportingText = {
                         Text(

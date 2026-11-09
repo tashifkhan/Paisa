@@ -64,7 +64,8 @@ object WebSyncScheduler {
         try {
             s.syncNow()
         } catch (e: Exception) {
-            // syncNow records the error for the backup screen.
+            // syncNow records the error for the backup screen; keep a trace for debugging.
+            println("Paisa sync failed: ${e.message}")
         }
     }
 }

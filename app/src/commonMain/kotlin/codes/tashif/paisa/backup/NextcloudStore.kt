@@ -19,6 +19,7 @@ import io.ktor.http.appendPathSegments
 import io.ktor.http.content.ByteArrayContent
 import io.ktor.http.content.TextContent
 import io.ktor.http.decodeURLPart
+import io.ktor.http.encodeURLParameter
 import io.ktor.http.formUrlEncode
 import io.ktor.http.parameters
 import kotlinx.coroutines.delay
@@ -43,12 +44,14 @@ fun interface NextcloudTransport {
     companion object {
         val Direct = NextcloudTransport { it to emptyMap() }
 
-        /** Sends every request to [proxy], naming the real address in a header. */
+        /**
+         * Sends every request to [proxy] with the real address in the query.
+         * It has to be in the URL: browsers cache GETs by URL, so a target in
+         * a header made every download look like the first one.
+         */
         fun proxy(proxy: String) = NextcloudTransport { target ->
-            proxy.trimEnd('/') + "/" to mapOf(PROXY_TARGET_HEADER to target)
+            proxy.trimEnd('/') + "/?target=" + target.encodeURLParameter() to emptyMap()
         }
-
-        const val PROXY_TARGET_HEADER = "X-Paisa-Target"
     }
 }
 

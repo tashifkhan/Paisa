@@ -56,10 +56,16 @@ class WebCloudPlatform(private val prefs: BackupPrefs) : CloudPlatform {
 
 private const val K_PROXY = "nc_proxy"
 
-/** Requests to Nextcloud go through the user's CORS proxy when one is set. */
-internal fun nextcloudTransport(prefs: BackupPrefs): NextcloudTransport =
-    prefs.store.getString(K_PROXY, null)?.takeIf { it.isNotBlank() }
-        ?.let { NextcloudTransport.proxy(it) } ?: NextcloudTransport.Direct
+/**
+ * Requests to Nextcloud go through the user's CORS proxy when one is set. The
+ * app password passes through it, so it follows the server's rule: https,
+ * or plain http only on this device or a private network.
+ */
+internal fun nextcloudTransport(prefs: BackupPrefs): NextcloudTransport {
+    val proxy = prefs.store.getString(K_PROXY, null)?.takeIf { it.isNotBlank() } ?: return NextcloudTransport.Direct
+    NextcloudStore.serverError(proxy)?.let { throw IOException("CORS proxy: $it") }
+    return NextcloudTransport.proxy(proxy)
+}
 
 class WebBackupHooks(private val prefs: BackupPrefs) : BackupServiceHooks {
     override suspend fun writeFile(file: BackupFile, bytes: ByteArray) =

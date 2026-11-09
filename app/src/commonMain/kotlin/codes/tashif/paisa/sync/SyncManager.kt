@@ -86,6 +86,11 @@ class SyncManager(
             } catch (e: IOException) {
                 prefs.recordSyncError(e.message ?: "Sync failed")
                 throw e
+            } catch (e: Exception) {
+                // A database or parsing failure is still a failed sync the user should see.
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                prefs.recordSyncError(e.message ?: "Sync failed")
+                throw IOException(e.message ?: "Sync failed", e)
             }
         }
     }

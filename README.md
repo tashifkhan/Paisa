@@ -68,14 +68,22 @@ when it breaks:
 
 open it with `?demo` on the end of the url to get three months of sample data.
 
-it's the same screens, viewmodels and database as the phone. the database lives in the browser's origin private file system, so nothing leaves the tab. what the web can't do yet:
+it's the same screens, viewmodels and database as the phone. the database lives in the browser's origin private file system, so nothing leaves the tab unless you turn on backup or sync.
+
+### backup and sync on the web
+
+backup and sync are the same code as on the phone, so a browser and a phone can share one nextcloud or google drive and stay in step. the browser syncs when the page opens, every 15 minutes, when it comes back online or into view, and 20 seconds after an edit. there's no background sync once the tab is closed. sync now covers the rest.
+
+- **nextcloud:** nextcloud sends no cors headers, so browsers need a small proxy. deploy [tools/nextcloud-proxy](tools/nextcloud-proxy) to your own cloudflare account (one command) and paste its address into the nextcloud sheet. it only forwards to your server and stores nothing. if you run the server and add cors headers yourself, leave the proxy empty
+- **google drive:** needs a "web application" oauth client id from google cloud. put it in the `paisa-google-client-id` meta tag in `app/src/wasmJsMain/resources/index.html`. browsers get no refresh token, so after about an hour you tap connect again
+
+what the web can't do yet:
 
 - read sms. browsers can't, so the sms screen says so
-- google drive, nextcloud and sync. backup and restore work with a `.paisa` file you download or pick
 - pdf export and pdf statement import. csv export works
 - app lock
 - most ai providers block browser requests (cors), so statement import with ai may fail until something proxies it
-- the aed and sar currency symbols show as boxes, because the web build has no arabic font
+- the aed and sar currency symbols and the → arrow show as boxes, because the web build has no font for them
 
 ## where stuff lives
 
@@ -113,7 +121,6 @@ the web version is kotlin multiplatform, not a typescript rewrite. done so far:
 still to do:
 
 - a pwa shell: a manifest so it installs to the home screen, and a service worker so it opens offline
-- google drive and nextcloud on the web, then sync
 - pdf on the web
 
 ## license
