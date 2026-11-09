@@ -1,7 +1,5 @@
 package codes.tashif.paisa.ai.provider
 
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-
 /**
  * The app allows cleartext traffic so RelayRoom can run on a laptop, so every
  * AI base URL passes through here first. https goes anywhere. http only goes
@@ -21,7 +19,7 @@ object BaseUrlSafety {
         ) {
             throw UnsafeUrlException("Base URL must start with https://")
         }
-        val url = trimmed.toHttpUrlOrNull()
+        val url = AiUrl.parse(trimmed)
             ?: throw UnsafeUrlException("Base URL isn't valid. Use a full URL like https://api.example.com/v1")
         if (url.username.isNotEmpty() || url.password.isNotEmpty()) {
             throw UnsafeUrlException("Don't put a user name or password in the base URL.")

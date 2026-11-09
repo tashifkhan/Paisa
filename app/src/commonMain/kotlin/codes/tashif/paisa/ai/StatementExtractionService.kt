@@ -1,7 +1,5 @@
 package codes.tashif.paisa.ai
 
-import android.content.Context
-import android.net.Uri
 import codes.tashif.paisa.ai.ladder.AiLadderException
 import codes.tashif.paisa.ai.ladder.AiLadderRunner
 import codes.tashif.paisa.ai.ladder.AiService
@@ -10,7 +8,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
-import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.atomics.AtomicInt
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 /**
  * Extracts structured transactions from a statement through the AI ladders:
@@ -19,14 +18,13 @@ import java.util.concurrent.atomic.AtomicInteger
 class StatementExtractionService(
     private val ladderRunner: AiLadderRunner
 ) {
-    suspend fun extractFromUri(
-        context: Context,
-        uri: Uri,
+    suspend fun extractFromSource(
+        source: StatementSource,
         onProgress: ((completed: Int, total: Int) -> Unit)? = null
     ): StatementExtractionResult {
-        if (StatementImageReader.isImage(context, uri)) {
+        if (StatementImageReader.isImage(source)) {
             onProgress?.invoke(0, 1)
-            val image = StatementImageReader.read(context, uri)
+            val image = StatementImageReader.read(source)
             val response = complete(AiService.STATEMENT_PHOTOS, IMAGE_PROMPT, image = image)
             onProgress?.invoke(1, 1)
             return StatementExtractionResult(
@@ -36,10 +34,10 @@ class StatementExtractionService(
             )
         }
 
-        val text = StatementTextExtractor.extract(context, uri)
+        val text = StatementTextExtractor.extract(source)
         if (text.isBlank()) {
-            if (StatementTextExtractor.isPdf(context, uri)) {
-                extractFromScannedPdf(context, uri, onProgress)?.let { return it }
+            if (StatementTextExtractor.isPdf(source)) {
+                extractFromScannedPdf(source, onProgress)?.let { return it }
             }
             throw LlmException(
                 "Could not read text from this file. " +
@@ -55,11 +53,10 @@ class StatementExtractionService(
      * null when no rung can take it, so the caller shows the usual message.
      */
     private suspend fun extractFromScannedPdf(
-        context: Context,
-        uri: Uri,
+        source: StatementSource,
         onProgress: ((completed: Int, total: Int) -> Unit)?
     ): StatementExtractionResult? {
-        val pdf = StatementTextExtractor.readPdf(context, uri) ?: return null
+        val pdf = StatementTextExtractor.readPdf(source) ?: return null
         onProgress?.invoke(0, 1)
         val response = try {
             complete(AiService.STATEMENT_IMPORT, PDF_PROMPT, pdf = pdf)
@@ -75,6 +72,7 @@ class StatementExtractionService(
         )
     }
 
+    @OptIn(ExperimentalAtomicApi::class)
     suspend fun extractFromText(
         text: String,
         onProgress: ((completed: Int, total: Int) -> Unit)? = null
@@ -85,7 +83,7 @@ class StatementExtractionService(
         // Chunks are independent: run them in parallel (bounded so we don't
         // hammer rate limits), then merge in chunk order so results stay stable.
         // Each chunk walks the ladder on its own.
-        val completed = AtomicInteger(0)
+        val completed = AtomicInt(0)
         val semaphore = Semaphore(MAX_PARALLEL_CHUNKS)
         val responses = coroutineScope {
             chunks.mapIndexed { index, chunk ->
@@ -95,7 +93,7 @@ class StatementExtractionService(
                             AiService.STATEMENT_IMPORT,
                             buildUserPrompt(chunk, index + 1, chunks.size)
                         )
-                        onProgress?.invoke(completed.incrementAndGet(), chunks.size)
+                        onProgress?.invoke(completed.incrementAndFetch(), chunks.size)
                         response
                     }
                 }

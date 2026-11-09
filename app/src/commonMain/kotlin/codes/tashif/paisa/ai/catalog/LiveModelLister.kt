@@ -12,7 +12,6 @@ import codes.tashif.paisa.ai.provider.RouteMode
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import java.net.URLEncoder
 
 /** Asks a provider which models it serves right now. Costs no tokens. */
 class LiveModelLister(
@@ -88,10 +87,32 @@ class LiveModelLister(
     private suspend fun get(url: String, headers: Map<String, String>): String =
         client.get(url, headers, TIMEOUT_SECONDS)
 
-    private fun encode(value: String): String = URLEncoder.encode(value, "UTF-8")
+    private fun encode(value: String): String = formEncode(value)
 
     private companion object {
         const val TIMEOUT_SECONDS = 20L
         const val MAX_PAGES = 5
     }
 }
+
+/**
+ * Encodes a query value like java.net.URLEncoder with UTF-8: letters, digits
+ * and `.-*_` stay, a space becomes `+`, every other byte becomes `%XX`.
+ */
+internal fun formEncode(value: String): String = buildString {
+    for (byte in value.encodeToByteArray()) {
+        val c = byte.toInt() and 0xff
+        when {
+            c in 'a'.code..'z'.code || c in 'A'.code..'Z'.code || c in '0'.code..'9'.code ||
+                c == '.'.code || c == '-'.code || c == '*'.code || c == '_'.code -> append(c.toChar())
+            c == ' '.code -> append('+')
+            else -> {
+                append('%')
+                append(HEX[c shr 4])
+                append(HEX[c and 0xf])
+            }
+        }
+    }
+}
+
+private const val HEX = "0123456789ABCDEF"

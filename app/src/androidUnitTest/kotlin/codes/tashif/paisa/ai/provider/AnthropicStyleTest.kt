@@ -2,7 +2,7 @@ package codes.tashif.paisa.ai.provider
 
 import codes.tashif.paisa.ai.LlmPdf
 import codes.tashif.paisa.ai.catalog.ModelInfo
-import org.json.JSONObject
+import codes.tashif.paisa.ai.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

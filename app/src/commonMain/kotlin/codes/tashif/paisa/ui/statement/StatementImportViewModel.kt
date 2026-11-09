@@ -1,8 +1,5 @@
 package codes.tashif.paisa.ui.statement
 
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import codes.tashif.paisa.ai.AiRepository
@@ -10,7 +7,8 @@ import codes.tashif.paisa.ui.ai.AiSummary
 import codes.tashif.paisa.ai.ExtractedTransaction
 import codes.tashif.paisa.ai.StatementExtractionService
 import codes.tashif.paisa.ai.StatementImportUseCase
-import codes.tashif.paisa.ai.StatementNotifications
+import codes.tashif.paisa.ai.StatementNotifier
+import codes.tashif.paisa.ai.StatementSource
 import codes.tashif.paisa.ai.ladder.AiLadderRunner
 import codes.tashif.paisa.ai.ladder.AiService
 import codes.tashif.paisa.core.AppLockGuard
@@ -54,10 +52,10 @@ sealed class StatementUiState {
 /**
  * Reads statements with the user's AI provider, shows a preview, and commits
  * the picked rows. Scoped to MainActivity, so extraction keeps going when the
- * user leaves the screen; a notification announces the result.
+ * user leaves the screen; on Android a notification announces the result.
  */
 class StatementImportViewModel(
-    private val context: Context,
+    private val notifier: StatementNotifier,
     accountsRepository: AccountRepository,
     private val categoriesRepository: CategoryRepository,
     private val transactionsRepository: TransactionRepository,
@@ -90,8 +88,8 @@ class StatementImportViewModel(
     /** Call right before opening the file picker so returning doesn't lock the app. */
     fun onExternalActivityLaunched() = appLockGuard.onExternalActivityLaunched()
 
-    fun extractStatements(uris: List<Uri>) {
-        if (uris.isEmpty()) return
+    fun extractStatements(sources: List<StatementSource>) {
+        if (sources.isEmpty()) return
         // Runs on a background dispatcher in the ViewModel scope: the user can leave
         // the screen (or the app) while chunks process; a notification announces completion.
         viewModelScope.launch(Dispatchers.Default) {
@@ -103,30 +101,22 @@ class StatementImportViewModel(
                 )
                 return@launch
             }
-            _statementUiState.value = StatementUiState.Extracting(totalFiles = uris.size)
-            val app = context
+            _statementUiState.value = StatementUiState.Extracting(totalFiles = sources.size)
             val merged = LinkedHashMap<String, ExtractedTransaction>()
             var chunksProcessed = 0
             val failedFiles = mutableListOf<String>()
             var lastErrorMessage: String? = null
 
-            uris.forEachIndexed { fileIndex, uri ->
+            sources.forEachIndexed { fileIndex, source ->
                 try {
-                    runCatching {
-                        app.contentResolver.takePersistableUriPermission(
-                            uri,
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        )
-                    }
-                    val result = statementExtraction.extractFromUri(
-                        context = app,
-                        uri = uri,
+                    val result = statementExtraction.extractFromSource(
+                        source = source,
                         onProgress = { completed, total ->
                             _statementUiState.value = StatementUiState.Extracting(
                                 completedChunks = completed,
                                 totalChunks = total,
                                 currentFile = fileIndex + 1,
-                                totalFiles = uris.size
+                                totalFiles = sources.size
                             )
                         }
                     )
@@ -140,7 +130,7 @@ class StatementImportViewModel(
                     throw e
                 } catch (e: Exception) {
                     lastErrorMessage = e.message
-                    failedFiles += statementFileName(uri, fileIndex)
+                    failedFiles += statementFileName(source, fileIndex)
                 }
             }
 
@@ -148,17 +138,16 @@ class StatementImportViewModel(
                 val message = lastErrorMessage
                     ?: "No transactions found. Try a clearer PDF/CSV or another model."
                 _statementUiState.value = StatementUiState.Error(message)
-                StatementNotifications.notifyExtractionFailed(app, message)
+                notifier.notifyExtractionFailed(message)
             } else {
                 val enriched = enrich(merged.values.sortedByDescending { it.date })
                 _statementUiState.value = StatementUiState.Preview(
                     rows = enriched,
                     chunksProcessed = chunksProcessed,
-                    filesProcessed = uris.size - failedFiles.size,
+                    filesProcessed = sources.size - failedFiles.size,
                     failedFiles = failedFiles
                 )
-                StatementNotifications.notifyExtractionDone(
-                    app,
+                notifier.notifyExtractionDone(
                     found = enriched.size,
                     duplicates = enriched.count { it.likelyDuplicate }
                 )
@@ -206,16 +195,8 @@ class StatementImportViewModel(
             }
         }
 
-    private fun statementFileName(uri: Uri, fileIndex: Int): String {
-        val resolved = runCatching {
-            context.contentResolver
-                .query(uri, null, null, null, null)?.use { cursor ->
-                    val col = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                    if (col >= 0 && cursor.moveToFirst()) cursor.getString(col) else null
-                }
-        }.getOrNull()
-        return resolved ?: "File ${fileIndex + 1}"
-    }
+    private suspend fun statementFileName(source: StatementSource, fileIndex: Int): String =
+        runCatching { source.displayName() }.getOrNull() ?: "File ${fileIndex + 1}"
 
     fun updateStatementPreview(rows: List<ExtractedTransaction>) {
         val current = _statementUiState.value

@@ -2,8 +2,8 @@ package codes.tashif.paisa.ai.provider
 
 import codes.tashif.paisa.ai.LlmException
 import codes.tashif.paisa.ai.LlmFailure
-import org.json.JSONArray
-import org.json.JSONObject
+import codes.tashif.paisa.ai.json.JSONArray
+import codes.tashif.paisa.ai.json.JSONObject
 
 /** OpenAI Chat Completions, for api.openai.com and every compatible server. */
 object OpenAiStyle {

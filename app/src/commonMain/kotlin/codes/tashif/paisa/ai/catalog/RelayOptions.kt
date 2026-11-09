@@ -2,8 +2,8 @@ package codes.tashif.paisa.ai.catalog
 
 import codes.tashif.paisa.ai.catalog.LiveModelParsers.RelayModelOptions
 import codes.tashif.paisa.ai.provider.RouteMode
-import org.json.JSONArray
-import org.json.JSONObject
+import codes.tashif.paisa.ai.json.JSONArray
+import codes.tashif.paisa.ai.json.JSONObject
 import codes.tashif.paisa.ai.provider.ThinkingLevel
 
 /** One RelayRoom `/model-options` answer is for one gateway, one model and one route mode. */

@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.ai
 
+import codes.tashif.paisa.platform.formatInteger
 import codes.tashif.paisa.platform.nowMillis
 import codes.tashif.paisa.ai.CatalogState
 import codes.tashif.paisa.ai.ProviderStatus
@@ -7,7 +8,6 @@ import codes.tashif.paisa.ai.catalog.CatalogSource
 import codes.tashif.paisa.ai.ladder.AiService
 import codes.tashif.paisa.ai.ladder.LadderState
 import codes.tashif.paisa.ai.ladder.Rung
-import java.text.NumberFormat
 
 // Labels shared by the AI screens and the rows that link to them. Pure.
 
@@ -59,7 +59,7 @@ fun catalogSourceLabel(source: CatalogSource): String = when (source) {
 fun catalogSubtitle(catalog: CatalogState, now: Long = nowMillis()): String {
     if (catalog.refreshing) return "Refreshing…"
     val parts = mutableListOf(
-        "${NumberFormat.getIntegerInstance().format(catalog.modelCount)} models",
+        "${formatInteger(catalog.modelCount.toLong())} models",
         catalogSourceLabel(catalog.source),
     )
     catalog.fetchedAt?.let { parts += ageLabel(it, now) }

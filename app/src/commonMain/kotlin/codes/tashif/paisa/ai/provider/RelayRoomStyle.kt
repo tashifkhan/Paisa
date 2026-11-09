@@ -3,8 +3,8 @@ package codes.tashif.paisa.ai.provider
 import codes.tashif.paisa.ai.LlmException
 import codes.tashif.paisa.ai.LlmFailure
 import codes.tashif.paisa.ai.catalog.ModelInfo
-import org.json.JSONArray
-import org.json.JSONObject
+import codes.tashif.paisa.ai.json.JSONArray
+import codes.tashif.paisa.ai.json.JSONObject
 
 /**
  * RelayRoom's unified API (`POST {base}/generate`). Models are stored as

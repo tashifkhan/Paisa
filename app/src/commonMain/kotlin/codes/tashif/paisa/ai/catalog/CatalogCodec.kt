@@ -2,8 +2,8 @@ package codes.tashif.paisa.ai.catalog
 
 import codes.tashif.paisa.ai.provider.RouteMode
 import codes.tashif.paisa.ai.provider.ThinkingLevel
-import org.json.JSONArray
-import org.json.JSONObject
+import codes.tashif.paisa.ai.json.JSONArray
+import codes.tashif.paisa.ai.json.JSONObject
 
 /** One provider's live listing and when it was fetched. */
 data class LiveList(val models: List<ModelInfo>, val fetchedAt: Long)

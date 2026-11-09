@@ -6,9 +6,9 @@ import codes.tashif.paisa.ai.provider.LlmCall
 import codes.tashif.paisa.ai.provider.LlmRequest
 import codes.tashif.paisa.ai.provider.ModelCaller
 import kotlinx.coroutines.CancellationException
-import org.json.JSONArray
-import org.json.JSONObject
-import org.json.JSONTokener
+import codes.tashif.paisa.ai.json.JSONArray
+import codes.tashif.paisa.ai.json.JSONObject
+import codes.tashif.paisa.ai.json.JSONTokener
 
 /** A rung after its provider, key and catalogue entry are looked up. */
 sealed interface ResolvedRung {

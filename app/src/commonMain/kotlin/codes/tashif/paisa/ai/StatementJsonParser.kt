@@ -1,7 +1,7 @@
 package codes.tashif.paisa.ai
 
-import org.json.JSONArray
-import org.json.JSONObject
+import codes.tashif.paisa.ai.json.JSONArray
+import codes.tashif.paisa.ai.json.JSONObject
 import kotlin.math.abs
 
 /**

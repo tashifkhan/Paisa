@@ -1,8 +1,7 @@
 package codes.tashif.paisa.ui.statement
 
 import org.koin.compose.viewmodel.koinViewModel
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import codes.tashif.paisa.ui.platform.PlatformBackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -49,7 +48,7 @@ fun StatementImportScreen(
         }
     }
 
-    BackHandler {
+    PlatformBackHandler {
         when (state) {
             is StatementUiState.Preview, is StatementUiState.Success, is StatementUiState.Error -> {
                 viewModel.resetStatementUi()
@@ -60,11 +59,7 @@ fun StatementImportScreen(
         }
     }
 
-    val picker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenMultipleDocuments()
-    ) { uris ->
-        if (uris.isNotEmpty()) viewModel.extractStatements(uris)
-    }
+    val openPicker = rememberStatementPicker { sources -> viewModel.extractStatements(sources) }
 
     Column(
         modifier = Modifier
@@ -89,7 +84,7 @@ fun StatementImportScreen(
                 onOpenAiSettings = onOpenAiSettings,
                 onChooseFile = {
                     viewModel.onExternalActivityLaunched()
-                    picker.launch(STATEMENT_MIME_TYPES)
+                    openPicker()
                 },
                 canChooseFile = ai.ready
             )
@@ -137,15 +132,3 @@ fun StatementImportScreen(
         }
     }
 }
-
-private val STATEMENT_MIME_TYPES = arrayOf(
-    "application/pdf",
-    "text/csv",
-    "text/plain",
-    "text/*",
-    "application/csv",
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "*/*"
-)

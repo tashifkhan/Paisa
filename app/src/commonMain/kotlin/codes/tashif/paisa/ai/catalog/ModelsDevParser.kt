@@ -1,8 +1,8 @@
 package codes.tashif.paisa.ai.catalog
 
 import codes.tashif.paisa.ai.provider.ThinkingLevel
-import org.json.JSONArray
-import org.json.JSONObject
+import codes.tashif.paisa.ai.json.JSONArray
+import codes.tashif.paisa.ai.json.JSONObject
 
 /** One provider's entry in models.dev. */
 data class ModelsDevProvider(

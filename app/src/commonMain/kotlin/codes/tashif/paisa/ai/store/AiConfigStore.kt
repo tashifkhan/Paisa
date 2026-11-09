@@ -1,8 +1,6 @@
 package codes.tashif.paisa.ai.store
 
-import android.content.Context
-import android.content.SharedPreferences
-import kotlinx.coroutines.Dispatchers
+import codes.tashif.paisa.ai.aiIoDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,17 +9,15 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
- * [AiConfig] as one JSON string in plain SharedPreferences. It holds no keys.
- * Backup rules exclude the file, and sync never reads it.
+ * [AiConfig] as one JSON string in a plain store (SharedPreferences on
+ * Android, localStorage on the web). It holds no keys. Android backup rules
+ * exclude the file, and sync never reads it.
  */
-class AiConfigStore internal constructor(private val prefs: SharedPreferences) {
-
-    constructor(context: Context) :
-        this(context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE))
+class AiConfigStore(private val prefs: AiKeyValueStore) {
 
     private val mutex = Mutex()
 
-    private val _config = MutableStateFlow(AiConfigCodec.decode(prefs.getString(KEY, null)))
+    private val _config = MutableStateFlow(AiConfigCodec.decode(prefs.getString(KEY)))
     val config: StateFlow<AiConfig> = _config.asStateFlow()
 
     /**
@@ -51,7 +47,7 @@ class AiConfigStore internal constructor(private val prefs: SharedPreferences) {
     }
 
     private suspend fun save(config: AiConfig): Boolean =
-        withContext(Dispatchers.IO) { prefs.edit().putString(KEY, AiConfigCodec.encode(config)).commit() }
+        withContext(aiIoDispatcher) { prefs.commit(mapOf(KEY to AiConfigCodec.encode(config))) }
 
     companion object {
         const val PREFS_NAME = "paisa_ai_config"

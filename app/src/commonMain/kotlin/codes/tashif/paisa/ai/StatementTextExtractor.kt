@@ -1,94 +1,58 @@
 package codes.tashif.paisa.ai
 
-import android.content.Context
-import android.net.Uri
-import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
-import com.tom_roush.pdfbox.pdmodel.PDDocument
-import com.tom_roush.pdfbox.text.PDFTextStripper
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.nio.charset.Charset
+import kotlin.io.encoding.Base64
 
 /**
  * Pulls plain text from a user-selected statement file (PDF / CSV / text).
  */
 object StatementTextExtractor {
 
-    @Volatile
-    private var pdfBoxReady = false
-
     /**
-     * PDFBox parsing is heavy — always runs on [Dispatchers.IO] so the UI thread
-     * never stalls on large statements.
+     * PDF parsing is heavy, so this runs on the IO dispatcher and the UI
+     * thread never stalls on large statements.
      */
-    suspend fun extract(context: Context, uri: Uri): String = withContext(Dispatchers.IO) {
-        val mime = context.contentResolver.getType(uri)?.lowercase().orEmpty()
-        val name = uri.lastPathSegment?.lowercase().orEmpty()
+    suspend fun extract(source: StatementSource): String = withContext(aiIoDispatcher) {
+        val mime = source.mimeType?.lowercase().orEmpty()
+        val name = source.name?.lowercase().orEmpty()
 
         when {
-            mime.contains("pdf") || name.endsWith(".pdf") -> extractPdf(context, uri)
+            mime.contains("pdf") || name.endsWith(".pdf") -> source.pdfText()
             mime.contains("csv") || name.endsWith(".csv") ||
                 mime.contains("text") || name.endsWith(".txt") ||
-                name.endsWith(".tsv") -> extractText(context, uri)
+                name.endsWith(".tsv") -> extractText(source)
             else -> {
                 // Try text first, then PDF
-                val asText = runCatching { extractText(context, uri) }.getOrDefault("")
-                if (asText.isNotBlank()) asText else extractPdf(context, uri)
+                val asText = runCatching { extractText(source) }.getOrDefault("")
+                if (asText.isNotBlank()) asText else source.pdfText()
             }
         }.trim()
     }
 
-    private fun extractText(context: Context, uri: Uri): String {
-        context.contentResolver.openInputStream(uri)?.use { input ->
-            BufferedReader(InputStreamReader(input, Charset.forName("UTF-8"))).use { reader ->
-                return reader.readText()
-            }
-        }
-        return ""
-    }
+    private suspend fun extractText(source: StatementSource): String =
+        source.readBytes()?.decodeToString().orEmpty()
 
-    private fun extractPdf(context: Context, uri: Uri): String {
-        ensurePdfBox(context)
-        context.contentResolver.openInputStream(uri)?.use { input ->
-            PDDocument.load(input).use { doc ->
-                val stripper = PDFTextStripper()
-                return stripper.getText(doc).orEmpty()
-            }
-        }
-        return ""
-    }
-
-    fun isPdf(context: Context, uri: Uri): Boolean {
-        val mime = context.contentResolver.getType(uri)?.lowercase().orEmpty()
-        val name = uri.lastPathSegment?.lowercase().orEmpty()
+    fun isPdf(source: StatementSource): Boolean {
+        val mime = source.mimeType?.lowercase().orEmpty()
+        val name = source.name?.lowercase().orEmpty()
         return mime.contains("pdf") || name.endsWith(".pdf")
     }
 
     /** The whole file for a model that reads PDFs, or null when it's too big to send. */
-    suspend fun readPdf(context: Context, uri: Uri): LlmPdf? = withContext(Dispatchers.IO) {
-        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-            ?: return@withContext null
-        if (bytes.isEmpty() || bytes.size > MAX_PDF_BYTES) return@withContext null
+    suspend fun readPdf(source: StatementSource): LlmPdf? = withContext(aiIoDispatcher) {
+        val bytes = try {
+            source.readBytes(MAX_PDF_BYTES)
+        } catch (_: StatementFileTooLargeException) {
+            null
+        } ?: return@withContext null
+        if (bytes.isEmpty()) return@withContext null
         LlmPdf(
-            base64Data = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP),
-            name = uri.lastPathSegment?.substringAfterLast('/')
+            base64Data = Base64.encode(bytes),
+            name = source.name?.substringAfterLast('/')
         )
     }
 
     private const val MAX_PDF_BYTES = 15 * 1024 * 1024
-
-    private fun ensurePdfBox(context: Context) {
-        if (!pdfBoxReady) {
-            synchronized(this) {
-                if (!pdfBoxReady) {
-                    PDFBoxResourceLoader.init(context.applicationContext)
-                    pdfBoxReady = true
-                }
-            }
-        }
-    }
 
     /**
      * Split long statements into newline-aligned chunks that fit LLM context limits.

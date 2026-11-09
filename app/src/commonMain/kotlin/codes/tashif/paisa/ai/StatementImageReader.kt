@@ -1,62 +1,46 @@
 package codes.tashif.paisa.ai
 
-import android.content.Context
-import android.net.Uri
-import android.util.Base64
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
+import kotlin.io.encoding.Base64
 
 /** Reads a supported statement image into the inline format used by vision models. */
 object StatementImageReader {
     private const val MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
-    fun isImage(context: Context, uri: Uri): Boolean {
-        val mime = context.contentResolver.getType(uri)?.lowercase().orEmpty()
-        val name = uri.lastPathSegment?.lowercase().orEmpty()
+    fun isImage(source: StatementSource): Boolean {
+        val mime = source.mimeType?.lowercase().orEmpty()
+        val name = source.name?.lowercase().orEmpty()
         return mime.startsWith("image/") || SUPPORTED_EXTENSIONS.any(name::endsWith)
     }
 
-    suspend fun read(context: Context, uri: Uri): LlmImage = withContext(Dispatchers.IO) {
-        val mime = resolveMimeType(context, uri)
+    suspend fun read(source: StatementSource): LlmImage = withContext(aiIoDispatcher) {
+        val mime = resolveMimeType(source)
         if (mime !in SUPPORTED_MIME_TYPES) {
             throw LlmException("Unsupported image format. Choose a JPG, PNG, or WebP image.")
         }
 
-        val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
-            val output = ByteArrayOutputStream()
-            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-            var total = 0
-            while (true) {
-                val read = input.read(buffer)
-                if (read < 0) break
-                total += read
-                if (total > MAX_IMAGE_BYTES) {
-                    throw LlmException(
-                        "Image is larger than 5 MB. Crop or compress it, then try again."
-                    )
-                }
-                output.write(buffer, 0, read)
-            }
-            output.toByteArray()
+        val bytes = try {
+            source.readBytes(MAX_IMAGE_BYTES)
+        } catch (_: StatementFileTooLargeException) {
+            throw LlmException("Image is larger than 5 MB. Crop or compress it, then try again.")
         } ?: throw LlmException("Could not open the selected image.")
 
         if (bytes.isEmpty()) throw LlmException("The selected image is empty.")
         LlmImage(
             mimeType = mime,
-            base64Data = Base64.encodeToString(bytes, Base64.NO_WRAP)
+            base64Data = Base64.encode(bytes)
         )
     }
 
-    private fun resolveMimeType(context: Context, uri: Uri): String {
-        val resolverMime = context.contentResolver.getType(uri)?.lowercase()
-        if (resolverMime in SUPPORTED_MIME_TYPES) return resolverMime!!
-        val name = uri.lastPathSegment?.lowercase().orEmpty()
+    private fun resolveMimeType(source: StatementSource): String {
+        val reported = source.mimeType?.lowercase()
+        if (reported != null && reported in SUPPORTED_MIME_TYPES) return reported
+        val name = source.name?.lowercase().orEmpty()
         return when {
             name.endsWith(".jpg") || name.endsWith(".jpeg") -> "image/jpeg"
             name.endsWith(".png") -> "image/png"
             name.endsWith(".webp") -> "image/webp"
-            else -> resolverMime.orEmpty()
+            else -> reported.orEmpty()
         }
     }
 

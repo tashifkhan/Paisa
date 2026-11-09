@@ -1,7 +1,7 @@
 package codes.tashif.paisa.ai.catalog
 
+import codes.tashif.paisa.ai.aiIoDispatcher
 import codes.tashif.paisa.platform.nowMillis
-import android.content.Context
 import codes.tashif.paisa.ai.provider.AiProviderInfo
 import codes.tashif.paisa.ai.provider.BuiltInProviders
 import codes.tashif.paisa.ai.provider.ProviderClient
@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.io.File
 
 /** Where the models.dev part of the catalogue came from. */
 enum class CatalogSource { NETWORK, CACHE, BUILT_IN }
@@ -31,19 +30,16 @@ data class ModelsDevState(
 )
 
 /**
- * models.dev plus each provider's live listing, cached in noBackupFilesDir so
- * it survives restarts and never goes into a backup. This class never touches
- * the network on its own; callers decide when to refresh.
+ * models.dev plus each provider's live listing, cached in [cache] so it
+ * survives restarts. On Android that is noBackupFilesDir, so it never goes
+ * into a backup. This class never touches the network on its own; callers
+ * decide when to refresh.
  */
 class ModelCatalog(
-    context: Context,
+    private val cache: AiCacheStore,
     private val lister: LiveModelLister,
     private val client: ProviderClient,
 ) {
-    private val dir = File(context.noBackupFilesDir, "ai")
-    private val modelsDevFile = File(dir, "models-dev.json")
-    private val liveFile = File(dir, "live-models.json")
-    private val relayOptionsFile = File(dir, "relay-options.json")
     private val mutex = Mutex()
     /** Serialises taking a snapshot and writing it, so the newest state is what lands on disk. */
     private val writeMutex = Mutex()
@@ -68,16 +64,16 @@ class ModelCatalog(
         if (cacheLoaded) return
         mutex.withLock {
             if (cacheLoaded) return
-            withContext(Dispatchers.IO) {
-                runCatching { modelsDevFile.takeIf { it.exists() }?.readText() }.getOrNull()
+            withContext(aiIoDispatcher) {
+                cache.read(MODELS_DEV_FILE)
                     ?.let(CatalogCodec::decodeModelsDev)
                     ?.let { (snapshot, fetchedAt) ->
                         _modelsDev.value = ModelsDevState(snapshot, CatalogSource.CACHE, fetchedAt)
                     }
-                runCatching { liveFile.takeIf { it.exists() }?.readText() }.getOrNull()
+                cache.read(LIVE_FILE)
                     ?.let(CatalogCodec::decodeLive)
                     ?.let { _live.value = it }
-                runCatching { relayOptionsFile.takeIf { it.exists() }?.readText() }.getOrNull()
+                cache.read(RELAY_OPTIONS_FILE)
                     ?.let(RelayOptions::decode)
                     ?.let { _relayOptions.value = it }
             }
@@ -99,7 +95,7 @@ class ModelCatalog(
             val snapshot = withContext(Dispatchers.Default) { ModelsDevParser.parse(text, KEEP_PROVIDERS) }
             val now = nowMillis()
             _modelsDev.value = ModelsDevState(snapshot, CatalogSource.NETWORK, now)
-            persist(modelsDevFile) { CatalogCodec.encodeModelsDev(snapshot, now) }
+            persist(MODELS_DEV_FILE) { CatalogCodec.encodeModelsDev(snapshot, now) }
             Result.success(Unit)
         } catch (e: CancellationException) {
             _modelsDev.update { it.copy(refreshing = false) }
@@ -140,7 +136,7 @@ class ModelCatalog(
         ensureLoaded()
         val options = lister.relayModelOptions(baseUrl, apiKey, modelId, mode)
         _relayOptions.update { it + (RelayOptionsKey.of(baseUrl, modelId, mode) to options) }
-        persist(relayOptionsFile) { RelayOptions.encode(_relayOptions.value) }
+        persist(RELAY_OPTIONS_FILE) { RelayOptions.encode(_relayOptions.value) }
         options
     }
 
@@ -151,19 +147,23 @@ class ModelCatalog(
 
     private suspend fun putLive(providerId: String, list: LiveList?) {
         _live.update { if (list == null) it - providerId else it + (providerId to list) }
-        persist(liveFile) { CatalogCodec.encodeLive(_live.value) }
+        persist(LIVE_FILE) { CatalogCodec.encodeLive(_live.value) }
     }
 
     /** Encodes inside the lock so a slower writer can't land an older snapshot last. */
-    private suspend fun persist(file: File, encode: () -> String) {
+    private suspend fun persist(name: String, encode: () -> String) {
         writeMutex.withLock {
-            withContext(Dispatchers.IO) { CacheFiles.writeAtomically(file, encode()) }
+            withContext(aiIoDispatcher) { cache.write(name, encode()) }
         }
     }
 
     companion object {
         const val MODELS_DEV_TIMEOUT_S = 12L
         const val STALE_AFTER_MS = 24L * 60 * 60 * 1000
+
+        const val MODELS_DEV_FILE = "models-dev.json"
+        const val LIVE_FILE = "live-models.json"
+        const val RELAY_OPTIONS_FILE = "relay-options.json"
 
         /** models.dev provider keys whose full model lists are kept. */
         val KEEP_PROVIDERS: Set<String> =

@@ -7,7 +7,7 @@ import codes.tashif.paisa.ai.provider.AiProviderInfo
 import codes.tashif.paisa.ai.provider.ApiStyle
 import codes.tashif.paisa.ai.provider.BuiltInProviders
 import codes.tashif.paisa.ai.provider.CustomProvider
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import codes.tashif.paisa.ai.provider.AiUrl
 
 /**
  * Moves the old single [AiCredentials] (provider, key, base URL, model) to a
@@ -68,7 +68,7 @@ object LegacyMigration {
         config.customProviders
             .firstOrNull { it.style == ApiStyle.OPENAI && ProviderResolution.normalize(it.baseUrl) == base }
             ?.let { return it.id to config }
-        val host = base.toHttpUrlOrNull()?.host ?: base.substringAfter("://").substringBefore('/')
+        val host = AiUrl.parse(base)?.host ?: base.substringAfter("://").substringBefore('/')
         val name = "Custom ($host)"
         val taken = config.customProviders.mapTo(HashSet()) { it.id }
         val custom = CustomProvider(ProviderResolution.newCustomId(host, taken), name, ApiStyle.OPENAI, base)

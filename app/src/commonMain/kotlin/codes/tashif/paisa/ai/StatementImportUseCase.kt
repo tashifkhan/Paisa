@@ -7,7 +7,6 @@ import codes.tashif.paisa.data.Transaction
 import codes.tashif.paisa.data.repository.AccountRepository
 import codes.tashif.paisa.data.repository.CategoryRepository
 import codes.tashif.paisa.data.repository.TransactionRepository
-import com.pennywiseai.parser.core.md5Hex
 
 /**
  * Commits reviewed [ExtractedTransaction] rows into Room with category resolution + hash dedup.
