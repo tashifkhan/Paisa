@@ -7,6 +7,7 @@ import codes.tashif.paisa.ai.provider.BuiltInProviders
 import codes.tashif.paisa.ai.provider.ProviderClient
 import codes.tashif.paisa.ai.provider.RouteMode
 import codes.tashif.paisa.ai.provider.ThinkingLevel
+import io.ktor.client.engine.okhttp.OkHttp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -36,14 +37,15 @@ class ModelCatalogTest {
     private fun catalog(reply: (okhttp3.Request) -> String): ModelCatalog {
         dir.deleteRecursively()
         val client = ProviderClient()
-        client.http = OkHttpClient.Builder().addInterceptor { chain ->
+        val stub = OkHttpClient.Builder().addInterceptor { chain ->
             val req = chain.request()
             // Uneven delays so writers finish out of order.
             Thread.sleep((req.url.host.hashCode() and 7).toLong())
             Response.Builder().request(req).protocol(Protocol.HTTP_1_1).code(200).message("x")
                 .body(reply(req).toResponseBody("application/json".toMediaType())).build()
         }.build()
-        return ModelCatalog(context, LiveModelLister(client), client)
+        client.http = ProviderClient.client(OkHttp.create { preconfigured = stub })
+        return ModelCatalog(FileAiCacheStore(context), LiveModelLister(client), client)
     }
 
     @Test
