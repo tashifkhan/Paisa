@@ -124,7 +124,7 @@ class StatementImportViewModel(
                     // Identical rows appearing in two files (e.g. overlapping
                     // statement periods) collapse into one preview entry.
                     for (tx in result.transactions) {
-                        merged.putIfAbsent(StatementExtractionService.dedupeKey(tx), tx)
+                        merged.getOrPut(StatementExtractionService.dedupeKey(tx)) { tx }
                     }
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e

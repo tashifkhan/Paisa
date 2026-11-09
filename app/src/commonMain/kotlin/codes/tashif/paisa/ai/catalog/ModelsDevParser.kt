@@ -50,8 +50,8 @@ object ModelsDevParser {
                 if (!producesText(modelsObj.optJSONObject(key))) continue
                 models += model
                 val bare = model.id.lowercase()
-                index.putIfAbsent(bare, model)
-                index.putIfAbsent(bare.substringAfterLast('/'), model)
+                index.getOrPut(bare) { model }
+                index.getOrPut(bare.substringAfterLast('/')) { model }
             }
             if (providerId in keepProviders) {
                 providers[providerId] = ModelsDevProvider(

@@ -74,7 +74,7 @@ object LadderRunner {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                failures += RungFailure(ready.label, e.message ?: e.javaClass.simpleName, skipped = false)
+                failures += RungFailure(ready.label, e.message ?: e::class.simpleName.orEmpty(), skipped = false)
             }
         }
         throw AiLadderException(failureMessage(serviceLabel, failures), failures)
