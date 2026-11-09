@@ -2,7 +2,6 @@ package codes.tashif.paisa.ai
 
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.Locale
 import kotlin.math.abs
 
 /**
@@ -62,7 +61,7 @@ object StatementJsonParser {
         val typeRaw = obj.optString("type")
             .ifBlank { obj.optString("transactionType") }
             .ifBlank { obj.optString("debitCredit") }
-            .lowercase(Locale.US)
+            .lowercase()
         val type = when {
             typeRaw.contains("income") || typeRaw.contains("credit") ||
                 typeRaw == "cr" || typeRaw.contains("deposit") -> "income"
@@ -74,7 +73,7 @@ object StatementJsonParser {
 
         val currency = obj.optString("currency")
             .ifBlank { "INR" }
-            .uppercase(Locale.US)
+            .uppercase()
             .take(8)
 
         val reference = obj.optString("reference")
@@ -148,7 +147,7 @@ object StatementJsonParser {
         ).find(s)
         if (dMonY != null) {
             val d = dMonY.groupValues[1].padStart(2, '0')
-            val monKey = dMonY.groupValues[2].take(3).lowercase(Locale.US)
+            val monKey = dMonY.groupValues[2].take(3).lowercase()
             val m = months[monKey] ?: return null
             val y = dMonY.groupValues[3]
             return "$y-$m-$d"

@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.ai
 
+import codes.tashif.paisa.platform.nowMillis
 import codes.tashif.paisa.ai.CatalogState
 import codes.tashif.paisa.ai.ProviderStatus
 import codes.tashif.paisa.ai.catalog.CatalogSource
@@ -55,7 +56,7 @@ fun catalogSourceLabel(source: CatalogSource): String = when (source) {
     CatalogSource.BUILT_IN -> "Built in"
 }
 
-fun catalogSubtitle(catalog: CatalogState, now: Long = System.currentTimeMillis()): String {
+fun catalogSubtitle(catalog: CatalogState, now: Long = nowMillis()): String {
     if (catalog.refreshing) return "Refreshing…"
     val parts = mutableListOf(
         "${NumberFormat.getIntegerInstance().format(catalog.modelCount)} models",
@@ -67,7 +68,7 @@ fun catalogSubtitle(catalog: CatalogState, now: Long = System.currentTimeMillis(
 }
 
 /** "just now", "5 min ago", "3 h ago", "2 days ago". */
-fun ageLabel(epochMillis: Long, now: Long = System.currentTimeMillis()): String {
+fun ageLabel(epochMillis: Long, now: Long = nowMillis()): String {
     val minutes = ((now - epochMillis) / 60_000).coerceAtLeast(0)
     return when {
         minutes < 1 -> "just now"

@@ -1,14 +1,13 @@
 package codes.tashif.paisa.ai
 
+import codes.tashif.paisa.platform.formatDate
+import codes.tashif.paisa.platform.nowMillis
 import codes.tashif.paisa.data.Account
 import codes.tashif.paisa.data.Transaction
 import codes.tashif.paisa.data.repository.AccountRepository
 import codes.tashif.paisa.data.repository.CategoryRepository
 import codes.tashif.paisa.data.repository.TransactionRepository
 import com.pennywiseai.parser.core.md5Hex
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
  * Commits reviewed [ExtractedTransaction] rows into Room with category resolution + hash dedup.
@@ -119,7 +118,7 @@ class StatementImportUseCase(
             row.date,
             row.amount.toString(),
             row.type,
-            row.merchant.lowercase(Locale.US),
+            row.merchant.lowercase(),
             row.reference.orEmpty(),
             row.rawLine.orEmpty().take(80)
         ).joinToString("|")
@@ -132,5 +131,5 @@ class StatementImportUseCase(
     }
 
     private fun nowIso(): String =
-        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).format(Date())
+        formatDate(nowMillis(), "yyyy-MM-dd'T'HH:mm:ss")
 }

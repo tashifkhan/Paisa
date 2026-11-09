@@ -1,6 +1,5 @@
 package codes.tashif.paisa.ui.statement
 
-import androidx.activity.compose.BackHandler
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts

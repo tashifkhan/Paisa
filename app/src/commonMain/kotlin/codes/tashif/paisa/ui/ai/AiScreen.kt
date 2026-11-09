@@ -1,6 +1,6 @@
 package codes.tashif.paisa.ui.ai
 
-import androidx.activity.compose.BackHandler
+import codes.tashif.paisa.ui.platform.PlatformBackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,7 +17,7 @@ import codes.tashif.paisa.ai.ladder.AiService
 fun AiScreen(onBack: () -> Unit) {
     var route by rememberSaveable { mutableStateOf(AiRoute.OVERVIEW) }
     val toOverview = { route = AiRoute.OVERVIEW }
-    BackHandler(onBack = { if (route == AiRoute.OVERVIEW) onBack() else toOverview() })
+    PlatformBackHandler(onBack = { if (route == AiRoute.OVERVIEW) onBack() else toOverview() })
 
     when {
         route.startsWith(AiRoute.PROVIDER) -> AiProviderScreen(

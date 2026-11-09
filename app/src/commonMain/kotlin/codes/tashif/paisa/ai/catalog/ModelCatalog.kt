@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ai.catalog
 
+import codes.tashif.paisa.platform.nowMillis
 import android.content.Context
 import codes.tashif.paisa.ai.provider.AiProviderInfo
 import codes.tashif.paisa.ai.provider.BuiltInProviders
@@ -84,7 +85,7 @@ class ModelCatalog(
         }
     }
 
-    fun isStale(now: Long = System.currentTimeMillis()): Boolean {
+    fun isStale(now: Long = nowMillis()): Boolean {
         val fetchedAt = _modelsDev.value.fetchedAt ?: return true
         return now - fetchedAt > STALE_AFTER_MS
     }
@@ -96,7 +97,7 @@ class ModelCatalog(
         return try {
             val text = client.get(ModelsDevParser.URL, mapOf("Accept" to "application/json"), MODELS_DEV_TIMEOUT_S)
             val snapshot = withContext(Dispatchers.Default) { ModelsDevParser.parse(text, KEEP_PROVIDERS) }
-            val now = System.currentTimeMillis()
+            val now = nowMillis()
             _modelsDev.value = ModelsDevState(snapshot, CatalogSource.NETWORK, now)
             persist(modelsDevFile) { CatalogCodec.encodeModelsDev(snapshot, now) }
             Result.success(Unit)
@@ -114,7 +115,7 @@ class ModelCatalog(
         ensureLoaded()
         return try {
             val models = lister.list(provider, baseUrl, apiKey)
-            putLive(provider.id, LiveList(models, System.currentTimeMillis()))
+            putLive(provider.id, LiveList(models, nowMillis()))
             _liveErrors.update { it - provider.id }
             Result.success(models.size)
         } catch (e: CancellationException) {

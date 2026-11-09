@@ -27,7 +27,6 @@ import codes.tashif.paisa.ui.format.formatMoney
 import codes.tashif.paisa.ui.theme.ExpenseRed
 import codes.tashif.paisa.ui.theme.IncomeGreen
 import codes.tashif.paisa.ui.theme.spacing
-import java.util.Locale
 
 @Composable
 internal fun StatementPreviewRow(
@@ -36,7 +35,7 @@ internal fun StatementPreviewRow(
     onToggle: () -> Unit
 ) {
     val isIncome = row.type == "income"
-    val initial = row.merchant.take(1).uppercase(Locale.getDefault()).ifBlank { "?" }
+    val initial = row.merchant.take(1).uppercase().ifBlank { "?" }
 
     Card(
         modifier = Modifier
