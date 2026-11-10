@@ -22,7 +22,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.rounded.CallMade
 import androidx.compose.material.icons.rounded.CallReceived
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -159,8 +158,8 @@ internal fun DebtPersonScreen(
                 confirmSettle = true
             },
             modifier = Modifier
+                // The app frame already pads for the bottom bar and gesture bar.
                 .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
                 .padding(bottom = MaterialTheme.spacing.medium)
         )
     }
