@@ -17,6 +17,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -50,23 +53,45 @@ fun BarChart(
     val baselineColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
 
     Column(modifier = modifier.fillMaxWidth()) {
-        ChartTooltipSlot(visible = selected != null) {
-            selected?.let { index ->
-                entries.getOrNull(index)?.let { entry ->
-                    Md3ChartTooltip(
+        var chartSize by remember { mutableStateOf(IntSize.Zero) }
+        val density = LocalDensity.current.density
+        val anchor = selected?.let { index ->
+            val entry = entries.getOrNull(index) ?: return@let null
+            if (chartSize == IntSize.Zero) return@let null
+            val top = 8f * density
+            val bottom = chartSize.height - 4f * density
+            val slot = chartSize.width / entries.size.toFloat()
+            val barTop = if (entry.value > 0) {
+                bottom - ((entry.value / maxValue) * (bottom - top)).toFloat().coerceAtLeast(6f * density)
+            } else {
+                bottom
+            }
+            Offset(index * slot + slot / 2f, barTop - 8f * density)
+        }
+        val tooltip: (@Composable () -> Unit)? = selected?.let { index ->
+            entries.getOrNull(index)?.let { entry ->
+                {
+                    ChartTooltipCard(
                         title = tooltipLabel(entry),
-                        value = formatValue(entry.value),
-                        supporting = supportingLabel(entry),
-                        accent = if (entry.color == Color.Unspecified) primary else entry.color
+                        lines = listOf(
+                            TooltipLine(
+                                color = if (entry.color == Color.Unspecified) selectedColor else entry.color,
+                                label = null,
+                                value = formatValue(entry.value)
+                            )
+                        ),
+                        note = supportingLabel(entry)
                     )
                 }
             }
         }
 
+        ChartWithTooltip(anchor = anchor, tooltip = tooltip) {
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(148.dp)
+                .onSizeChanged { chartSize = it }
                 // A mouse shows the tooltip on hover; touch still taps.
                 .hoverIndex(entries, { pos, size -> (pos.x / (size.width / entries.size.toFloat())).toInt().coerceIn(0, entries.lastIndex) }) { selected = it }
                 .pointerInput(entries) {
@@ -155,6 +180,7 @@ fun BarChart(
                     }
                 }
             }
+        }
         }
 
         if (highlightEvery > 0) {

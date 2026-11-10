@@ -176,7 +176,8 @@ internal fun AnalyticsGroupScreen(
                             colorB = ExpenseRed,
                             nameA = "In",
                             nameB = "Out",
-                            formatValue = { formatMoney(currency, it) }
+                            formatValue = { formatMoney(currency, it) },
+                            note = { a, b -> "Net " + (if (a >= b) "+" else "−") + formatMoney(currency, kotlin.math.abs(a - b)) }
                         )
                         Spacer(Modifier.height(MaterialTheme.spacing.small))
                         Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {

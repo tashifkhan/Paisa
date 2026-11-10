@@ -345,16 +345,28 @@ fun AppShell(
                         // Two equal panes on expanded, so on a book-style
                         // foldable the split lands on the hinge.
                         Box(modifier = Modifier.weight(1f)) {
-                            AnimatedContent(
-                                targetState = currentTab,
-                                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                                label = "tab_content"
-                            ) { page ->
-                                if (wide) {
-                                    TabContent(page, navTabs, state, viewModel)
-                                } else {
+                            if (!wide && currentTab in navTabs) {
+                                SwipeableTabs(
+                                    navTabs = navTabs,
+                                    currentTab = currentTab,
+                                    onSwipeTo = selectTab
+                                ) { page ->
                                     CenteredContent {
                                         TabContent(page, navTabs, state, viewModel)
+                                    }
+                                }
+                            } else {
+                                AnimatedContent(
+                                    targetState = currentTab,
+                                    transitionSpec = { fadeIn() togetherWith fadeOut() },
+                                    label = "tab_content"
+                                ) { page ->
+                                    if (wide) {
+                                        TabContent(page, navTabs, state, viewModel)
+                                    } else {
+                                        CenteredContent {
+                                            TabContent(page, navTabs, state, viewModel)
+                                        }
                                     }
                                 }
                             }

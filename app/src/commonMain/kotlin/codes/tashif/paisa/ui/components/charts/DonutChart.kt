@@ -55,17 +55,6 @@ fun DonutChart(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        ChartTooltipSlot(visible = pick != null) {
-            pick?.let { entry ->
-                Md3ChartTooltip(
-                    title = entry.label,
-                    value = formatValue(entry.value),
-                    supporting = "${(entry.value / total * 100).toInt()}% $shareLabel",
-                    accent = entry.color
-                )
-            }
-        }
-
         val strokePx = with(LocalDensity.current) { 28.dp.toPx() }
         // Which slice is under a point, or null off the ring.
         val sliceAt: (Offset, IntSize) -> Int? = { point, size ->
@@ -160,6 +149,11 @@ fun DonutChart(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "${(pick.value / total * 100).toInt()}% $shareLabel",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
                     Text(

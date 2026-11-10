@@ -2,6 +2,27 @@
 
 Every Paisa release, newest first. Each version's APK is on the [releases page](https://github.com/tashifkhan/Paisa/releases) and in the F-Droid repo at `https://tashif.codes/fdroid/repo`.
 
+## 1.6.4
+
+Swipe between tabs, clearer chart tooltips, and a fix for the debts toolbar.
+
+### Swipe to switch
+
+- **Swipe between tabs.** On phones, swipe left or right anywhere on a tab to move to the next one in the bottom bar. Tapping a tab still jumps straight to it. Rows that scroll sideways, like the filter chips and account cards, keep their own swipe until they reach an end.
+- **Swipe in the add sheet** to switch between Manual and With AI.
+
+### Chart tooltips
+
+- **They float next to what you tapped** instead of sitting in a strip above the chart, so the chart no longer jumps when a tooltip opens and there's no empty gap above it.
+- **One row per series.** The running total shows this month and last month on their own lines, and says how much more or less you've spent. Income vs expense shows both and the net. A day this month hasn't reached says so.
+- **Tall bars stay visible.** When there's no room above a point, the tooltip sits beside it.
+- Colour dots have a thin ring, so pale colours show up on the tooltip.
+- The spending donut shows the share of the tapped category in its centre, instead of repeating it in a tooltip.
+
+### Fixes
+
+- On a person's debt page, the toolbar sits just above the bottom bar instead of floating far above it.
+
 ## 1.6.3
 
 Paisa now runs in the browser as well as on Android, from the same Kotlin code. This release also adds transactions with AI, a real first-run setup, and layouts that use the space on tablets and desktops.
