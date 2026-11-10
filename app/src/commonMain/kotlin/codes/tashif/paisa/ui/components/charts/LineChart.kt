@@ -17,6 +17,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -53,23 +56,43 @@ fun LineChart(
     val markerColor = MaterialTheme.colorScheme.outline
 
     Column(modifier = modifier.fillMaxWidth()) {
-        ChartTooltipSlot(visible = selected != null) {
-            selected?.let { index ->
+        var chartSize by remember { mutableStateOf(IntSize.Zero) }
+        val anchor = selected?.let { index ->
+            if (chartSize == IntSize.Zero) return@let null
+            val density = LocalDensity.current.density
+            val top = 8f * density
+            val bottom = chartSize.height - 4f * density
+            val step = if (labels.size > 1) chartSize.width / (labels.size - 1f) else 0f
+            val highest = listOfNotNull(seriesA.getOrNull(index), seriesB.getOrNull(index)).maxOrNull()
+            val y = highest?.let { bottom - (it / maxValue).toFloat() * (bottom - top) } ?: bottom
+            Offset(index * step, y)
+        }
+        val tooltip: (@Composable () -> Unit)? = selected?.let { index ->
+            {
                 val a = seriesA.getOrNull(index)
                 val b = seriesB.getOrNull(index)
-                Md3ChartTooltip(
+                ChartTooltipCard(
                     title = tooltipLabel(index),
-                    value = "$nameA ${a?.let(formatValue) ?: "–"}",
-                    supporting = "$nameB ${b?.let(formatValue) ?: "–"}",
-                    accent = colorA
+                    lines = listOfNotNull(
+                        a?.let { TooltipLine(colorA, nameA, formatValue(it)) },
+                        b?.let { TooltipLine(colorB, nameB, formatValue(it)) }
+                    ),
+                    note = when {
+                        a != null && b != null && a != b ->
+                            "${formatValue(kotlin.math.abs(a - b))} ${if (a > b) "more" else "less"} than $nameB"
+                        a == null && b != null -> "$nameA hasn't reached this day"
+                        else -> null
+                    }
                 )
             }
         }
 
+        ChartWithTooltip(anchor = anchor, tooltip = tooltip) {
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(160.dp)
+                .onSizeChanged { chartSize = it }
                 // A mouse shows the tooltip on hover; touch still taps.
                 .hoverIndex(labels, { pos, size -> (pos.x / (if (labels.size > 1) size.width / (labels.size - 1).toFloat() else size.width.toFloat()) + 0.5f).toInt().coerceIn(0, labels.lastIndex) }) { selected = it }
                 .pointerInput(labels) {
@@ -135,6 +158,7 @@ fun LineChart(
                 seriesB.getOrNull(index)?.let { drawCircle(colorB, 4.dp.toPx(), point(index, it)) }
                 seriesA.getOrNull(index)?.let { drawCircle(colorA, 5.dp.toPx(), point(index, it)) }
             }
+        }
         }
 
         Row(

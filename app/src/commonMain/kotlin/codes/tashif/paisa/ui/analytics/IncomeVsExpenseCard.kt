@@ -53,7 +53,8 @@ internal fun IncomeVsExpenseCard(
             colorB = ExpenseRed,
             nameA = "Income",
             nameB = "Expense",
-            formatValue = money
+            formatValue = money,
+            note = { a, b -> "Net " + (if (a >= b) "+" else "−") + money(kotlin.math.abs(a - b)) }
         )
         Spacer(Modifier.height(MaterialTheme.spacing.small))
         Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {

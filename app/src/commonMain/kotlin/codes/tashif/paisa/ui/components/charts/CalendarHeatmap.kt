@@ -21,6 +21,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -47,20 +50,31 @@ fun CalendarHeatmap(
     val haptics = rememberHaptics()
     val outline = MaterialTheme.colorScheme.outline
 
-    Column(modifier = modifier.fillMaxWidth()) {
-        ChartTooltipSlot(visible = selected != null) {
-            selected?.let { day ->
-                val amount = values[day]
-                Md3ChartTooltip(
-                    title = dayLabel(day + 1),
-                    value = formatValue(amount),
-                    supporting = if (amount > 0) "Spent this day" else "No spending",
-                    accent = if (amount > 0) color else track
-                )
-            }
+    var gridWidth by remember { mutableStateOf(0) }
+    var headerHeight by remember { mutableStateOf(0) }
+    val density = LocalDensity.current.density
+    val anchor = selected?.let { day ->
+        if (gridWidth == 0) return@let null
+        val cell = day + firstDayOffset
+        val cellWidth = gridWidth / 7f
+        // Each week row is a 36dp cell with 3dp padding above and below.
+        val y = headerHeight + 4f * density + (cell / 7) * 42f * density + 3f * density
+        Offset((cell % 7 + 0.5f) * cellWidth, y)
+    }
+    val tooltip: (@Composable () -> Unit)? = selected?.let { day ->
+        {
+            val amount = values[day]
+            ChartTooltipCard(
+                title = dayLabel(day + 1),
+                lines = listOf(TooltipLine(if (amount > 0) color else track, null, formatValue(amount))),
+                note = if (amount > 0) null else "No spending"
+            )
         }
+    }
 
-        Row(modifier = Modifier.fillMaxWidth()) {
+    ChartWithTooltip(anchor = anchor, tooltip = tooltip, modifier = modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.fillMaxWidth().onSizeChanged { gridWidth = it.width }) {
+        Row(modifier = Modifier.fillMaxWidth().onSizeChanged { headerHeight = it.height }) {
             weekdays.forEach { day ->
                 Box(
                     modifier = Modifier.weight(1f),
@@ -148,5 +162,6 @@ fun CalendarHeatmap(
                 }
             }
         }
+    }
     }
 }

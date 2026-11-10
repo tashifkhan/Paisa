@@ -16,6 +16,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -39,7 +42,9 @@ fun GroupedBarChart(
     modifier: Modifier = Modifier,
     nameA: String = "A",
     nameB: String = "B",
-    formatValue: (Double) -> String = { formatFixed(it, 0) }
+    formatValue: (Double) -> String = { formatFixed(it, 0) },
+    /** An extra line under the two values, from series A and B at that point. */
+    note: ((a: Double, b: Double) -> String?)? = null
 ) {
     if (labels.isEmpty()) return
     val maxValue = (seriesA + seriesB).maxOrNull()?.takeIf { it > 0 } ?: return
@@ -50,23 +55,37 @@ fun GroupedBarChart(
     val markerColor = MaterialTheme.colorScheme.onSurface
 
     Column(modifier = modifier.fillMaxWidth()) {
-        ChartTooltipSlot(visible = selected != null) {
-            selected?.let { index ->
+        var chartSize by remember { mutableStateOf(IntSize.Zero) }
+        val density = LocalDensity.current.density
+        val anchor = selected?.let { index ->
+            if (chartSize == IntSize.Zero) return@let null
+            val top = 8f * density
+            val bottom = chartSize.height - 4f * density
+            val slot = chartSize.width / labels.size.toFloat()
+            val highest = maxOf(seriesA.getOrElse(index) { 0.0 }, seriesB.getOrElse(index) { 0.0 })
+            Offset(index * slot + slot / 2f, bottom - ((highest / maxValue) * (bottom - top)).toFloat() - 6f * density)
+        }
+        val tooltip: (@Composable () -> Unit)? = selected?.let { index ->
+            {
                 val a = seriesA.getOrElse(index) { 0.0 }
                 val b = seriesB.getOrElse(index) { 0.0 }
-                Md3ChartTooltip(
+                ChartTooltipCard(
                     title = labels[index],
-                    value = "$nameA ${formatValue(a)}",
-                    supporting = "$nameB ${formatValue(b)}",
-                    accent = colorA
+                    lines = listOf(
+                        TooltipLine(colorA, nameA, formatValue(a)),
+                        TooltipLine(colorB, nameB, formatValue(b))
+                    ),
+                    note = note?.invoke(a, b)
                 )
             }
         }
 
+        ChartWithTooltip(anchor = anchor, tooltip = tooltip) {
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(148.dp)
+                .onSizeChanged { chartSize = it }
                 // A mouse shows the tooltip on hover; touch still taps.
                 .hoverIndex(labels, { pos, size -> (pos.x / (size.width / labels.size.toFloat())).toInt().coerceIn(0, labels.lastIndex) }) { selected = it }
                 .pointerInput(labels) {
@@ -139,6 +158,7 @@ fun GroupedBarChart(
                     )
                 }
             }
+        }
         }
 
         Row(
