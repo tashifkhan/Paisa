@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.ui.components.AccountPicker
 import codes.tashif.paisa.ui.components.CategoryPicker
 import codes.tashif.paisa.ui.components.PillTabs
+import codes.tashif.paisa.ui.components.swipeToSwitch
 import codes.tashif.paisa.ui.components.SheetToggleCard
 import codes.tashif.paisa.ui.statement.rememberPhotoPicker
 import codes.tashif.paisa.ui.statement.rememberStatementPicker
@@ -123,6 +124,12 @@ fun AddTransactionSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // Swipe sideways to switch between Manual and With AI.
+                .swipeToSwitch(
+                    enabled = !(withAi && aiState.reviewing),
+                    onPrevious = { withAi = false },
+                    onNext = { withAi = true }
+                )
                 .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = MaterialTheme.spacing.medium)
