@@ -43,11 +43,19 @@ fun AdaptiveSheet(
     content: @Composable ColumnScope.() -> Unit
 ) {
     if (!sheetsAsDialogs()) {
+        // A pure-black sheet over a pure-black screen (AMOLED) has no visible edge,
+        // so the content behind looks cut off. Lift it one tone instead. (A border
+        // modifier can't do this: the sheet paints past the bounds it measures.)
+        val sheetColor = if (containerColor == Color.Black) {
+            MaterialTheme.colorScheme.surfaceContainer
+        } else {
+            containerColor
+        }
         ModalBottomSheet(
             onDismissRequest = onDismissRequest,
             modifier = modifier,
             sheetState = sheetState,
-            containerColor = containerColor,
+            containerColor = sheetColor,
             content = content
         )
         return
