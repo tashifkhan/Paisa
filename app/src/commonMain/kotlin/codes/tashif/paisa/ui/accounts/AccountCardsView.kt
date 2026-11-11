@@ -1,6 +1,7 @@
 package codes.tashif.paisa.ui.accounts
 
 import codes.tashif.paisa.ui.home.DayHeader
+import codes.tashif.paisa.ui.home.dayNet
 import codes.tashif.paisa.ui.components.TransactionGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -168,7 +169,7 @@ private fun AccountTransactions(
                         DayHeader(
                             day = day,
                             currency = currency,
-                            spent = dayTxs.filter { it.type == "expense" }.sumOf { it.amount }
+                            net = dayTxs.dayNet()
                         )
                     }
                     item(key = "g$day") {
@@ -256,7 +257,7 @@ private fun AccountCarousel(
                         DayHeader(
                             day = day,
                             currency = currency,
-                            spent = dayTxs.filter { it.type == "expense" }.sumOf { it.amount }
+                            net = dayTxs.dayNet()
                         )
                     }
                     item(key = "g$day") {

@@ -81,11 +81,16 @@ class HomeViewModel(
         txFilters
     ) { txs, query, filters ->
         val q = query.trim()
+        // Worked out per run so relative presets like "This month" stay current.
+        val bounds = filters.dateBounds()
         txs.filter { tx ->
             (filters.type == null || tx.type == filters.type) &&
                 (filters.categoryIds.isEmpty() || tx.categoryId in filters.categoryIds) &&
                 (filters.accountIds.isEmpty() || tx.accountId in filters.accountIds) &&
-                (filters.source == null || tx.source == filters.source) &&
+                (filters.sources.isEmpty() || tx.source in filters.sources) &&
+                (bounds == null || tx.transactionDate.take(10).let { it >= bounds.first && it <= bounds.second }) &&
+                (filters.minAmount == null || tx.amount >= filters.minAmount) &&
+                (filters.maxAmount == null || tx.amount <= filters.maxAmount) &&
                 (q.isEmpty() || matchesQuery(tx, q))
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

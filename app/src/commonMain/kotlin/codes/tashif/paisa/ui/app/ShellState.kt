@@ -50,6 +50,9 @@ class ShellState {
         FullScreen.entries.forEach { openScreens.getValue(it).value = it == screen }
     }
 
+    /** True while Home's list is in multi-select; the FABs step aside for its toolbar. */
+    var selectionMode by mutableStateOf(false)
+
     /** Set when a shortcut asks Home's search box to take focus, until it does. */
     var searchFocusPending by mutableStateOf(false)
         private set

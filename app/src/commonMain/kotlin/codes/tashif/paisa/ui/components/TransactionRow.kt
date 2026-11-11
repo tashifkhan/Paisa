@@ -1,5 +1,19 @@
 package codes.tashif.paisa.ui.components
 
+import androidx.compose.material.icons.rounded.CheckCircle
+
+import androidx.compose.material.icons.rounded.Check
+
+import androidx.compose.foundation.layout.size
+
+import androidx.compose.foundation.shape.CircleShape
+
+import androidx.compose.foundation.background
+
+import androidx.compose.animation.Crossfade
+
+import androidx.compose.foundation.combinedClickable
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -50,6 +64,10 @@ fun TransactionRow(
     onDelete: (() -> Unit)? = null,
     /** Where the row sits in a day's group, which sets its corners, like More's rows. */
     position: GroupPosition = GroupPosition.Single,
+    /** Null outside multi-select. Inside it, whether this row is picked. */
+    checked: Boolean? = null,
+    /** Long-press (or right-click → Select) starts multi-select with this row. */
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit = {}
 ) {
     var menuAt by remember { mutableStateOf<DpOffset?>(null) }
@@ -72,14 +90,22 @@ fun TransactionRow(
             .onSecondaryClick { at ->
                 menuAt = with(density) { DpOffset(at.x.toDp(), at.y.toDp()) }
             }
-            .clickable {
-                haptics.click()
-                onClick()
-            }
+            .combinedClickable(
+                onClick = {
+                    if (checked != null) haptics.tick() else haptics.click()
+                    onClick()
+                },
+                onLongClick = onLongClick?.let {
+                    {
+                        haptics.longPress()
+                        it()
+                    }
+                }
+            )
             .handCursor(),
         shape = groupShape(position),
         colors = CardDefaults.cardColors(
-            containerColor = if (selected) {
+            containerColor = if (selected || checked == true) {
                 MaterialTheme.colorScheme.secondaryContainer
             } else {
                 MaterialTheme.colorScheme.surfaceContainerLow
@@ -92,12 +118,31 @@ fun TransactionRow(
                 .padding(MaterialTheme.spacing.medium),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            CategoryBadge(
-                iconName = tx.categoryIcon,
-                categoryName = tx.categoryName,
-                colorHex = tx.categoryColor,
-                size = 42.dp
-            )
+            // In multi-select a picked row swaps its category badge for a check.
+            Crossfade(targetState = checked == true, label = "row check") { isChecked ->
+                if (isChecked) {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.Check,
+                            contentDescription = "Selected",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                } else {
+                    CategoryBadge(
+                        iconName = tx.categoryIcon,
+                        categoryName = tx.categoryName,
+                        colorHex = tx.categoryColor,
+                        size = 42.dp
+                    )
+                }
+            }
             Spacer(modifier = Modifier.width(MaterialTheme.spacing.small))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -145,6 +190,16 @@ fun TransactionRow(
                 onClick()
             }
         )
+        if (onLongClick != null && checked == null) {
+            DropdownMenuItem(
+                text = { Text("Select") },
+                leadingIcon = { Icon(Icons.Rounded.CheckCircle, contentDescription = null) },
+                onClick = {
+                    menuAt = null
+                    onLongClick()
+                }
+            )
+        }
         if (onDelete != null) {
             DropdownMenuItem(
                 text = { Text("Delete…") },
