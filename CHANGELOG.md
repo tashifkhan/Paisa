@@ -2,6 +2,62 @@
 
 Every Paisa release, newest first. Each version's APK is on the [releases page](https://github.com/tashifkhan/Paisa/releases) and in the F-Droid repo at `https://tashif.codes/fdroid/repo`.
 
+## 1.7.0
+
+Select many transactions at once, much better filters, and a redesign of Home's cards, Add with AI, SMS import and statement import. Plus fixes for day totals, app lock and AMOLED sheets.
+
+### Select many at once
+
+- **Long-press a transaction** to start selecting, then tap others. Long-press again to select every row in between, or tap a day's header to take the whole day.
+- **Rename** them all: one name for all, find and replace (with an optional regex pattern), or text added before or after. A preview shows each change before you apply it.
+- **Move** them to another category or account, or **delete** them. Renames and moves can be undone from the snackbar.
+
+### Filters
+
+- **Dates:** today, last 7 days, this month, last month, last 3 months, this year, or a custom range.
+- **Amount:** a minimum, a maximum, or both.
+- **Sources:** SMS, manual and statement, in any mix.
+- Everything lives in one **Filters** sheet that shows how many transactions match as you change it. Applied filters show as chips you can tap to remove, and the list shows how much went out and came in.
+
+### Home
+
+- **Day totals count income.** A day with a ₹500 expense and ₹200 income now shows −₹300, not −₹500.
+- **Credit cards and Debts** are compact cards in the same style as the balance card. Credit cards keep the usage dial and show what you owe of your limit. Debts shows the net and both totals without listing names. Tap it to open Debts.
+
+### Add with AI
+
+- A **chat-style composer**: your note, attachments and a Draft button in one box, with example prompts to start from.
+- **While it reads**, Material shapes turn slowly under a large title, with your note, a seconds counter and a Stop button.
+
+### Split with others
+
+- **Search for people** instead of scrolling a strip of everyone. Type to find someone, or add a new name. Nobody is listed until you type.
+
+### SMS import
+
+- A status card with live scan progress and last-run counts, and permissions as rows you can tap to grant.
+- **Dismiss all** clears the Not recognized list in one tap.
+- **Mark inbox as scanned up to now** skips old messages without reading them. Scan new still rechecks the last 3 days.
+
+### Backup and export
+
+- **Delete a single backup** from Google Drive or Nextcloud.
+- **Export data** can save a `.paisa` backup file as well as CSV and PDF. It's encrypted when backup encryption is on.
+
+### Statement import
+
+- Redesigned, with the AI model and supported files as lists. Choose files is always at the bottom and sets up AI if you haven't. Scanned PDFs work with models that read PDFs, like Gemini.
+
+### Bank SMS
+
+- New PhonePe wallet parser. Fixes for Slice, Priorbank, HDFC and PhonePe wallets, Islamic International Arab Bank, and ICICI OTP messages.
+- Future-debit notices ("will be debited", UPI AutoPay mandates) are skipped, so the spend isn't counted twice.
+
+### Fixes
+
+- **App lock** opens the fingerprint or PIN prompt by itself when you come back to the app. Before, it only did on a cold start.
+- **On AMOLED black**, bottom sheets now have a visible edge instead of blending into the screen.
+
 ## 1.6.4
 
 Swipe between tabs, clearer chart tooltips, and a fix for the debts toolbar.
