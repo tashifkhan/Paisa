@@ -11,3 +11,16 @@ plugins {
     alias(libs.plugins.google.devtools.ksp) apply false
 }
 
+
+// parser-core ships SupportedBanksDocTest and BankSamplesDocTest, which assert
+// pennywise repo docs (docs/supported-banks.json, README markers, pennywise-web).
+// Those files are not part of Paisa, so skip the tests here. Kept outside
+// parser-core so a later parser-core sync does not overwrite this.
+subprojects {
+    tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+        filter {
+            excludeTestsMatching("com.pennywiseai.parser.core.SupportedBanksDocTest")
+            excludeTestsMatching("com.pennywiseai.parser.core.BankSamplesDocTest")
+        }
+    }
+}
