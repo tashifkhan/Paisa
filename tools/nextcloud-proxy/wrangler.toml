@@ -1,0 +1,7 @@
+name = "paisa-nextcloud-proxy"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+[vars]
+NEXTCLOUD_URL = "https://cloud.example.com"
+ALLOWED_ORIGIN = "https://paisa.example.com"
