@@ -24,6 +24,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.flow.first
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -48,8 +51,15 @@ fun AppLockScreen(
         // Block back while locked — user must authenticate.
     }
 
+    // The lock engages in onStop, so this screen composes while the app is in
+    // the background. A prompt started then is dropped silently by the system
+    // (BiometricPrompt refuses to start after onSaveInstanceState), so wait
+    // until the app is back in front. One auto prompt per lock: if the user
+    // cancels it, the Unlock button is there, and we don't nag on every resume.
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(autoPrompt, biometricAvailable) {
         if (autoPrompt && biometricAvailable) {
+            lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
             onUnlockClick()
         }
     }
