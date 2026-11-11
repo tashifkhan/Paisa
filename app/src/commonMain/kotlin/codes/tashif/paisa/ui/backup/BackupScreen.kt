@@ -56,6 +56,7 @@ fun BackupScreen(
     var showSyncPassword by remember { mutableStateOf(false) }
     var showDisableSync by remember { mutableStateOf(false) }
     var confirmRestore by remember { mutableStateOf<RemoteBackup?>(null) }
+    var confirmDelete by remember { mutableStateOf<RemoteBackup?>(null) }
 
     PlatformBackHandler(onBack = onBack)
 
@@ -150,6 +151,7 @@ fun BackupScreen(
                     providerLabel = config.provider.label,
                     isBusy = isBusy,
                     onRestoreRemote = { confirmRestore = it },
+                    onDeleteRemote = { confirmDelete = it },
                     onRestoreFromFile = {
                         backup.onExternalActivityLaunched()
                         launchers.restoreFromFile()
@@ -245,6 +247,18 @@ fun BackupScreen(
             onConfirm = {
                 showDisableSync = false
                 backup.disableSync()
+            }
+        )
+    }
+
+    confirmDelete?.let { item ->
+        ConfirmDeleteBackupDialog(
+            item = item,
+            providerLabel = config.provider.label,
+            onDismiss = { confirmDelete = null },
+            onConfirm = {
+                confirmDelete = null
+                backup.deleteRemote(item)
             }
         )
     }

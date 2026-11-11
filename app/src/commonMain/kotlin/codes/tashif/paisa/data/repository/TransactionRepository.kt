@@ -108,31 +108,49 @@ class TransactionRepository(
     }
 
     suspend fun updateTransaction(newTransaction: Transaction) {
-        db.withWriteTransaction {
-            val oldTransaction = transactionDao.getRawTransactionById(newTransaction.id)
-                ?: return@withWriteTransaction
-            transactionDao.updateTransaction(newTransaction)
-            debtRepository.onTransactionChanged(oldTransaction, newTransaction)
-            accountDao.recomputeBalance(oldTransaction.accountId)
-            if (newTransaction.accountId != oldTransaction.accountId) {
-                accountDao.recomputeBalance(newTransaction.accountId)
-            }
+        db.withWriteTransaction { updateInTransaction(newTransaction) }
+    }
+
+    /** Saves many edits in one write, so balances and Debts never see half a batch. */
+    suspend fun updateTransactions(transactions: List<Transaction>) {
+        if (transactions.isEmpty()) return
+        db.withWriteTransaction { transactions.forEach { updateInTransaction(it) } }
+    }
+
+    private suspend fun updateInTransaction(newTransaction: Transaction) {
+        val oldTransaction = transactionDao.getRawTransactionById(newTransaction.id) ?: return
+        transactionDao.updateTransaction(newTransaction)
+        debtRepository.onTransactionChanged(oldTransaction, newTransaction)
+        accountDao.recomputeBalance(oldTransaction.accountId)
+        if (newTransaction.accountId != oldTransaction.accountId) {
+            accountDao.recomputeBalance(newTransaction.accountId)
         }
     }
 
     suspend fun deleteTransaction(transactionId: Int) {
+        db.withWriteTransaction { deleteInTransaction(transactionId) }
+    }
+
+    /** Deletes many in one write. Returns how many existed and were removed. */
+    suspend fun deleteTransactions(transactionIds: Collection<Int>): Int {
+        var removed = 0
         db.withWriteTransaction {
-            val transaction = transactionDao.getRawTransactionById(transactionId)
-                ?: return@withWriteTransaction
-            // Soft-delete so SMS re-scan won't re-import
-            if (transaction.transactionHash != null) {
-                transactionDao.softDeleteTransaction(transactionId, nowIso())
-            } else {
-                transactionDao.deleteTransaction(transaction)
-            }
-            debtRepository.onTransactionDeleted(transaction)
-            accountDao.recomputeBalance(transaction.accountId)
+            transactionIds.forEach { if (deleteInTransaction(it)) removed++ }
         }
+        return removed
+    }
+
+    private suspend fun deleteInTransaction(transactionId: Int): Boolean {
+        val transaction = transactionDao.getRawTransactionById(transactionId) ?: return false
+        // Soft-delete so SMS re-scan won't re-import
+        if (transaction.transactionHash != null) {
+            transactionDao.softDeleteTransaction(transactionId, nowIso())
+        } else {
+            transactionDao.deleteTransaction(transaction)
+        }
+        debtRepository.onTransactionDeleted(transaction)
+        accountDao.recomputeBalance(transaction.accountId)
+        return true
     }
 
     // --- RECURRING ---

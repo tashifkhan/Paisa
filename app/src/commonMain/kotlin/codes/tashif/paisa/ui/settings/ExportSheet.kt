@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.PictureAsPdf
+import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material.icons.rounded.TableChart
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -35,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.spacing
 
-/** Bottom sheet to pick CSV or PDF. The caller hides the sheet and opens the file picker. */
+/** Bottom sheet to pick CSV, PDF or a .paisa backup. The caller hides the sheet and opens the file picker. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExportSheet(
@@ -43,7 +44,9 @@ fun ExportSheet(
     sheetState: SheetState,
     onDismiss: () -> Unit,
     onPickCsv: () -> Unit,
-    onPickPdf: () -> Unit
+    onPickPdf: () -> Unit,
+    backupEncrypted: Boolean = false,
+    onPickBackup: () -> Unit = {}
 ) {
     val haptics = rememberHaptics()
     AdaptiveSheet(
@@ -67,7 +70,7 @@ fun ExportSheet(
             )
             Text(
                 text = if (transactionCount == 0) {
-                    "No transactions yet — export will create an empty file."
+                    "No transactions yet. The file will be empty."
                 } else {
                     "All $transactionCount transaction${if (transactionCount == 1) "" else "s"} will be included."
                 },
@@ -100,6 +103,22 @@ fun ExportSheet(
                 onClick = {
                     haptics.click()
                     onPickPdf()
+                }
+            )
+
+            ExportFormatRow(
+                title = "Paisa backup",
+                subtitle = if (backupEncrypted) {
+                    ".paisa · everything, locked with your backup password"
+                } else {
+                    ".paisa · everything, restores into Paisa on any device"
+                },
+                icon = Icons.Rounded.Save,
+                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                contentColor = MaterialTheme.colorScheme.primary,
+                onClick = {
+                    haptics.click()
+                    onPickBackup()
                 }
             )
         }

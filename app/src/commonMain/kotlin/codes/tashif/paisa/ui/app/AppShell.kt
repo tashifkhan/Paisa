@@ -286,7 +286,7 @@ fun AppShell(
                 floatingActionButtonPosition = FabPosition.End,
                 floatingActionButton = {
                     // The detail pane has its own save button where the FAB sits.
-                    if (!navButtons && !detailPane) {
+                    if (!navButtons && !detailPane && !state.selectionMode) {
                         // A visual shift only, so nothing re-measures while it moves.
                         val lift by animateFloatAsState(
                             targetValue = if (!useRail && snackbarHostState.currentSnackbarData != null) {

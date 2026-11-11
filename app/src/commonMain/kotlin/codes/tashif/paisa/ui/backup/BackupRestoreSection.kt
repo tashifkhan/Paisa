@@ -1,12 +1,17 @@
 package codes.tashif.paisa.ui.backup
 
+import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Save
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import codes.tashif.paisa.backup.RemoteBackup
 import codes.tashif.paisa.ui.backup.BackupViewModel.Companion.formatDate
 import codes.tashif.paisa.ui.backup.BackupViewModel.Companion.formatSize
@@ -22,6 +27,7 @@ internal fun BackupRestoreSection(
     providerLabel: String,
     isBusy: Boolean,
     onRestoreRemote: (RemoteBackup) -> Unit,
+    onDeleteRemote: (RemoteBackup) -> Unit,
     onRestoreFromFile: () -> Unit,
     onSaveToFile: () -> Unit
 ) {
@@ -36,11 +42,23 @@ internal fun BackupRestoreSection(
                 position = groupPositionOf(index, count),
                 onClick = if (isBusy) null else ({ onRestoreRemote(item) }),
                 trailing = {
-                    Text(
-                        "Restore",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "Restore",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        IconButton(
+                            onClick = { onDeleteRemote(item) },
+                            enabled = !isBusy
+                        ) {
+                            Icon(
+                                Icons.Rounded.DeleteOutline,
+                                contentDescription = "Delete backup from ${formatDate(item.createdAt)}",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             )
         }

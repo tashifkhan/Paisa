@@ -284,6 +284,12 @@ class BackupViewModel(
         attemptRestore(formatDate(backup.createdAt), bytes, null)
     }
 
+    fun deleteRemote(backup: RemoteBackup) = run("Deleting…") {
+        service.delete(backup)
+        _remote.value = _remote.value?.filterNot { it.id == backup.id }
+        say("Deleted the backup from ${formatDate(backup.createdAt)}")
+    }
+
     fun restoreFromFile(file: BackupFile) = run("Reading file…") {
         val bytes = service.readFile(file)
         attemptRestore("selected file", bytes, null)

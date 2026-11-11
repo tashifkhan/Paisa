@@ -61,6 +61,8 @@ class CloudBackupService(
 
     override suspend fun download(backup: RemoteBackup): ByteArray = manager.download(backup)
 
+    override suspend fun delete(backup: RemoteBackup) = manager.delete(backup)
+
     override suspend fun backupNow(): RemoteBackup = manager.backupNow()
 
     override suspend fun createArchive(): ByteArray = manager.createArchive()

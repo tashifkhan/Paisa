@@ -174,6 +174,65 @@ class TransactionViewModel(
         }
     }
 
+    // --- BULK (multi-select on Home) ---
+
+    /**
+     * Applies [change] to each transaction in [ids] in one write, then offers
+     * Undo, which writes the originals back. Rows [change] returns unchanged
+     * are skipped, so the count in the message is what really moved.
+     */
+    private fun bulkEdit(ids: Collection<Int>, done: (Int) -> String, change: (Transaction) -> Transaction) {
+        viewModelScope.launch {
+            val originals = ids.mapNotNull { transactionRepository.getRawTransactionById(it) }
+            val now = nowIso()
+            val edited = originals.map { change(it) }
+                .zip(originals)
+                .filter { (new, old) -> new != old }
+                .map { (new, _) -> new.copy(updatedAt = now) }
+            if (edited.isEmpty()) {
+                showSnackbar("Nothing to change")
+                return@launch
+            }
+            val touched = edited.map { it.id }.toSet()
+            transactionRepository.updateTransactions(edited)
+            showSnackbar(done(edited.size), actionLabel = "Undo") {
+                viewModelScope.launch {
+                    transactionRepository.updateTransactions(originals.filter { it.id in touched })
+                }
+            }
+        }
+    }
+
+    /** Sets each transaction's title. [names] maps id to its new name. */
+    fun renameTransactions(names: Map<Int, String>) =
+        bulkEdit(names.keys, { "Renamed ${plural(it, "transaction")}" }) { raw ->
+            val name = names[raw.id]?.trim().orEmpty()
+            if (name.isEmpty()) raw else raw.copy(merchantName = name)
+        }
+
+    /** Moves them all to one category. Its type (income or expense) comes along, as for a single edit. */
+    fun setCategoryFor(ids: Collection<Int>, categoryId: Int) {
+        viewModelScope.launch {
+            val cat = categoryRepository.getCategoryById(categoryId) ?: return@launch
+            bulkEdit(ids, { "Moved ${plural(it, "transaction")} to ${cat.name}" }) {
+                it.copy(categoryId = cat.id, type = cat.type)
+            }
+        }
+    }
+
+    fun setAccountFor(ids: Collection<Int>, accountId: Int, accountName: String) =
+        bulkEdit(ids, { "Moved ${plural(it, "transaction")} to $accountName" }) { it.copy(accountId = accountId) }
+
+    fun deleteTransactions(ids: Collection<Int>) {
+        viewModelScope.launch {
+            val removed = transactionRepository.deleteTransactions(ids)
+            if (navigator.selectedTransactionId.value in ids) navigator.closeTransaction()
+            showSnackbar("Deleted ${plural(removed, "transaction")}")
+        }
+    }
+
+    private fun plural(n: Int, word: String) = "$n $word" + if (n == 1) "" else "s"
+
     fun deleteTransaction(id: Int) {
         viewModelScope.launch {
             transactionRepository.deleteTransaction(id)

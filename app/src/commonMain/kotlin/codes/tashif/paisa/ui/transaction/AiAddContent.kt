@@ -1,11 +1,39 @@
 package codes.tashif.paisa.ui.transaction
 
+import androidx.compose.ui.graphics.Color
+
+import androidx.compose.material3.TextFieldDefaults
+
+import androidx.compose.material3.TextField
+
+import androidx.compose.material3.SuggestionChipDefaults
+
+import androidx.compose.material3.SuggestionChip
+
+import androidx.compose.material3.Surface
+
+import androidx.compose.material.icons.rounded.AddPhotoAlternate
+
+import androidx.compose.foundation.shape.RoundedCornerShape
+
+import androidx.compose.foundation.layout.widthIn
+
+import androidx.compose.foundation.layout.PaddingValues
+
+import androidx.compose.foundation.rememberScrollState
+
+import androidx.compose.foundation.horizontalScroll
+
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,10 +52,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Image
-import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.WarningAmber
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -35,12 +60,9 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.InputChip
-import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -88,90 +110,135 @@ internal fun AiNoteStep(
     onOpenAiSettings: () -> Unit,
 ) {
     val drafting = state.busy == AiBusy.DRAFTING
-    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-        OutlinedTextField(
-            value = state.note,
-            onValueChange = onNoteChange,
-            enabled = !drafting,
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 4,
-            maxLines = 10,
-            label = { Text("Describe it in your own words") },
-            placeholder = {
-                Text("Lunch 240 at Chaayos yesterday, Uber 180 on my HDFC card, got 5000 back from Ravi")
-            },
-            shape = MaterialTheme.shapes.large,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            )
-        )
-
-        Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)) {
-            AssistChip(
-                onClick = onAddPhotos,
-                enabled = !drafting,
-                label = { Text("Photos") },
-                leadingIcon = {
-                    Icon(Icons.Rounded.PhotoLibrary, null, Modifier.size(AssistChipDefaults.IconSize))
-                },
-                modifier = Modifier.handCursor()
-            )
-            AssistChip(
-                onClick = onAddFiles,
-                enabled = !drafting,
-                label = { Text("PDF or file") },
-                leadingIcon = {
-                    Icon(Icons.Rounded.AttachFile, null, Modifier.size(AssistChipDefaults.IconSize))
-                },
-                modifier = Modifier.handCursor()
+    AnimatedContent(
+        targetState = drafting,
+        transitionSpec = { fadeIn() togetherWith fadeOut() using SizeTransform(clip = false) },
+        label = "ai note step"
+    ) { reading ->
+        if (reading) {
+            AiReadingPanel(state = state, onCancel = onCancel)
+        } else {
+            AiNoteForm(
+                state = state,
+                aiReady = aiReady,
+                onNoteChange = onNoteChange,
+                onAddPhotos = onAddPhotos,
+                onAddFiles = onAddFiles,
+                onRemoveFile = onRemoveFile,
+                onDraft = onDraft,
+                onOpenAiSettings = onOpenAiSettings
             )
         }
+    }
+}
 
-        if (state.files.isNotEmpty()) {
-            FlowRow(
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AiNoteForm(
+    state: AiAddUiState,
+    aiReady: Boolean,
+    onNoteChange: (String) -> Unit,
+    onAddPhotos: () -> Unit,
+    onAddFiles: () -> Unit,
+    onRemoveFile: (Int) -> Unit,
+    onDraft: () -> Unit,
+    onOpenAiSettings: () -> Unit,
+) {
+    val haptics = rememberHaptics()
+    val empty = state.note.isBlank() && state.files.isEmpty()
+    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+        // Examples to start from; gone once there's anything to read.
+        AnimatedVisibility(visible = empty) {
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                state.files.forEach { file ->
-                    val isImage = file.name.lowercase().let { n ->
-                        listOf(".jpg", ".jpeg", ".png", ".webp", ".heic").any(n::endsWith)
-                    } || file.source.mimeType?.startsWith("image/") == true
-                    InputChip(
-                        selected = false,
-                        onClick = { if (!drafting) onRemoveFile(file.id) },
-                        label = {
-                            Text(file.name, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(140.dp))
+                AI_EXAMPLES.forEach { example ->
+                    SuggestionChip(
+                        onClick = {
+                            haptics.tick()
+                            onNoteChange(example)
                         },
-                        leadingIcon = {
-                            Icon(
-                                if (isImage) Icons.Rounded.Image else Icons.Rounded.Description,
-                                null,
-                                Modifier.size(InputChipDefaults.IconSize)
-                            )
-                        },
-                        trailingIcon = {
-                            Icon(
-                                Icons.Rounded.Close,
-                                contentDescription = "Remove ${file.name}",
-                                modifier = Modifier.size(InputChipDefaults.IconSize)
-                            )
-                        },
-                        modifier = Modifier.handCursor()
+                        label = { Text(example, maxLines = 1) },
+                        icon = { Icon(Icons.Rounded.AutoAwesome, null, Modifier.size(SuggestionChipDefaults.IconSize)) },
+                        shape = MaterialTheme.shapes.large
                     )
+                }
+            }
+        }
+
+        // The composer: files, the note and the actions in one card, like a chat box.
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh
+        ) {
+            Column(Modifier.padding(MaterialTheme.spacing.smaller)) {
+                if (state.files.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .horizontalScroll(rememberScrollState())
+                            .padding(start = 4.dp, end = 4.dp, top = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)
+                    ) {
+                        state.files.forEach { file -> FileTile(file) { onRemoveFile(file.id) } }
+                    }
+                }
+                TextField(
+                    value = state.note,
+                    onValueChange = onNoteChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 8,
+                    placeholder = {
+                        Text(
+                            if (state.files.isEmpty()) "Describe one or more payments…"
+                            else "Add anything the files don't show, like which card paid…"
+                        )
+                    },
+                    textStyle = MaterialTheme.typography.bodyLarge,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        disabledContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent
+                    )
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onAddPhotos, modifier = Modifier.handCursor()) {
+                        Icon(Icons.Rounded.AddPhotoAlternate, contentDescription = "Add photos")
+                    }
+                    IconButton(onClick = onAddFiles, modifier = Modifier.handCursor()) {
+                        Icon(Icons.Rounded.AttachFile, contentDescription = "Add a PDF or file")
+                    }
+                    Spacer(Modifier.weight(1f))
+                    Button(
+                        onClick = onDraft,
+                        enabled = state.canDraft && aiReady,
+                        shape = RoundedCornerShape(20.dp),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
+                    ) {
+                        Icon(Icons.Rounded.AutoAwesome, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(MaterialTheme.spacing.smaller))
+                        Text("Draft", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
         }
 
         Text(
             text = if (state.files.isEmpty()) {
-                "Write one or several payments, attach receipts, bills, payment screenshots or PDFs, or both. " +
-                    "You'll check everything before it's saved."
+                "One payment or several, in your own words. Attach receipts, bills or screenshots too. " +
+                    "You'll check every draft before it's saved."
             } else {
-                "Your note goes along with every file, so it can fill in what they don't show, like which card paid."
+                "Your note goes along with every file."
             },
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small)
         )
 
         if (!aiReady) {
@@ -195,35 +262,43 @@ internal fun AiNoteStep(
         }
 
         state.error?.let { ErrorNote(it) }
+    }
+}
 
-        Spacer(Modifier.height(MaterialTheme.spacing.small))
-        Button(
-            onClick = onDraft,
-            enabled = (state.canDraft && aiReady) || drafting,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = MaterialTheme.shapes.extraLarge
+private val AI_EXAMPLES = listOf(
+    "Lunch 240 at Chaayos yesterday",
+    "Uber 180 on my HDFC card",
+    "Got 5000 back from Ravi",
+    "Rent 28000 on the 1st"
+)
+
+/** An attached file inside the composer: type icon, name, and a remove button. */
+@Composable
+private fun FileTile(file: AttachedFile, onRemove: () -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 12.dp, end = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            if (drafting) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-                Spacer(Modifier.width(MaterialTheme.spacing.small))
-                Text(
-                    if (state.files.size > 1) "Reading ${state.files.size} files…" else "Reading…",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-            } else {
-                Icon(Icons.Rounded.AutoAwesome, null, Modifier.size(20.dp))
-                Spacer(Modifier.width(MaterialTheme.spacing.small))
-                Text("Draft with AI", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            }
-        }
-        if (drafting) {
-            TextButton(onClick = onCancel, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                Text("Cancel")
+            Icon(
+                if (file.isImage) Icons.Rounded.Image else Icons.Rounded.Description,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.width(MaterialTheme.spacing.smaller))
+            Text(
+                file.name,
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = 150.dp)
+            )
+            IconButton(onClick = onRemove, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Rounded.Close, contentDescription = "Remove ${file.name}", modifier = Modifier.size(18.dp))
             }
         }
     }

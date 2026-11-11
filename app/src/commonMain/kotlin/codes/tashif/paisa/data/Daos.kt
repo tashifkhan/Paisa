@@ -342,6 +342,10 @@ interface UnrecognizedSmsDao {
     @Query("UPDATE unrecognized_sms SET reviewed = 1 WHERE id = :id")
     suspend fun markReviewed(id: Int)
 
+    /** Marks every pending message reviewed. Returns how many changed. */
+    @Query("UPDATE unrecognized_sms SET reviewed = 1 WHERE reviewed = 0")
+    suspend fun markAllReviewed(): Int
+
     @Query("DELETE FROM unrecognized_sms WHERE id = :id")
     suspend fun delete(id: Int)
 

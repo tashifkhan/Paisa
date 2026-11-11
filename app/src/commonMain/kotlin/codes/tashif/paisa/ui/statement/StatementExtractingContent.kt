@@ -74,7 +74,7 @@ internal fun StatementExtractingContent(
         }
         Spacer(Modifier.height(MaterialTheme.spacing.small))
         Text(
-            text = "You can leave this screen — we'll notify you when it's ready.",
+            text = "You can leave this screen. You'll get a notification when it's ready.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

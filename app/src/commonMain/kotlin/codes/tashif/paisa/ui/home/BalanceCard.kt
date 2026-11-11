@@ -58,36 +58,15 @@ internal fun BalanceCard(
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    // Shape scale — deliberately mixed, not one uniform radius
-    val heroShape = RoundedCornerShape(
-        topStart = 32.dp,
-        topEnd = 28.dp,
-        bottomStart = 12.dp,
-        bottomEnd = 12.dp
-    )
-    val eyeShape = RoundedCornerShape(
-        topStart = 18.dp,
-        topEnd = 8.dp,
-        bottomStart = 8.dp,
-        bottomEnd = 18.dp
-    )
-    val incomeShape = RoundedCornerShape(
-        topStart = 12.dp,
-        topEnd = 8.dp,
-        bottomStart = 28.dp,
-        bottomEnd = 12.dp
-    )
-    val expenseShape = RoundedCornerShape(
-        topStart = 8.dp,
-        topEnd = 12.dp,
-        bottomStart = 12.dp,
-        bottomEnd = 28.dp
-    )
-    val breakdownShape = RoundedCornerShape(16.dp)
+    val heroShape = OverviewShapes.hero
+    val eyeShape = OverviewShapes.chip
+    val incomeShape = OverviewShapes.leftTile
+    val expenseShape = OverviewShapes.rightTile
+    val breakdownShape = OverviewShapes.breakdown
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(OverviewShapes.gap)
     ) {
         // ── Hero: total balance ──────────────────────────────────────────
         Surface(
@@ -223,7 +202,7 @@ internal fun BalanceCard(
         // ── Income + Expense companion tiles (distinct shapes) ───────────
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(OverviewShapes.gap)
         ) {
             StatTile(
                 modifier = Modifier.weight(1f),

@@ -42,6 +42,7 @@ interface BackupService {
 
     suspend fun list(): List<RemoteBackup>
     suspend fun download(backup: RemoteBackup): ByteArray
+    suspend fun delete(backup: RemoteBackup)
     suspend fun backupNow(): RemoteBackup
 
     /** Snapshot of the whole database as a sealed `.paisa` file. */
