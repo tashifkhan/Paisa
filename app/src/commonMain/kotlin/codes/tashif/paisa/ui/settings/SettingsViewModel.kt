@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.settings
 
+import codes.tashif.paisa.ui.backup.BackupService
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import codes.tashif.paisa.ai.AiRepository
@@ -34,7 +35,8 @@ class SettingsViewModel(
     categoryRepository: CategoryRepository,
     transactionRepository: TransactionRepository,
     smsInboxRepository: SmsInboxRepository,
-    smsScan: SmsScanService
+    smsScan: SmsScanService,
+    private val backups: BackupService
 ) : ViewModel() {
 
     val settings: StateFlow<Settings?> = settingsRepository.settings
@@ -118,6 +120,30 @@ class SettingsViewModel(
         _isExporting.value = true
         viewModelScope.launch {
             val success = exporter.writeCsv(sink)
+            _isExporting.value = false
+            onComplete(success)
+        }
+    }
+
+    /** True when backups are sealed with the backup password, so an exported .paisa file is too. */
+    val backupEncrypted: Boolean get() = backups.loadConfig().encrypted
+
+    /**
+     * Writes a full `.paisa` backup to [sink], the same file Backup saves.
+     * Encrypted when backup encryption is on. [onComplete] runs on the main thread.
+     */
+    fun exportBackupFile(sink: ExportSink, onComplete: (Boolean) -> Unit) {
+        _isExporting.value = true
+        viewModelScope.launch {
+            val success = try {
+                sink.write(backups.createArchive())
+                true
+            } catch (e: Exception) {
+                e.printStackTrace()
+                false
+            } finally {
+                sink.close()
+            }
             _isExporting.value = false
             onComplete(success)
         }

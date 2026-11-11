@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.settings
 
+import codes.tashif.paisa.backup.BackupNames
 import codes.tashif.paisa.platform.formatDate
 import codes.tashif.paisa.platform.nowMillis
 import org.koin.compose.viewmodel.koinViewModel
@@ -100,6 +101,17 @@ fun MoreScreen(
         exportHandler("PDF", viewModel::exportTransactionsToPdf)
     )
 
+    val backupExportLauncher = rememberCreateDocument(BackupNames.MIME) { sink, error ->
+        when {
+            sink != null -> viewModel.exportBackupFile(sink) { success ->
+                viewModel.showSnackbar(
+                    if (success) "Saved a Paisa backup file" else "Couldn't save the backup file"
+                )
+            }
+            error != null -> viewModel.showSnackbar("Backup file error: $error")
+        }
+    }
+
     val scroll = rememberScrollState()
     Box(modifier = Modifier.fillMaxSize()) {
     CompositionLocalProvider(LocalSelectedSetting provides selected) {
@@ -182,6 +194,15 @@ fun MoreScreen(
                     showExportOptions = false
                     onExternalActivityLaunched()
                     pdfExportLauncher("paisa_transactions_$stamp.pdf")
+                }
+            },
+            backupEncrypted = viewModel.backupEncrypted,
+            onPickBackup = {
+                scope.launch {
+                    if (!sheetDialogs) exportSheetState.hide()
+                    showExportOptions = false
+                    onExternalActivityLaunched()
+                    backupExportLauncher(BackupNames.forTime(nowMillis()))
                 }
             }
         )
