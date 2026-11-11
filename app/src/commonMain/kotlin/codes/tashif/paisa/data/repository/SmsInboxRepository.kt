@@ -17,5 +17,7 @@ class SmsInboxRepository(db: AppDatabase) {
 
     suspend fun markUnrecognizedReviewed(id: Int) = unrecognizedSmsDao.markReviewed(id)
 
+    suspend fun markAllUnrecognizedReviewed(): Int = unrecognizedSmsDao.markAllReviewed()
+
     suspend fun deleteUnrecognized(id: Int) = unrecognizedSmsDao.delete(id)
 }

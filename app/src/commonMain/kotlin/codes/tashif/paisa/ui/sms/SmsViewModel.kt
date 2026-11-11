@@ -76,6 +76,27 @@ class SmsViewModel(
         }
     }
 
+    /** Dismisses every message in the "Not recognized" list at once. */
+    fun dismissAllUnrecognized() {
+        viewModelScope.launch {
+            val n = smsInboxRepository.markAllUnrecognizedReviewed()
+            snackbarManager.show("Dismissed $n message" + if (n == 1) "" else "s")
+        }
+    }
+
+    /**
+     * Treats the inbox as scanned up to now without reading it. Scan new then
+     * starts from here, though it always rechecks the last few days. Full
+     * rescan undoes this by reading everything again.
+     */
+    fun markInboxScanned() {
+        if (smsScanProgress.value.isRunning) return
+        viewModelScope.launch {
+            settingsRepository.update { it.copy(lastSmsScanAt = nowMillis()) }
+            snackbarManager.show("Marked as scanned. Scan new now checks only the last 3 days onward.")
+        }
+    }
+
     fun deleteUnrecognized(id: Int) {
         viewModelScope.launch {
             smsInboxRepository.deleteUnrecognized(id)
