@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -77,7 +78,10 @@ internal fun BreakdownRow(
     label: String,
     currency: String,
     amount: Double,
-    hidden: Boolean
+    hidden: Boolean,
+    contentColor: Color = MaterialTheme.colorScheme.onPrimary,
+    amountColor: Color = contentColor,
+    prefix: String = ""
 ) {
     Row(
         modifier = Modifier
@@ -89,7 +93,7 @@ internal fun BreakdownRow(
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
+            color = contentColor.copy(alpha = 0.9f),
             maxLines = 1,
             modifier = Modifier.weight(1f)
         )
@@ -99,8 +103,25 @@ internal fun BreakdownRow(
             hidden = hidden,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onPrimary,
+            color = amountColor,
+            prefix = prefix,
             maskCount = 5
         )
     }
+}
+
+/**
+ * The shape set every Home cluster shares (balance, credit cards, debts), so the
+ * three read as one family: a hero with big top corners, then two tiles whose
+ * outer bottom corners curve in to close the cluster.
+ */
+internal object OverviewShapes {
+    val hero = RoundedCornerShape(topStart = 32.dp, topEnd = 28.dp, bottomStart = 12.dp, bottomEnd = 12.dp)
+    /** A hero with no tiles under it closes itself. */
+    val heroAlone = RoundedCornerShape(topStart = 32.dp, topEnd = 28.dp, bottomStart = 28.dp, bottomEnd = 28.dp)
+    val chip = RoundedCornerShape(topStart = 18.dp, topEnd = 8.dp, bottomStart = 8.dp, bottomEnd = 18.dp)
+    val leftTile = RoundedCornerShape(topStart = 12.dp, topEnd = 8.dp, bottomStart = 28.dp, bottomEnd = 12.dp)
+    val rightTile = RoundedCornerShape(topStart = 8.dp, topEnd = 12.dp, bottomStart = 12.dp, bottomEnd = 28.dp)
+    val breakdown = RoundedCornerShape(16.dp)
+    val gap = 6.dp
 }
