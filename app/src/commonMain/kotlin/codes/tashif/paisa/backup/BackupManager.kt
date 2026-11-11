@@ -51,6 +51,11 @@ class BackupManager(
 
     suspend fun list(): List<RemoteBackup> = store()?.list() ?: emptyList()
 
+    /** Removes one backup from the connected account. Waits for any running backup or restore. */
+    suspend fun delete(backup: RemoteBackup) = BackupLock.mutex.withLock {
+        (store() ?: throw IOException("No backup account connected")).delete(backup)
+    }
+
     suspend fun download(backup: RemoteBackup): ByteArray =
         store()?.download(backup) ?: throw IOException("No backup account connected")
 
