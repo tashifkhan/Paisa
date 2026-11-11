@@ -5,30 +5,18 @@ import codes.tashif.paisa.ui.components.PillTabs
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import codes.tashif.paisa.data.DebtPersonBalance
 import codes.tashif.paisa.ui.format.formatMoney
@@ -50,61 +38,15 @@ fun SplitEditor(
     currency: String,
     modifier: Modifier = Modifier
 ) {
-    var newName by remember { mutableStateOf("") }
-    val addNewName = {
-        val name = newName.trim()
-        if (name.isNotEmpty()) {
-            val known = people.firstOrNull { it.person.name.equals(name, ignoreCase = true) }?.person
-            val person = known?.let { SplitPerson(it.id, it.name) } ?: SplitPerson(null, name)
-            if (!plan.has(person)) onPlanChange(plan.copy(people = plan.people + person))
-            newName = ""
-        }
-    }
-    // New names typed here show as chips next to the people already in Debts.
-    val chips = people.map { SplitPerson(it.person.id, it.person.name) } +
-        plan.people.filter { it.personId == null }
-
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)
     ) {
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            FilterChip(
-                selected = plan.includeMe,
-                onClick = { onPlanChange(plan.copy(includeMe = !plan.includeMe)) },
-                label = { Text("Include me") },
-                leadingIcon = if (plan.includeMe) {
-                    { Icon(Icons.Rounded.Check, contentDescription = null) }
-                } else {
-                    null
-                }
-            )
-            chips.forEach { person ->
-                FilterChip(
-                    selected = plan.has(person),
-                    onClick = { onPlanChange(plan.toggle(person)) },
-                    label = { Text(person.name) },
-                    leadingIcon = { Icon(Icons.Rounded.Person, contentDescription = null) }
-                )
-            }
-        }
-        OutlinedTextField(
-            value = newName,
-            onValueChange = { newName = it },
-            label = { Text("Add a name") },
-            singleLine = true,
-            shape = MaterialTheme.shapes.extraLarge,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { addNewName() }),
-            trailingIcon = {
-                IconButton(onClick = addNewName, enabled = newName.isNotBlank()) {
-                    Icon(Icons.Rounded.Add, contentDescription = "Add")
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
+        SplitPeoplePicker(
+            people = people,
+            plan = plan,
+            onPlanChange = onPlanChange,
+            currency = currency
         )
 
         PillTabs(
