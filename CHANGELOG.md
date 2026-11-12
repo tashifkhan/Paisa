@@ -2,6 +2,24 @@
 
 Every Paisa release, newest first. Each version's APK is on the [releases page](https://github.com/tashifkhan/Paisa/releases) and in the F-Droid repo at `https://tashif.codes/fdroid/repo`.
 
+## 1.7.1
+
+Add transactions by talking, and delete several accounts at once.
+
+### Voice notes in Add with AI
+
+- **Tap the mic** next to the photo and file buttons and say what you spent, like "Lunch 240 at Chaayos yesterday on my HDFC card, and an Uber 180 this morning". Several payments in one go are fine.
+- A **live waveform** moves as you talk. Tap the check to keep the recording or the X to throw it away. Recordings stop at 2 minutes.
+- The recording goes to your AI model as audio, so it needs a model that listens, like Gemini. The mic only shows up when a model in your Add with AI ladder takes audio. Anthropic models don't, so voice notes skip them.
+- The review page shows **what the model heard**, so a mishearing is easy to catch before you save.
+- With receipts or files attached, what you said goes along with each file, the same as a typed note.
+- A recording with no speech in it isn't sent. Given silence, models invent a whole note, amounts and all, so Paisa says it didn't catch anything instead.
+- Paisa asks for the microphone the first time you tap the mic. Voice notes aren't in the web version yet.
+
+### Accounts
+
+- **Delete several accounts at once.** In the list view, long-press accounts to select them, then tap the trash button. It works with one account selected. Merge still needs two or more. The confirmation names every account, and their transactions are deleted with them.
+
 ## 1.7.0
 
 Select many transactions at once, much better filters, and a redesign of Home's cards, Add with AI, SMS import and statement import. Plus fixes for day totals, app lock and AMOLED sheets.
