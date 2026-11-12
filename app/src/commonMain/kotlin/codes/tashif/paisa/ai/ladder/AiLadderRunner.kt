@@ -52,6 +52,16 @@ class AiLadderRunner(
     }
 
     /**
+     * True when some rung of the service's ladder could take [request]'s
+     * inputs, for example a voice note, without spending a call to find out.
+     */
+    fun canTake(service: AiService, request: LlmRequest): Boolean =
+        repository.ladders.value.forService(service).any { rung ->
+            val ready = resolve(rung) as? ResolvedRung.Ready ?: return@any false
+            LadderRunner.inputProblem(ready.call, request) == null
+        }
+
+    /**
      * Checks a provider. With a model it sends one tiny prompt; without one it
      * lists models, which costs no tokens. Returns a short line for the UI.
      */

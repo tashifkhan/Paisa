@@ -84,6 +84,7 @@ internal fun AiReadingPanel(state: AiAddUiState, onCancel: () -> Unit) {
 
     val images = state.files.count { it.isImage }
     val title = when {
+        state.voice != null && state.files.isEmpty() -> "Listening to your voice note…"
         state.files.size > 1 -> "Reading ${state.files.size} files…"
         state.files.size == 1 && images == 1 -> "Reading your image…"
         state.files.size == 1 -> "Reading your file…"
@@ -150,6 +151,19 @@ internal fun AiReadingPanel(state: AiAddUiState, onCancel: () -> Unit) {
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )
+                }
+            }
+            Spacer(Modifier.height(MaterialTheme.spacing.small))
+        }
+        state.voice?.let { clip ->
+            Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    StaticWaveform(clip.bars, width = 96.dp)
+                    Spacer(Modifier.width(MaterialTheme.spacing.smaller))
+                    Text(clock(clip.durationMs), style = MaterialTheme.typography.labelLarge)
                 }
             }
             Spacer(Modifier.height(MaterialTheme.spacing.small))

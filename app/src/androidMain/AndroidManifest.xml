@@ -16,9 +16,14 @@
 
     <!-- App lock via fingerprint / face / device credential -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- Voice notes in "Add with AI". Asked for the first time the mic is tapped. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <uses-feature
         android:name="android.hardware.telephony"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.microphone"
         android:required="false" />
 
     <application

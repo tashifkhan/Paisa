@@ -12,6 +12,16 @@ data class LlmPdf(
     val name: String? = null
 )
 
+/**
+ * A voice recording sent to a model that listens. [format] is the short name
+ * OpenAI's `input_audio` wants, such as `wav`.
+ */
+data class LlmAudio(
+    val mimeType: String,
+    val base64Data: String,
+    val format: String,
+)
+
 /** What went wrong with one model call. The ladder moves on for every kind. */
 enum class LlmFailure { HTTP, NETWORK, TIMEOUT, EMPTY, BAD_JSON, CUT_OFF, CONFIG }
 

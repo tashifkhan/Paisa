@@ -46,6 +46,8 @@ data class QuickAddFailure(val origin: String, val message: String)
 data class QuickAddResult(
     val drafts: List<SourcedDraft>,
     val failures: List<QuickAddFailure>,
+    /** What the model heard in the voice note, when there was one. */
+    val transcript: String? = null,
 )
 
 /**
@@ -57,11 +59,19 @@ class QuickAddService(private val ladderRunner: AiLadderRunner) {
 
     fun canRun(): Boolean = ladderRunner.canRun(AiService.QUICK_ADD)
 
+    /** True when some model in the ladder can listen to a voice note. */
+    fun canHear(): Boolean = ladderRunner.canTake(
+        AiService.QUICK_ADD,
+        LlmRequest(system = "", prompt = "", audio = LlmAudio("audio/wav", "", "wav"))
+    )
+
     suspend fun draft(
         note: String,
         files: List<StatementSource>,
         context: QuickAddContext,
+        audio: LlmAudio? = null,
     ): QuickAddResult {
+        if (audio != null) return draftWithVoice(note, files, context, audio)
         val cleanNote = note.trim()
         if (files.isEmpty()) {
             if (cleanNote.isEmpty()) return QuickAddResult(emptyList(), emptyList())
@@ -118,6 +128,69 @@ class QuickAddService(private val ladderRunner: AiLadderRunner) {
             )
         }
         return QuickAddResult(drafts, failures)
+    }
+
+    /**
+     * A voice note on its own is one call that returns what it heard and the
+     * drafts. With files, it's transcribed first and then goes along with
+     * every file like a typed note, so a spoken "paid with my HDFC card"
+     * reaches the receipt it's about.
+     */
+    private suspend fun draftWithVoice(
+        note: String,
+        files: List<StatementSource>,
+        context: QuickAddContext,
+        audio: LlmAudio,
+    ): QuickAddResult {
+        val typed = note.trim()
+        if (files.isEmpty()) {
+            return try {
+                val response = complete(
+                    buildString {
+                        append(contextBlock(context))
+                        append("\n\nThe user recorded a voice note describing their payments. Listen to it.\n")
+                        if (typed.isNotEmpty()) {
+                            append("They also typed this, which applies to the same payments:\n")
+                            append(typed)
+                            append("\n")
+                        }
+                        append(VOICE_INSTRUCTION)
+                    },
+                    audio = audio
+                )
+                QuickAddResult(
+                    TransactionDraftParser.parse(response, context.today).map { SourcedDraft(it, VOICE_ORIGIN) },
+                    emptyList(),
+                    TransactionDraftParser.transcript(response)
+                )
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                QuickAddResult(
+                    emptyList(),
+                    listOf(QuickAddFailure(VOICE_ORIGIN, e.message ?: "The AI call failed"))
+                )
+            }
+        }
+
+        val heard = try {
+            TransactionDraftParser.transcript(
+                complete(
+                    "The user recorded a voice note about the files they attached. " +
+                        "Write down exactly what they said. Return ONLY JSON: {\"transcript\": \"...\"}",
+                    audio = audio
+                )
+            )
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            val withoutVoice = draft(typed, files, context)
+            return withoutVoice.copy(
+                failures = withoutVoice.failures + QuickAddFailure(VOICE_ORIGIN, e.message ?: "Couldn't hear it")
+            )
+        }
+        val combined = listOf(typed, heard.orEmpty().trim()).filter { it.isNotEmpty() }.joinToString("\n")
+        return draft(combined, files, context).copy(transcript = heard)
     }
 
     /**
@@ -190,7 +263,12 @@ class QuickAddService(private val ladderRunner: AiLadderRunner) {
         throw LlmException("Couldn't read this file. Try a photo, a PDF or a CSV.")
     }
 
-    private suspend fun complete(prompt: String, image: LlmImage? = null, pdf: LlmPdf? = null): String =
+    private suspend fun complete(
+        prompt: String,
+        image: LlmImage? = null,
+        pdf: LlmPdf? = null,
+        audio: LlmAudio? = null,
+    ): String =
         ladderRunner.run(
             AiService.QUICK_ADD,
             LlmRequest(
@@ -199,6 +277,7 @@ class QuickAddService(private val ladderRunner: AiLadderRunner) {
                 json = true,
                 image = image,
                 pdf = pdf,
+                audio = audio,
                 feature = AiService.QUICK_ADD.id
             )
         ).text
@@ -214,13 +293,18 @@ class QuickAddService(private val ladderRunner: AiLadderRunner) {
 
     companion object {
         const val NOTE_ORIGIN = "your note"
+        const val VOICE_ORIGIN = "your voice note"
+
+        private const val VOICE_INSTRUCTION =
+            "Also return what you heard, word for word, as a \"transcript\" string next to " +
+                "\"transactions\" in the same JSON object. Spoken amounts like \"two forty\" mean 240."
         private const val MAX_PARALLEL = 3
         private const val MAX_TEXT_CHARS = 24_000
 
         val SYSTEM_PROMPT = """
             You turn what someone tells you about their money into transactions for a personal
             expense tracker. The input can be a plain description, a receipt or bill photo, a
-            payment screenshot, a PDF invoice or statement, or a mix of these.
+            payment screenshot, a PDF invoice or statement, a voice recording, or a mix of these.
             Return ONLY valid JSON (no markdown, no commentary) with this shape:
             {
               "transactions": [
@@ -273,6 +357,16 @@ object TransactionDraftParser {
             (0 until array.length()).mapNotNull { array.optJSONObject(it)?.let { obj -> parseOne(obj, today) } }
         } catch (_: Exception) {
             emptyList()
+        }
+    }
+
+    /** The `transcript` a voice-note reply carries, or null. */
+    fun transcript(modelOutput: String): String? {
+        val jsonText = StatementJsonParser.extractJson(modelOutput) ?: return null
+        return try {
+            JSONObject(jsonText).optString("transcript").trim().takeIf { it.isNotEmpty() }
+        } catch (_: Exception) {
+            null
         }
     }
 

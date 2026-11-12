@@ -56,6 +56,7 @@ fun AddTransactionSheet(
     // Come back to the AI side when a draft is running or waiting for review.
     var withAi by rememberSaveable { mutableStateOf(aiState.inProgress) }
     val aiReady = remember(withAi) { aiViewModel.canRun() }
+    val aiCanHear = remember(withAi) { aiViewModel.canHear() }
     val openPhotos = rememberPhotoPicker { aiViewModel.addFiles(it) }
     val openFiles = rememberStatementPicker { aiViewModel.addFiles(it) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -182,6 +183,7 @@ fun AddTransactionSheet(
                     AiNoteStep(
                         state = aiState,
                         aiReady = aiReady,
+                        canHear = aiCanHear,
                         onNoteChange = aiViewModel::setNote,
                         onAddPhotos = {
                             aiViewModel.onExternalActivityLaunched()
@@ -192,6 +194,9 @@ fun AddTransactionSheet(
                             openFiles()
                         },
                         onRemoveFile = aiViewModel::removeFile,
+                        onVoiceRecorded = aiViewModel::setVoice,
+                        onRemoveVoice = aiViewModel::removeVoice,
+                        onBeforeMicPrompt = aiViewModel::onExternalActivityLaunched,
                         onDraft = {
                             keyboardController?.hide()
                             focusManager.clearFocus()

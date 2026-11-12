@@ -2,6 +2,7 @@ package codes.tashif.paisa.ui.transaction
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import codes.tashif.paisa.ai.LlmAudio
 import codes.tashif.paisa.ai.QuickAddContext
 import codes.tashif.paisa.ai.QuickAddFailure
 import codes.tashif.paisa.ai.QuickAddService
@@ -19,6 +20,10 @@ import codes.tashif.paisa.data.repository.SettingsRepository
 import codes.tashif.paisa.data.repository.TransactionRepository
 import codes.tashif.paisa.platform.formatDate
 import codes.tashif.paisa.platform.nowMillis
+import codes.tashif.paisa.ui.voice.VoiceClip
+import kotlin.io.encoding.Base64
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,6 +63,10 @@ enum class AiBusy { DRAFTING, REFINING, SAVING }
 data class AiAddUiState(
     val note: String = "",
     val files: List<AttachedFile> = emptyList(),
+    /** A recorded voice note, sent as audio to a model that listens. */
+    val voice: VoiceClip? = null,
+    /** What the model heard in [voice], shown on the review page. */
+    val transcript: String? = null,
     val busy: AiBusy? = null,
     val reviewing: Boolean = false,
     val rows: List<AiDraftRow> = emptyList(),
@@ -65,7 +74,7 @@ data class AiAddUiState(
     val failures: List<QuickAddFailure> = emptyList(),
     val error: String? = null,
 ) {
-    val canDraft: Boolean get() = busy == null && (note.isNotBlank() || files.isNotEmpty())
+    val canDraft: Boolean get() = busy == null && (note.isNotBlank() || files.isNotEmpty() || voice != null)
     val selectedCount: Int get() = rows.count { it.selected }
 
     /** True when there's work the sheet should come back to. */
@@ -95,6 +104,9 @@ class AiAddViewModel(
 
     fun canRun(): Boolean = quickAdd.canRun()
 
+    /** True when a model in the ladder can listen, so the mic is worth showing. */
+    fun canHear(): Boolean = quickAdd.canHear()
+
     /** Call right before opening the file picker so returning doesn't lock the app. */
     fun onExternalActivityLaunched() = appLockGuard.onExternalActivityLaunched()
 
@@ -110,6 +122,10 @@ class AiAddViewModel(
         }
     }
 
+    fun setVoice(clip: VoiceClip) = _state.update { it.copy(voice = clip, error = null) }
+
+    fun removeVoice() = _state.update { it.copy(voice = null, transcript = null) }
+
     fun removeFile(id: Int) = _state.update { s -> s.copy(files = s.files.filterNot { it.id == id }) }
 
     fun draft() {
@@ -119,21 +135,34 @@ class AiAddViewModel(
             _state.update { it.copy(error = NO_MODEL) }
             return
         }
-        _state.update { it.copy(busy = AiBusy.DRAFTING, error = null, failures = emptyList()) }
+        _state.update { it.copy(busy = AiBusy.DRAFTING, error = null, failures = emptyList(), transcript = null) }
         job = viewModelScope.launch {
             try {
                 val context = buildContext()
-                val result = quickAdd.draft(current.note, current.files.map { it.source }, context)
+                val audio = current.voice?.let { clip ->
+                    withContext(Dispatchers.Default) {
+                        LlmAudio(mimeType = "audio/wav", base64Data = Base64.encode(clip.wav), format = "wav")
+                    }
+                }
+                val result = quickAdd.draft(current.note, current.files.map { it.source }, context, audio)
                 if (result.drafts.isEmpty()) {
-                    val message = result.failures.singleOrNull()?.message?.takeIf { current.files.size <= 1 }
+                    val sources = current.files.size + (if (current.voice != null) 1 else 0)
+                    val message = result.failures.singleOrNull()?.message?.takeIf { sources <= 1 }
                         ?: result.failures.takeIf { it.isNotEmpty() }?.joinToString("\n") { "${it.origin}: ${it.message}" }
+                        ?: result.transcript?.let { "No payment in what the AI heard: \"$it\". Say an amount and what it was for." }
                         ?: "The AI didn't find any transactions in that. Add an amount, or try a clearer photo."
-                    _state.update { it.copy(busy = null, error = message) }
+                    _state.update { it.copy(busy = null, error = message, transcript = result.transcript) }
                     return@launch
                 }
                 val rows = toRows(result.drafts)
                 _state.update {
-                    it.copy(busy = null, reviewing = true, rows = rows, failures = result.failures)
+                    it.copy(
+                        busy = null,
+                        reviewing = true,
+                        rows = rows,
+                        failures = result.failures,
+                        transcript = result.transcript
+                    )
                 }
             } catch (e: CancellationException) {
                 throw e

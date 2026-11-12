@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ai.provider
 
+import codes.tashif.paisa.ai.LlmAudio
 import codes.tashif.paisa.ai.catalog.ModelInfo
 import codes.tashif.paisa.ai.provider.GeminiStyle.ThinkingMode
 import codes.tashif.paisa.ai.json.JSONObject
@@ -101,5 +102,17 @@ class GeminiStyleTest {
         val reply = """{"candidates":[{"content":{"parts":[{"text":"thinking","thought":true},{"text":"{}"}]},"finishReason":"STOP"}]}"""
         assertEquals("{}", GeminiStyle.parse(reply))
         assertTrue(GeminiStyle.majorVersion("gemini-2.5-flash") == 2)
+    }
+
+    @Test
+    fun voice_note_goes_inline_with_its_mime_type() {
+        val parts = GeminiStyle.build(
+            LlmCall(google, google.defaultBaseUrl, "k", "gemini-3.8-flash"),
+            request.copy(audio = LlmAudio("audio/wav", "UklGRg==", "wav"))
+        ).body!!.getJSONArray("contents").getJSONObject(0).getJSONArray("parts")
+        assertEquals("hi", parts.getJSONObject(0).getString("text"))
+        val inline = parts.getJSONObject(1).getJSONObject("inline_data")
+        assertEquals("audio/wav", inline.getString("mime_type"))
+        assertEquals("UklGRg==", inline.getString("data"))
     }
 }

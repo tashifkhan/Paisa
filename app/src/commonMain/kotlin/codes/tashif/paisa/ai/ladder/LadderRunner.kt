@@ -87,6 +87,10 @@ object LadderRunner {
         if (request.pdf != null && (!call.style.carriesPdf || info?.acceptsPdf != true)) {
             return "doesn't read PDFs"
         }
+        // Unknown counts as no: most models that can't hear reject the part outright.
+        if (request.audio != null && (!call.style.carriesAudio || info?.acceptsAudio != true)) {
+            return "doesn't take audio"
+        }
         return null
     }
 

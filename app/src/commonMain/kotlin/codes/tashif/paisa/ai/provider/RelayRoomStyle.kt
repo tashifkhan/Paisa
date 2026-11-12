@@ -56,6 +56,15 @@ object RelayRoomStyle {
                     .put("data", "data:application/pdf;base64,${pdf.base64Data}")
             )
         }
+        request.audio?.let { audio ->
+            attachments.put(
+                JSONObject()
+                    .put("kind", "audio")
+                    .put("mime_type", audio.mimeType)
+                    .put("name", "voice-note.${audio.format}")
+                    .put("data", "data:${audio.mimeType};base64,${audio.base64Data}")
+            )
+        }
         if (attachments.length() > 0) body.put("attachments", attachments)
 
         call.thinking?.let { body.put("config", reasoningConfig(it, call.modelInfo)) }
