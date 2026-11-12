@@ -35,6 +35,7 @@ fun AccountsScreen(viewModel: AccountsViewModel = koinViewModel()) {
     var listView by remember { mutableStateOf(false) }
     var selectedIds by remember { mutableStateOf(setOf<Int>()) }
     var showMergeDialog by remember { mutableStateOf(false) }
+    var showBulkDeleteDialog by remember { mutableStateOf(false) }
     val haptics = rememberHaptics()
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -79,6 +80,7 @@ fun AccountsScreen(viewModel: AccountsViewModel = koinViewModel()) {
                 onReorder = { viewModel.reorderAccounts(it) },
                 onClearSelection = { selectedIds = emptySet() },
                 onMergeClick = { showMergeDialog = true },
+                onDeleteClick = { showBulkDeleteDialog = true },
                 onAutoMerge = { viewModel.autoMergeDuplicateAccounts() }
             )
             }
@@ -161,6 +163,19 @@ fun AccountsScreen(viewModel: AccountsViewModel = koinViewModel()) {
                 )
                 selectedIds = emptySet()
                 showMergeDialog = false
+            }
+        )
+    }
+
+    if (showBulkDeleteDialog && selectedIds.isNotEmpty()) {
+        val toDelete = accounts.filter { it.id in selectedIds }
+        DeleteAccountsDialog(
+            accounts = toDelete,
+            onDismiss = { showBulkDeleteDialog = false },
+            onConfirm = {
+                viewModel.deleteAccountsCascade(toDelete)
+                selectedIds = emptySet()
+                showBulkDeleteDialog = false
             }
         )
     }

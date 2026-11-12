@@ -32,6 +32,17 @@ class AccountRepository(private val db: AppDatabase) {
         accountDao.deleteAccount(account)
     }
 
+    /** Deletes several accounts and all their transactions in one write. */
+    suspend fun deleteAccountsCascade(accounts: List<Account>) {
+        if (accounts.isEmpty()) return
+        db.withWriteTransaction {
+            accounts.forEach { account ->
+                accountDao.deleteTransactionsForAccount(account.id)
+                accountDao.deleteAccount(account)
+            }
+        }
+    }
+
     /** Makes [accountId] the single default account (preselected for new transactions). */
     suspend fun setDefaultAccount(accountId: Int) {
         accountDao.clearDefaultAccount()
