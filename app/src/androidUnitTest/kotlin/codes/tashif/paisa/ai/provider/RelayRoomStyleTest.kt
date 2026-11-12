@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ai.provider
 
+import codes.tashif.paisa.ai.LlmAudio
 import codes.tashif.paisa.ai.LlmImage
 import codes.tashif.paisa.ai.LlmPdf
 import codes.tashif.paisa.ai.json.JSONObject
@@ -120,5 +121,17 @@ class RelayRoomStyleTest {
         assertEquals(24576, config(flash.id, ThinkingLevel.MAX, flash).getInt("reasoning_budget_tokens"))
         assertEquals(0, config(flash.id, ThinkingLevel.NONE, flash).getInt("reasoning_budget_tokens"))
         assertFalse(config(flash.id, ThinkingLevel.LOW, flash).has("reasoning"))
+    }
+
+    @Test
+    fun voice_note_is_an_audio_attachment() {
+        val b = RelayRoomStyle.build(
+            call("google/gemini-3.8-flash"),
+            request.copy(audio = LlmAudio("audio/wav", "UklGRg==", "wav"))
+        ).body!!
+        val audio = b.getJSONArray("attachments").getJSONObject(0)
+        assertEquals("audio", audio.getString("kind"))
+        assertEquals("audio/wav", audio.getString("mime_type"))
+        assertEquals("data:audio/wav;base64,UklGRg==", audio.getString("data"))
     }
 }

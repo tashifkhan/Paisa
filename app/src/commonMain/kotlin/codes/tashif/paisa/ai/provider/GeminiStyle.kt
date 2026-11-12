@@ -84,6 +84,7 @@ object GeminiStyle {
             parts.put(inline(image.mimeType, image.base64Data))
         }
         request.pdf?.let { pdf -> parts.put(inline("application/pdf", pdf.base64Data)) }
+        request.audio?.let { audio -> parts.put(inline(audio.mimeType, audio.base64Data)) }
 
         val generation = JSONObject()
         // Gemini 3 is tuned for its default temperature; lower values can loop.

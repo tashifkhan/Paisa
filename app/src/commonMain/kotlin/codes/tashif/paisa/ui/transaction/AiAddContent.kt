@@ -52,6 +52,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -94,6 +95,11 @@ import codes.tashif.paisa.ui.platform.handCursor
 import codes.tashif.paisa.ui.theme.ExpenseRed
 import codes.tashif.paisa.ui.theme.IncomeGreen
 import codes.tashif.paisa.ui.theme.spacing
+import codes.tashif.paisa.ui.voice.VoiceClip
+import codes.tashif.paisa.ui.voice.VoiceResult
+import codes.tashif.paisa.ui.voice.rememberMicPermission
+import codes.tashif.paisa.ui.voice.rememberVoiceRecorder
+import codes.tashif.paisa.ui.voice.voiceCaptureSupported
 
 /** The note and attachments that go to the model. */
 @OptIn(ExperimentalLayoutApi::class)
@@ -101,10 +107,14 @@ import codes.tashif.paisa.ui.theme.spacing
 internal fun AiNoteStep(
     state: AiAddUiState,
     aiReady: Boolean,
+    canHear: Boolean,
     onNoteChange: (String) -> Unit,
     onAddPhotos: () -> Unit,
     onAddFiles: () -> Unit,
     onRemoveFile: (Int) -> Unit,
+    onVoiceRecorded: (VoiceClip) -> Unit,
+    onRemoveVoice: () -> Unit,
+    onBeforeMicPrompt: () -> Unit,
     onDraft: () -> Unit,
     onCancel: () -> Unit,
     onOpenAiSettings: () -> Unit,
@@ -121,10 +131,14 @@ internal fun AiNoteStep(
             AiNoteForm(
                 state = state,
                 aiReady = aiReady,
+                canHear = canHear,
                 onNoteChange = onNoteChange,
                 onAddPhotos = onAddPhotos,
                 onAddFiles = onAddFiles,
                 onRemoveFile = onRemoveFile,
+                onVoiceRecorded = onVoiceRecorded,
+                onRemoveVoice = onRemoveVoice,
+                onBeforeMicPrompt = onBeforeMicPrompt,
                 onDraft = onDraft,
                 onOpenAiSettings = onOpenAiSettings
             )
@@ -137,15 +151,49 @@ internal fun AiNoteStep(
 private fun AiNoteForm(
     state: AiAddUiState,
     aiReady: Boolean,
+    canHear: Boolean,
     onNoteChange: (String) -> Unit,
     onAddPhotos: () -> Unit,
     onAddFiles: () -> Unit,
     onRemoveFile: (Int) -> Unit,
+    onVoiceRecorded: (VoiceClip) -> Unit,
+    onRemoveVoice: () -> Unit,
+    onBeforeMicPrompt: () -> Unit,
     onDraft: () -> Unit,
     onOpenAiSettings: () -> Unit,
 ) {
     val haptics = rememberHaptics()
-    val empty = state.note.isBlank() && state.files.isEmpty()
+    val recorder = rememberVoiceRecorder()
+    var micError by remember { mutableStateOf<String?>(null) }
+    fun finishRecording() {
+        when (val result = recorder.finish()) {
+            is VoiceResult.Clip -> {
+                haptics.confirm()
+                onVoiceRecorded(result.clip)
+            }
+            VoiceResult.TooShort -> micError = "That was too short to hear. Hold on a little longer."
+            VoiceResult.Silent -> {
+                haptics.reject()
+                micError = "Didn't catch anything. Check that the mic isn't covered or muted, and speak up a little."
+            }
+            null -> Unit
+        }
+    }
+    fun startRecording() {
+        micError = null
+        haptics.click()
+        recorder.start(onLimit = ::finishRecording, onError = { micError = it })
+    }
+    val micPermission = rememberMicPermission { granted ->
+        if (granted) {
+            startRecording()
+        } else {
+            micError = "Paisa needs the microphone for voice notes. You can allow it in Android settings."
+        }
+    }
+    val showMic = voiceCaptureSupported && canHear && aiReady
+    val recording = recorder.recording
+    val empty = state.note.isBlank() && state.files.isEmpty() && state.voice == null && !recording
     Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
         // Examples to start from; gone once there's anything to read.
         AnimatedVisibility(visible = empty) {
@@ -175,16 +223,33 @@ private fun AiNoteForm(
             color = MaterialTheme.colorScheme.surfaceContainerHigh
         ) {
             Column(Modifier.padding(MaterialTheme.spacing.smaller)) {
-                if (state.files.isNotEmpty()) {
+                if ((state.files.isNotEmpty() || state.voice != null) && !recording) {
                     Row(
                         modifier = Modifier
                             .horizontalScroll(rememberScrollState())
                             .padding(start = 4.dp, end = 4.dp, top = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)
                     ) {
+                        state.voice?.let { VoiceTile(it, onRemove = onRemoveVoice) }
                         state.files.forEach { file -> FileTile(file) { onRemoveFile(file.id) } }
                     }
                 }
+                AnimatedContent(
+                    targetState = recording,
+                    transitionSpec = { fadeIn() togetherWith fadeOut() using SizeTransform(clip = false) },
+                    label = "voice composer"
+                ) { isRecording ->
+                if (isRecording) {
+                    VoiceRecordingPanel(
+                        recorder = recorder,
+                        onDiscard = {
+                            haptics.reject()
+                            recorder.cancel()
+                        },
+                        onDone = ::finishRecording
+                    )
+                } else {
+                Column {
                 TextField(
                     value = state.note,
                     onValueChange = onNoteChange,
@@ -214,6 +279,24 @@ private fun AiNoteForm(
                     IconButton(onClick = onAddFiles, modifier = Modifier.handCursor()) {
                         Icon(Icons.Rounded.AttachFile, contentDescription = "Add a PDF or file")
                     }
+                    if (showMic) {
+                        IconButton(
+                            onClick = {
+                                if (micPermission.granted) {
+                                    startRecording()
+                                } else {
+                                    onBeforeMicPrompt()
+                                    micPermission.request()
+                                }
+                            },
+                            modifier = Modifier.handCursor()
+                        ) {
+                            Icon(
+                                Icons.Rounded.Mic,
+                                contentDescription = if (state.voice == null) "Record a voice note" else "Record again"
+                            )
+                        }
+                    }
                     Spacer(Modifier.weight(1f))
                     Button(
                         onClick = onDraft,
@@ -226,15 +309,21 @@ private fun AiNoteForm(
                         Text("Draft", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                     }
                 }
+                }
+                }
+                }
             }
         }
 
         Text(
-            text = if (state.files.isEmpty()) {
-                "One payment or several, in your own words. Attach receipts, bills or screenshots too. " +
+            text = when {
+                recording -> "Say the amount, what it was for and how you paid. Several payments are fine."
+                state.files.isNotEmpty() && state.voice != null -> "Your note and voice note go along with every file."
+                state.files.isNotEmpty() -> "Your note goes along with every file."
+                showMic -> "One payment or several, typed or spoken. Attach receipts, bills or screenshots too. " +
                     "You'll check every draft before it's saved."
-            } else {
-                "Your note goes along with every file."
+                else -> "One payment or several, in your own words. Attach receipts, bills or screenshots too. " +
+                    "You'll check every draft before it's saved."
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -261,6 +350,7 @@ private fun AiNoteForm(
             }
         }
 
+        micError?.let { ErrorNote(it) }
         state.error?.let { ErrorNote(it) }
     }
 }
@@ -343,6 +433,7 @@ internal fun AiReviewStep(
             }
         }
 
+        state.transcript?.let { TranscriptNote(it) }
         if (state.failures.isNotEmpty()) FailureNote(state.failures)
 
         state.rows.forEach { row ->

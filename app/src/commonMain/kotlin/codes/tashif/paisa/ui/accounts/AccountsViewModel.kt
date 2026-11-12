@@ -72,6 +72,17 @@ class AccountsViewModel(
         }
     }
 
+    fun deleteAccountsCascade(accounts: List<Account>) {
+        if (accounts.isEmpty()) return
+        viewModelScope.launch {
+            accountRepository.deleteAccountsCascade(accounts)
+            snackbarManager.show(
+                if (accounts.size == 1) "Deleted ${accounts.first().name} and its transactions"
+                else "Deleted ${accounts.size} accounts and their transactions"
+            )
+        }
+    }
+
     fun setDefaultAccount(account: Account) {
         viewModelScope.launch {
             accountRepository.setDefaultAccount(account.id)

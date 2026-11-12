@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ai.ladder
 
+import codes.tashif.paisa.ai.LlmAudio
 import codes.tashif.paisa.ai.LlmException
 import codes.tashif.paisa.ai.LlmFailure
 import codes.tashif.paisa.ai.LlmImage
@@ -163,5 +164,24 @@ class LadderRunnerTest {
         assertTrue(JsonReply.parses("```json\n{\"a\":1}\n```"))
         assertTrue(!JsonReply.parses("{\"a\":"))
         assertTrue(!JsonReply.parses("no json here"))
+    }
+
+    @Test
+    fun voice_notes_skip_models_not_known_to_hear() = runTest {
+        val script = Script(mapOf("gemini-3.8-flash" to { "{}" }))
+        val info = mapOf(
+            "deaf" to ModelInfo("deaf", input = setOf("text", "image")),
+            "gemini-3.8-flash" to ModelInfo("gemini-3.8-flash", input = setOf("text", "image", "audio")),
+        )
+        val result = LadderRunner.run(
+            "Add with AI",
+            listOf(Rung(openai.id, "deaf"), Rung(openai.id, "unknown"), Rung(google.id, "gemini-3.8-flash")),
+            jsonRequest.copy(audio = LlmAudio("audio/wav", "x", "wav")),
+            resolver(info = info),
+            script
+        )
+        assertEquals("gemini-3.8-flash", result.label)
+        assertEquals(listOf("doesn't take audio", "doesn't take audio"), result.failures.map { it.reason })
+        assertEquals(listOf("gemini-3.8-flash"), script.calls)
     }
 }

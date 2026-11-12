@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ai.provider
 
+import codes.tashif.paisa.ai.LlmAudio
 import codes.tashif.paisa.ai.LlmException
 import codes.tashif.paisa.ai.LlmFailure
 import codes.tashif.paisa.ai.LlmImage
@@ -91,5 +92,19 @@ class OpenAiStyleTest {
             assertEquals(LlmFailure.CUT_OFF, e.failure)
         }
         assertTrue(OpenAiStyle.rejectsJsonMode(400, "response_format is not supported"))
+    }
+
+    @Test
+    fun voice_note_is_an_input_audio_part() {
+        val content = OpenAiStyle.build(
+            call(openAi, "gpt-4o-audio-preview", null),
+            request.copy(audio = LlmAudio("audio/wav", "UklGRg==", "wav"))
+        ).body!!.getJSONArray("messages").getJSONObject(1).getJSONArray("content")
+        assertEquals(2, content.length())
+        assertEquals("hi", content.getJSONObject(0).getString("text"))
+        val part = content.getJSONObject(1)
+        assertEquals("input_audio", part.getString("type"))
+        assertEquals("UklGRg==", part.getJSONObject("input_audio").getString("data"))
+        assertEquals("wav", part.getJSONObject("input_audio").getString("format"))
     }
 }

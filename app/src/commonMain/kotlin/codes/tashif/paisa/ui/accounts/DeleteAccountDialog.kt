@@ -14,15 +14,32 @@ internal fun DeleteAccountDialog(
     account: Account,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
+) = DeleteAccountsDialog(listOf(account), onDismiss, onConfirm)
+
+/** Confirms deleting one or more accounts and every transaction recorded against them. */
+@Composable
+internal fun DeleteAccountsDialog(
+    accounts: List<Account>,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
 ) {
     val haptics = rememberHaptics()
+    val single = accounts.size == 1
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Delete ${account.name}?") },
+        title = {
+            Text(if (single) "Delete ${accounts.first().name}?" else "Delete ${accounts.size} accounts?")
+        },
         text = {
             Text(
-                "This permanently deletes the account and every transaction " +
-                    "recorded against it. This cannot be undone."
+                if (single) {
+                    "This permanently deletes the account and every transaction " +
+                        "recorded against it. This cannot be undone."
+                } else {
+                    "This permanently deletes " +
+                        accounts.joinToString(", ") { it.name } +
+                        ", and every transaction recorded against them. This cannot be undone."
+                }
             )
         },
         confirmButton = {

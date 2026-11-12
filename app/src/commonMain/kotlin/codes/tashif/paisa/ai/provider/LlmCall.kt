@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ai.provider
 
+import codes.tashif.paisa.ai.LlmAudio
 import codes.tashif.paisa.ai.LlmImage
 import codes.tashif.paisa.ai.LlmPdf
 import codes.tashif.paisa.ai.catalog.ModelInfo
@@ -13,6 +14,7 @@ data class LlmRequest(
     val json: Boolean = false,
     val image: LlmImage? = null,
     val pdf: LlmPdf? = null,
+    val audio: LlmAudio? = null,
     /** RelayRoom usage tag, for example `statement_import`. */
     val feature: String = "",
 )

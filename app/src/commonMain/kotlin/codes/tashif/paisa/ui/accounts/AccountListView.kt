@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.MergeType
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.HorizontalFloatingToolbar
@@ -62,6 +63,7 @@ internal fun AccountListView(
     onReorder: (List<Int>) -> Unit,
     onClearSelection: () -> Unit,
     onMergeClick: () -> Unit,
+    onDeleteClick: () -> Unit,
     onAutoMerge: () -> Unit
 ) {
     val selectionMode = selectedIds.isNotEmpty()
@@ -106,13 +108,13 @@ internal fun AccountListView(
         ) {
             Text(
                 // The floating toolbar shows the count while picking.
-                text = if (selectionMode) "Pick accounts to merge" else "Your accounts",
+                text = if (selectionMode) "Select accounts to merge or delete" else "Your accounts",
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
             )
-            // While picking, cancel and merge move to the floating toolbar.
+            // While picking, cancel, delete and merge move to the floating toolbar.
             if (!selectionMode) {
                 TextButton(onClick = {
                     haptics.click()
@@ -190,6 +192,10 @@ internal fun AccountListView(
                 onMerge = {
                     haptics.click()
                     onMergeClick()
+                },
+                onDelete = {
+                    haptics.click()
+                    onDeleteClick()
                 }
             )
         }
@@ -197,23 +203,35 @@ internal fun AccountListView(
 }
 
 /**
- * Shown while picking accounts to merge: how many are picked, a way out,
- * and merge as the toolbar's FAB once there are two to merge.
+ * Shown while picking accounts: how many are picked, a way out, delete for
+ * any selection, and merge as the toolbar's FAB once there are two to merge.
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun SelectionToolbar(count: Int, onCancel: () -> Unit, onMerge: () -> Unit) {
+private fun SelectionToolbar(
+    count: Int,
+    onCancel: () -> Unit,
+    onMerge: () -> Unit,
+    onDelete: () -> Unit
+) {
     val content: @Composable RowScope.() -> Unit = {
         IconButton(onClick = onCancel) {
             Icon(Icons.Rounded.Close, contentDescription = "Cancel")
         }
         Text(
-            text = if (count >= 2) "$count selected" else "Pick one more",
+            text = "$count selected",
             style = MaterialTheme.typography.titleSmall,
             modifier = Modifier
                 .align(Alignment.CenterVertically)
-                .padding(end = MaterialTheme.spacing.small)
+                .padding(end = MaterialTheme.spacing.extraSmall)
         )
+        IconButton(onClick = onDelete) {
+            Icon(
+                Icons.Rounded.Delete,
+                contentDescription = if (count == 1) "Delete account" else "Delete $count accounts",
+                tint = MaterialTheme.colorScheme.error
+            )
+        }
     }
     if (count >= 2) {
         HorizontalFloatingToolbar(

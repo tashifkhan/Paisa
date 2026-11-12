@@ -50,22 +50,31 @@ object OpenAiStyle {
     }
 
     fun build(call: LlmCall, request: LlmRequest, jsonMode: Boolean = request.json): HttpSpec {
-        val userContent: Any = if (request.image == null) {
+        val userContent: Any = if (request.image == null && request.audio == null) {
             request.prompt
         } else {
-            JSONArray()
-                .put(JSONObject().put("type", "text").put("text", request.prompt))
-                .put(
+            val parts = JSONArray().put(JSONObject().put("type", "text").put("text", request.prompt))
+            request.image?.let { image ->
+                parts.put(
                     JSONObject()
                         .put("type", "image_url")
                         .put(
                             "image_url",
-                            JSONObject().put(
-                                "url",
-                                "data:${request.image.mimeType};base64,${request.image.base64Data}"
-                            )
+                            JSONObject().put("url", "data:${image.mimeType};base64,${image.base64Data}")
                         )
                 )
+            }
+            request.audio?.let { audio ->
+                parts.put(
+                    JSONObject()
+                        .put("type", "input_audio")
+                        .put(
+                            "input_audio",
+                            JSONObject().put("data", audio.base64Data).put("format", audio.format)
+                        )
+                )
+            }
+            parts
         }
         val body = JSONObject()
             .put("model", call.model)

@@ -10,6 +10,9 @@ enum class ApiStyle(val id: String, val label: String) {
     /** Whether this style can carry a PDF attachment as a file. */
     val carriesPdf: Boolean get() = this != OPENAI
 
+    /** Whether this style can carry a voice recording. Anthropic's API takes no audio. */
+    val carriesAudio: Boolean get() = this != ANTHROPIC
+
     companion object {
         fun fromId(id: String?): ApiStyle? = entries.firstOrNull { it.id == id }
 

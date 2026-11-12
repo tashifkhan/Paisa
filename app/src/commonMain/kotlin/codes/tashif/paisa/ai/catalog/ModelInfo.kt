@@ -39,6 +39,7 @@ data class ModelInfo(
     /** True, false, or null when the catalogue doesn't know. */
     val acceptsImage: Boolean? get() = input?.contains("image")
     val acceptsPdf: Boolean? get() = input?.contains("pdf")
+    val acceptsAudio: Boolean? get() = input?.contains("audio")
 
     /**
      * The levels to offer for this model on a provider of [style], not
