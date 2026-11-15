@@ -41,7 +41,7 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         /** Bump with every migration. Backups made on a newer schema are refused. */
-        const val SCHEMA_VERSION = 12
+        const val SCHEMA_VERSION = 13
 
         private val MIGRATION_2_3 = object : Migration(2, 3) {
             override suspend fun migrate(connection: SQLiteConnection) {
@@ -196,6 +196,15 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** Floating navbar options: titles under every tab, and a frosted fill. */
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                val db = Sql.of(connection)
+                db.exec("ALTER TABLE settings ADD COLUMN floatingNavLabels INTEGER NOT NULL DEFAULT 0")
+                db.exec("ALTER TABLE settings ADD COLUMN floatingNavFrosted INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         internal val MIGRATIONS: Array<Migration>
             get() = arrayOf(
                 MIGRATION_2_3,
@@ -207,7 +216,8 @@ abstract class AppDatabase : RoomDatabase() {
                 MIGRATION_8_9,
                 MIGRATION_9_10,
                 MIGRATION_10_11,
-                MIGRATION_11_12
+                MIGRATION_11_12,
+                MIGRATION_12_13
             )
 
         /** Seeds a new database and keeps the sync triggers installed. Tests add it too. */

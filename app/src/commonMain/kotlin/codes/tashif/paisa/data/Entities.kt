@@ -210,6 +210,10 @@ data class Settings(
     @ColumnInfo(defaultValue = "0") val floatingNavBar: Boolean = false,
     /** Docked bar only: label every tab, not just the selected one. */
     @ColumnInfo(defaultValue = "1") val navBarLabels: Boolean = true,
+    /** Floating bar only: a title under every tab instead of beside the selected one. */
+    @ColumnInfo(defaultValue = "0") val floatingNavLabels: Boolean = false,
+    /** Floating bar only: blur the content behind the bar instead of a solid fill. */
+    @ColumnInfo(defaultValue = "0") val floatingNavFrosted: Boolean = false,
     /** Tab ids shown in the bottom bar, in order. See [Settings.DEFAULT_NAV_TABS]. */
     @ColumnInfo(defaultValue = "'home,analytics,budgets,accounts,more'")
     val navTabs: String = DEFAULT_NAV_TABS,
