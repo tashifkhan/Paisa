@@ -19,3 +19,8 @@ Third-party notice
 The :parser-core module (bank SMS parsers) is derived from PennyWise AI Tracker
 https://github.com/sarim2000/pennywiseai-tracker
 and remains licensed under AGPL-3.0. See parser-core/NOTICE and parser-core/LICENSE.
+
+The floating navbar's press response (ui/components/ElasticPress.kt) is adapted
+from Expressive Clock
+https://github.com/samuelbeckman/expressive-clock
+which is under the MIT License. See third_party/expressive-clock/LICENSE.

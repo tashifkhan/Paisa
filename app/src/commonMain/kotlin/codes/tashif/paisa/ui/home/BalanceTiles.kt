@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.ui.components.MoneyText
 import codes.tashif.paisa.ui.theme.spacing
+import codes.tashif.paisa.ui.components.elasticCard
 
 @Composable
 internal fun StatTile(
@@ -38,7 +39,7 @@ internal fun StatTile(
     icon: ImageVector
 ) {
     Surface(
-        modifier = modifier,
+        modifier = modifier.elasticCard(),
         shape = shape,
         color = containerColor
     ) {
@@ -67,7 +68,8 @@ internal fun StatTile(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = contentColor,
-                maskCount = 5
+                maskCount = 5,
+                animated = true
             )
         }
     }

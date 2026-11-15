@@ -688,7 +688,8 @@ private fun DraftCard(
                     categories = ofType,
                     selectedId = row.categoryId,
                     onSelect = { onUpdate(row.copy(categoryId = it)) },
-                    emptyText = "No ${row.type} categories yet"
+                    emptyText = "No ${row.type} categories yet",
+                    type = row.type
                 )
                 AccountPicker(
                     accounts = accounts,

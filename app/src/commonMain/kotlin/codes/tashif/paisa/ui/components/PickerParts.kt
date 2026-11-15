@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import codes.tashif.paisa.ui.platform.isImeVisible
 import codes.tashif.paisa.ui.theme.spacing
 
 @Composable
@@ -56,6 +57,7 @@ internal fun PickerCollapsedRow(
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .elasticCard()
             .clickable(onClick = onClick),
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(
@@ -173,7 +175,6 @@ internal fun SearchablePickerSheet(
                 .fillMaxWidth()
                 .imePadding()
                 .padding(horizontal = MaterialTheme.spacing.medium)
-                .padding(bottom = MaterialTheme.spacing.extraLarge)
         ) {
             Text(
                 text = title,
@@ -212,14 +213,22 @@ internal fun SearchablePickerSheet(
                 windowInsets = WindowInsets(0, 0, 0, 0)
             ) {}
             Spacer(Modifier.size(MaterialTheme.spacing.small))
-            // Cap height so long lists scroll inside the sheet
+            // Cap height so long lists scroll inside the sheet. The space under
+            // the list scrolls with it, so with the keyboard up the rows run
+            // down to the keyboard instead of stopping short of it.
+            val endSpace = if (isImeVisible()) {
+                MaterialTheme.spacing.medium
+            } else {
+                MaterialTheme.spacing.extraLarge
+            }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 420.dp)
+                    .heightIn(max = 420.dp + endSpace)
                     .verticalScroll(rememberScrollState())
             ) {
                 content(query)
+                Spacer(Modifier.size(endSpace))
             }
         }
     }

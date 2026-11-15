@@ -25,6 +25,8 @@ import codes.tashif.paisa.ui.components.EmptyState
 import codes.tashif.paisa.ui.components.InfoTip
 import codes.tashif.paisa.ui.components.PaisaTopBar
 import codes.tashif.paisa.ui.theme.spacing
+import codes.tashif.paisa.ui.components.LocalFloatingNavInset
+import codes.tashif.paisa.ui.components.listPlacementSpring
 
 @Composable
 fun BudgetsScreen(viewModel: BudgetsViewModel = koinViewModel()) {
@@ -69,7 +71,7 @@ fun BudgetsScreen(viewModel: BudgetsViewModel = koinViewModel()) {
                 contentPadding = PaddingValues(
                     start = MaterialTheme.spacing.medium,
                     end = MaterialTheme.spacing.medium,
-                    bottom = MaterialTheme.spacing.extraLarge
+                    bottom = MaterialTheme.spacing.extraLarge + LocalFloatingNavInset.current
                 ),
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)
@@ -87,6 +89,7 @@ fun BudgetsScreen(viewModel: BudgetsViewModel = koinViewModel()) {
                                 (budget.categoryId == null || tx.categoryId == budget.categoryId)
                         }
                         .sumOf { it.amount }
+                    Box(Modifier.animateItem(placementSpec = listPlacementSpring())) {
                     BudgetCard(
                         budget = budget,
                         title = budget.budgetName ?: category?.name ?: "Overall spending",
@@ -96,6 +99,7 @@ fun BudgetsScreen(viewModel: BudgetsViewModel = koinViewModel()) {
                         categoryName = category?.name,
                         categoryColor = category?.color
                     )
+                    }
                 }
             }
             VerticalScrollbarFor(gridState, Modifier.align(Alignment.CenterEnd).fillMaxHeight())

@@ -49,6 +49,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.data.AppTab
+import codes.tashif.paisa.ui.components.LocalFloatingNavInset
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import codes.tashif.paisa.ui.accounts.AccountsScreen
 import codes.tashif.paisa.ui.analytics.AnalysisScreen
 import codes.tashif.paisa.ui.budgets.BudgetsScreen
@@ -73,6 +76,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.runtime.saveable.SaveableStateHolder
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.staticCompositionLocalOf
+import codes.tashif.paisa.ui.components.riseIn
+import androidx.compose.runtime.key
 
 /** The unlocked app: tabs, nav bar, FABs, snackbars and the screens they open. */
 @Composable
@@ -125,6 +130,10 @@ fun AppShell(
     val wide = width >= WindowWidth.EXPANDED
     val large = width == WindowWidth.LARGE
     val detailPane = wide && selectedTxId != null
+    // The floating bar lets the tabs draw behind it, to the bottom of the screen.
+    val floatingBar = !useRail && settings?.floatingNavBar == true
+    val hazeState = remember { HazeState() }
+    val frostedBar = floatingBar && settings?.floatingNavFrosted == true
     val topScreen = state.topScreen
 
     LaunchedEffect(currentTab, topScreen) {
@@ -136,18 +145,22 @@ fun AppShell(
     // Narrower windows: secondary destinations cover the tabs, as on a phone.
     if (!wide) {
         if (selectedTxId != null) {
-            CenteredContent {
-                TransactionDetailScreen(onBack = viewModel::closeTransaction)
+            key(selectedTxId) {
+                CenteredContent(Modifier.riseIn(fromScale = 0.985f, rise = 16.dp)) {
+                    TransactionDetailScreen(onBack = viewModel::closeTransaction)
+                }
             }
             return
         }
         if (topScreen != null) {
-            CenteredContent {
-                FullScreenHost(
-                    screen = topScreen,
-                    state = state,
-                    onExternalActivityLaunched = viewModel::onExternalActivityLaunched
-                )
+            key(topScreen) {
+                CenteredContent(Modifier.riseIn(fromScale = 0.985f, rise = 16.dp)) {
+                    FullScreenHost(
+                        screen = topScreen,
+                        state = state,
+                        onExternalActivityLaunched = viewModel::onExternalActivityLaunched
+                    )
+                }
             }
             return
         }
@@ -315,23 +328,31 @@ fun AppShell(
                         AppNavBar(
                             navTabs = navTabs,
                             currentTab = currentTab,
-                            floating = settings?.floatingNavBar == true,
+                            floating = floatingBar,
                             showLabels = settings?.navBarLabels != false,
-                            onSelect = selectTab
+                            onSelect = selectTab,
+                            floatingLabels = settings?.floatingNavLabels == true,
+                            hazeState = hazeState.takeIf { frostedBar }
                         )
                     }
                 }
             ) { innerPadding ->
                 val layoutDirection = LocalLayoutDirection.current
+                // Under a floating bar the tabs run to the bottom edge, and each
+                // one pads its own scrolling content by what the bar covers.
+                val barInset = if (floatingBar) innerPadding.calculateBottomPadding() else 0.dp
                 Box(Modifier.fillMaxSize()) {
+                CompositionLocalProvider(LocalFloatingNavInset provides barInset) {
                 Row(
                     modifier = Modifier
                         .padding(
                             start = innerPadding.calculateStartPadding(layoutDirection),
                             end = innerPadding.calculateEndPadding(layoutDirection),
-                            bottom = innerPadding.calculateBottomPadding()
+                            bottom = if (floatingBar) 0.dp else innerPadding.calculateBottomPadding()
                         )
                         .fillMaxSize()
+                        // What the frosted bar blurs. The bar is a sibling, never a child.
+                        .then(if (frostedBar) Modifier.hazeSource(hazeState) else Modifier)
                 ) {
                     if (wide && (topScreen != null || currentTab == AppTab.MORE)) {
                         SettingsPanes(
@@ -390,6 +411,7 @@ fun AppShell(
                             }
                         }
                     }
+                }
                 }
                 if (!useRail) {
                     // Over the content, just above the bottom bar. It takes

@@ -61,6 +61,8 @@ import codes.tashif.paisa.ui.theme.spacing
 import codes.tashif.paisa.ui.transaction.DeleteTransactionDialog
 import codes.tashif.paisa.ui.transaction.TransactionViewModel
 import kotlin.math.abs
+import codes.tashif.paisa.ui.components.LocalFloatingNavInset
+import codes.tashif.paisa.ui.components.listPlacementSpring
 
 @Composable
 fun RecordsScreen(viewModel: HomeViewModel = koinViewModel()) {
@@ -156,7 +158,8 @@ fun RecordsScreen(viewModel: HomeViewModel = koinViewModel()) {
                         start = MaterialTheme.spacing.medium,
                         end = MaterialTheme.spacing.medium,
                         // Room for the floating toolbar while selecting.
-                        bottom = if (selecting) 112.dp else MaterialTheme.spacing.extraLarge
+                        bottom = (if (selecting) 112.dp else MaterialTheme.spacing.extraLarge) +
+                            LocalFloatingNavInset.current
                     ),
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)
                 ) {
@@ -190,7 +193,7 @@ fun RecordsScreen(viewModel: HomeViewModel = koinViewModel()) {
                             item(key = "day_$day") {
                                 val dayIds = dayTxs.map { it.id }
                                 Box(
-                                    Modifier.then(
+                                    Modifier.animateItem(placementSpec = listPlacementSpring()).then(
                                         if (selecting) Modifier.clickable {
                                             selection = if (selection.containsAll(dayIds)) selection - dayIds.toSet()
                                             else selection + dayIds
@@ -206,6 +209,8 @@ fun RecordsScreen(viewModel: HomeViewModel = koinViewModel()) {
                                 }
                             }
                             item(key = "group_$day") {
+                                // Days glide up when one above them empties out.
+                                Box(Modifier.animateItem(placementSpec = listPlacementSpring())) {
                                 TransactionGroup(dayTxs) { tx, position ->
                                     TransactionRow(
                                         tx = tx,
@@ -219,6 +224,7 @@ fun RecordsScreen(viewModel: HomeViewModel = koinViewModel()) {
                                         onClick = { if (selecting) toggle(tx.id) else viewModel.openTransaction(tx.id) }
                                     )
                                 }
+                                }
                             }
                         }
                     }
@@ -231,7 +237,7 @@ fun RecordsScreen(viewModel: HomeViewModel = koinViewModel()) {
                     exit = slideOutVertically { it } + fadeOut(),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = MaterialTheme.spacing.medium)
+                        .padding(bottom = MaterialTheme.spacing.medium + LocalFloatingNavInset.current)
                 ) {
                     BulkToolbar(
                         enabled = selecting,

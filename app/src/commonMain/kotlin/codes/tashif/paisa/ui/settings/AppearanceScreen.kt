@@ -101,6 +101,14 @@ fun AppearanceScreen(
                 floatingNavBar = current.floatingNavBar,
                 navBarLabels = current.navBarLabels,
                 navTabs = current.navTabs,
+                floatingNavLabels = current.floatingNavLabels,
+                floatingNavFrosted = current.floatingNavFrosted,
+                onFloatingNavLabelsChange = {
+                    viewModel.updateSettings(current.copy(floatingNavLabels = it))
+                },
+                onFloatingNavFrostedChange = {
+                    viewModel.updateSettings(current.copy(floatingNavFrosted = it))
+                },
                 onFloatingNavBarChange = {
                     viewModel.updateSettings(current.copy(floatingNavBar = it))
                 },

@@ -28,6 +28,7 @@ fun EmptyState(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .riseIn(fromScale = 0.92f)
             .padding(MaterialTheme.spacing.large),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center

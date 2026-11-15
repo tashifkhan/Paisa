@@ -51,6 +51,7 @@ import codes.tashif.paisa.ui.components.groupPositionOf
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.spacing
 import kotlin.math.roundToInt
+import codes.tashif.paisa.ui.components.LocalFloatingNavInset
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -132,7 +133,8 @@ internal fun AccountListView(
                 start = MaterialTheme.spacing.medium,
                 end = MaterialTheme.spacing.medium,
                 top = MaterialTheme.spacing.extraSmall,
-                bottom = if (selectionMode) 120.dp else MaterialTheme.spacing.extraLarge
+                bottom = (if (selectionMode) 120.dp else MaterialTheme.spacing.extraLarge) +
+                    LocalFloatingNavInset.current
             ),
             // 2dp gaps match SettingsGroup / Pixel settings stacks
             verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -184,7 +186,7 @@ internal fun AccountListView(
             exit = slideOutVertically { it } + fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = MaterialTheme.spacing.medium)
+                .padding(bottom = MaterialTheme.spacing.medium + LocalFloatingNavInset.current)
         ) {
             SelectionToolbar(
                 count = selectedIds.size,

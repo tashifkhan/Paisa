@@ -25,6 +25,12 @@ import codes.tashif.paisa.data.Budget
 import codes.tashif.paisa.ui.components.CategoryBadge
 import codes.tashif.paisa.ui.format.formatMoney
 import codes.tashif.paisa.ui.theme.spacing
+import codes.tashif.paisa.ui.components.elasticCard
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Animatable
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -43,6 +49,11 @@ internal fun BudgetCard(
         0f
     }
     val overBudget = spent > budget.budgetAmount
+    // The bar fills from empty when the card appears, and eases to a new value after that.
+    val filled = remember { Animatable(0f) }
+    LaunchedEffect(progress) {
+        filled.animateTo(progress, tween(durationMillis = 480, easing = FastOutSlowInEasing))
+    }
     val periodLabel = runCatching {
         val calendar = PaisaCalendar.getInstance().apply {
             setCleared(budget.year, budget.month - 1, 1)
@@ -51,7 +62,7 @@ internal fun BudgetCard(
     }.getOrDefault("${budget.month}/${budget.year}")
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().elasticCard(),
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
@@ -92,7 +103,7 @@ internal fun BudgetCard(
             }
             Spacer(modifier = Modifier.height(MaterialTheme.spacing.smaller))
             LinearWavyProgressIndicator(
-                progress = { progress },
+                progress = { filled.value },
                 modifier = Modifier.fillMaxWidth(),
                 color = if (overBudget) {
                     MaterialTheme.colorScheme.error

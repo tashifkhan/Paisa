@@ -53,10 +53,13 @@ internal fun CategoryDialog(
     initial: Category?,
     onDismiss: () -> Unit,
     onSave: (name: String, type: String, color: String) -> Unit,
-    onDelete: (() -> Unit)? = null
+    onDelete: (() -> Unit)? = null,
+    initialName: String = "",
+    /** Set when the caller needs one type, e.g. a picker listing only expenses. Hides the choice. */
+    fixedType: String? = null
 ) {
-    var name by remember { mutableStateOf(initial?.name ?: "") }
-    var type by remember { mutableStateOf(initial?.type ?: "expense") }
+    var name by remember { mutableStateOf(initial?.name ?: initialName) }
+    var type by remember { mutableStateOf(fixedType ?: initial?.type ?: "expense") }
     var color by remember { mutableStateOf(initial?.color ?: categoryColors.first()) }
     val haptics = rememberHaptics()
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -80,7 +83,7 @@ internal fun CategoryDialog(
                         onDone = { keyboardController?.hide() }
                     )
                 )
-                ChoiceCards(
+                if (fixedType == null) ChoiceCards(
                     options = listOf(
                         ChoiceOption(
                             id = "expense",

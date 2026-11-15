@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -47,6 +46,11 @@ import codes.tashif.paisa.ui.components.MoneyText
 import codes.tashif.paisa.ui.theme.ExpenseRed
 import codes.tashif.paisa.ui.theme.IncomeGreen
 import codes.tashif.paisa.ui.theme.spacing
+import codes.tashif.paisa.ui.components.springCollapse
+import codes.tashif.paisa.ui.components.springExpand
+import codes.tashif.paisa.ui.components.expandArrowRotation
+import codes.tashif.paisa.ui.components.elasticCard
+import androidx.compose.ui.draw.rotate
 
 private val UsageAmber = Color(0xFFFFB74D)
 
@@ -76,6 +80,7 @@ internal fun CreditCardPanel(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .elasticCard()
             .then(if (canExpand) Modifier.clickable { expanded = !expanded } else Modifier),
         shape = OverviewShapes.heroAlone,
         color = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -108,7 +113,8 @@ internal fun CreditCardPanel(
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = onCard,
-                        maskCount = 6
+                        maskCount = 6,
+                        animated = true
                     )
                     Text(
                         text = if (hasLimit) "available to spend" else "owed across your cards",
@@ -156,7 +162,7 @@ internal fun CreditCardPanel(
             }
 
             if (canExpand) {
-                AnimatedVisibility(visible = expanded) {
+                AnimatedVisibility(visible = expanded, enter = springExpand(), exit = springCollapse()) {
                     CardBreakdown(
                         cards = summary.creditCards,
                         currency = summary.currency,
@@ -217,10 +223,10 @@ internal fun ExpandChip(expanded: Boolean, tint: Color) {
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
-                imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                imageVector = Icons.Rounded.ExpandMore,
                 contentDescription = if (expanded) "Hide breakdown" else "Show breakdown",
                 tint = tint.copy(alpha = 0.9f),
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(18.dp).rotate(expandArrowRotation(expanded))
             )
         }
     }

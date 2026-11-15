@@ -44,7 +44,7 @@ class MigrationTest {
         )
         // No DROP COLUMN before SQLite 3.35, so recreate each (still empty) table
         // from its own CREATE statement minus the version 10 columns.
-        val added = Regex(""",\s*`(syncId|syncStamp|balanceAnchor|balanceAnchorAt|floatingNavBar|navBarLabels|navTabs)`(?:[^,)']|'[^']*')*""")
+        val added = Regex(""",\s*`(syncId|syncStamp|balanceAnchor|balanceAnchorAt|floatingNavBar|navBarLabels|navTabs|floatingNavLabels|floatingNavFrosted)`(?:[^,)']|'[^']*')*""")
         // Tables added after 9 didn't exist yet.
         val laterTables = setOf("debt_people", "debt_entries")
         laterTables.forEach { raw.execSQL("DROP TABLE `$it`") }
@@ -103,6 +103,9 @@ class MigrationTest {
         assertEquals("1", syncId("SELECT navBarLabels FROM settings WHERE id = 1"))
         // 11 to 12: today's five tabs, and an empty, synced Debts section.
         assertEquals("home,analytics,budgets,accounts,more", syncId("SELECT navTabs FROM settings WHERE id = 1"))
+        // 12 to 13: the floating bar keeps its solid fill and single label.
+        assertEquals("0", syncId("SELECT floatingNavLabels FROM settings WHERE id = 1"))
+        assertEquals("0", syncId("SELECT floatingNavFrosted FROM settings WHERE id = 1"))
         db.exec("INSERT INTO debt_people (name, createdAt) VALUES ('Radhika', 'c')")
         assertEquals("person:radhika", syncId("SELECT syncId FROM debt_people"))
         db.exec("DELETE FROM debt_people")
