@@ -9,6 +9,7 @@ import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.ui.graphics.vector.ImageVector
 import codes.tashif.paisa.data.AppTab
+import codes.tashif.paisa.ui.components.TabMotion
 
 internal val AppTab.icon: ImageVector
     get() = when (this) {
@@ -18,4 +19,16 @@ internal val AppTab.icon: ImageVector
         AppTab.ACCOUNTS -> Icons.Rounded.AccountBalance
         AppTab.DEBTS -> Icons.Rounded.Handshake
         AppTab.MORE -> Icons.Rounded.MoreHoriz
+    }
+
+/** What each icon does when tapped in the floating bar, picked to suit its shape. */
+internal val AppTab.motion: TabMotion
+    get() = when (this) {
+        AppTab.HOME -> TabMotion.HOP
+        AppTab.ANALYTICS -> TabMotion.HOP
+        // A ring and three dots both look right turning.
+        AppTab.BUDGETS -> TabMotion.FULL_TURN
+        AppTab.ACCOUNTS -> TabMotion.WIGGLE
+        AppTab.DEBTS -> TabMotion.WIGGLE
+        AppTab.MORE -> TabMotion.HALF_TURN
     }

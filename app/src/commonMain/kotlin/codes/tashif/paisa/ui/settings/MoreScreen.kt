@@ -32,6 +32,7 @@ import codes.tashif.paisa.data.AppTab
 import codes.tashif.paisa.ui.components.PaisaTopBar
 import codes.tashif.paisa.ui.theme.spacing
 import kotlinx.coroutines.launch
+import codes.tashif.paisa.ui.components.LocalFloatingNavInset
 
 /**
  * The More tab. [onExternalActivityLaunched] runs right before the export file
@@ -123,7 +124,7 @@ fun MoreScreen(
                 .fillMaxSize()
                 .verticalScroll(scroll)
                 .padding(horizontal = MaterialTheme.spacing.medium)
-                .padding(bottom = MaterialTheme.spacing.large)
+                .padding(bottom = MaterialTheme.spacing.large + LocalFloatingNavInset.current)
         ) {
             if (hiddenTabs.isNotEmpty()) {
                 MoreScreensSection(hiddenTabs = hiddenTabs, onOpenTab = onOpenTab)

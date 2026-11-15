@@ -9,6 +9,7 @@ import codes.tashif.paisa.data.AppTab
 import codes.tashif.paisa.ui.components.FloatingNavBar
 import codes.tashif.paisa.ui.components.NavTab
 import codes.tashif.paisa.ui.haptics.rememberHaptics
+import dev.chrisbanes.haze.HazeState
 
 /** The bottom bar, floating or standard, over [navTabs]. */
 @Composable
@@ -17,10 +18,14 @@ fun AppNavBar(
     currentTab: AppTab,
     floating: Boolean,
     showLabels: Boolean,
-    onSelect: (AppTab) -> Unit
+    onSelect: (AppTab) -> Unit,
+    /** Floating bar only: a title under every tab. */
+    floatingLabels: Boolean = false,
+    /** Floating bar only: non-null blurs what this state's source draws behind the bar. */
+    hazeState: HazeState? = null
 ) {
     val haptics = rememberHaptics()
-    val tabs = navTabs.map { NavTab(it.label, it.icon) }
+    val tabs = navTabs.map { NavTab(it.label, it.icon, it.motion) }
     // A tab opened from More isn't in the bar; nothing shows as selected then.
     val selectedIndex = navTabs.indexOf(currentTab)
     val select: (Int) -> Unit = { index ->
@@ -28,7 +33,13 @@ fun AppNavBar(
         onSelect(navTabs[index])
     }
     if (floating) {
-        FloatingNavBar(tabs = tabs, selected = selectedIndex, onSelect = select)
+        FloatingNavBar(
+            tabs = tabs,
+            selected = selectedIndex,
+            onSelect = select,
+            showLabels = floatingLabels,
+            hazeState = hazeState
+        )
     } else {
         NavigationBar {
             tabs.forEachIndexed { index, tab ->

@@ -44,6 +44,8 @@ kotlinxBrowser = "0.5.0"
 composeMultiplatform = "1.11.1"
 room3 = "3.0.3"
 sqliteWeb = "2.7.1"
+# 1.7.2 is the last release built on Compose 1.10; 1.7.3 and 2.x need Compose 1.12.
+haze = "1.7.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -93,6 +95,7 @@ cmp-material3 = { group = "org.jetbrains.compose.material3", name = "material3",
 cmp-material-icons-extended = { group = "org.jetbrains.compose.material", name = "material-icons-extended", version.ref = "cmpMaterialIcons" }
 jb-lifecycle-viewmodel-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "jbLifecycle" }
 jb-lifecycle-runtime-compose = { group = "org.jetbrains.androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "jbLifecycle" }
+haze = { group = "dev.chrisbanes.haze", name = "haze", version.ref = "haze" }
 kotlinx-browser = { group = "org.jetbrains.kotlinx", name = "kotlinx-browser", version.ref = "kotlinxBrowser" }
 room3-runtime = { group = "androidx.room3", name = "room3-runtime", version.ref = "room3" }
 room3-compiler = { group = "androidx.room3", name = "room3-compiler", version.ref = "room3" }

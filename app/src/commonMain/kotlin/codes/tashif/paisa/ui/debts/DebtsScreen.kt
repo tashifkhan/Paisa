@@ -42,6 +42,8 @@ import codes.tashif.paisa.ui.components.PaisaTopBar
 import codes.tashif.paisa.ui.debts.split.SplitBillSheet
 import codes.tashif.paisa.ui.format.debtTotals
 import codes.tashif.paisa.ui.theme.spacing
+import codes.tashif.paisa.ui.components.LocalFloatingNavInset
+import codes.tashif.paisa.ui.components.listPlacementSpring
 
 
 /** Money between you and other people. Lives apart from accounts, so it never moves a balance. */
@@ -121,7 +123,7 @@ fun DebtsScreen(viewModel: DebtsViewModel = koinViewModel()) {
             contentPadding = PaddingValues(
                 start = MaterialTheme.spacing.medium,
                 end = MaterialTheme.spacing.medium,
-                bottom = MaterialTheme.spacing.extraLarge * 3
+                bottom = MaterialTheme.spacing.extraLarge * 3 + LocalFloatingNavInset.current
             ),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {

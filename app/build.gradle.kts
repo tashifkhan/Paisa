@@ -79,6 +79,8 @@ kotlin {
             implementation(compose.components.resources)
             implementation(libs.jb.lifecycle.viewmodel.compose)
             implementation(libs.jb.lifecycle.runtime.compose)
+            // Backdrop blur for the frosted floating navbar.
+            implementation(libs.haze)
         }
         androidMain.dependencies {
             implementation(project(":parser-core"))

@@ -47,6 +47,7 @@ import codes.tashif.paisa.data.TransactionWithDetails
 import codes.tashif.paisa.ui.components.EmptyState
 import codes.tashif.paisa.ui.components.TransactionRow
 import codes.tashif.paisa.ui.theme.spacing
+import codes.tashif.paisa.ui.components.LocalFloatingNavInset
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,7 +92,7 @@ private fun AccountCardsWide(
                     start = MaterialTheme.spacing.medium,
                     end = MaterialTheme.spacing.small,
                     top = MaterialTheme.spacing.small,
-                    bottom = MaterialTheme.spacing.extraLarge
+                    bottom = MaterialTheme.spacing.extraLarge + LocalFloatingNavInset.current
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -160,7 +161,7 @@ private fun AccountTransactions(
                 contentPadding = PaddingValues(
                     start = MaterialTheme.spacing.medium,
                     end = MaterialTheme.spacing.medium,
-                    bottom = MaterialTheme.spacing.extraLarge
+                    bottom = MaterialTheme.spacing.extraLarge + LocalFloatingNavInset.current
                 ),
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)
             ) {
@@ -248,7 +249,7 @@ private fun AccountCarousel(
                 contentPadding = PaddingValues(
                     start = MaterialTheme.spacing.medium,
                     end = MaterialTheme.spacing.medium,
-                    bottom = MaterialTheme.spacing.extraLarge
+                    bottom = MaterialTheme.spacing.extraLarge + LocalFloatingNavInset.current
                 ),
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)
             ) {

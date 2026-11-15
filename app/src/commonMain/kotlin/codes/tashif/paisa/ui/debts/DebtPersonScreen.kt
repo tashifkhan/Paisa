@@ -49,6 +49,8 @@ import codes.tashif.paisa.ui.format.formatMoney
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.spacing
 import kotlin.math.abs
+import codes.tashif.paisa.ui.components.LocalFloatingNavInset
+import codes.tashif.paisa.ui.components.listPlacementSpring
 
 
 /**
@@ -92,7 +94,7 @@ internal fun DebtPersonScreen(
                 start = MaterialTheme.spacing.medium,
                 end = MaterialTheme.spacing.medium,
                 // Room for the floating toolbar over the end of the list.
-                bottom = 120.dp
+                bottom = 120.dp + LocalFloatingNavInset.current
             ),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
@@ -160,7 +162,7 @@ internal fun DebtPersonScreen(
             modifier = Modifier
                 // The app frame already pads for the bottom bar and gesture bar.
                 .align(Alignment.BottomCenter)
-                .padding(bottom = MaterialTheme.spacing.medium)
+                .padding(bottom = MaterialTheme.spacing.medium + LocalFloatingNavInset.current)
         )
     }
 

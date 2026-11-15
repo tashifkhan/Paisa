@@ -34,6 +34,7 @@ import codes.tashif.paisa.ui.components.EmptyState
 import codes.tashif.paisa.ui.components.PaisaTopBar
 import codes.tashif.paisa.ui.format.formatMoney
 import codes.tashif.paisa.ui.theme.spacing
+import codes.tashif.paisa.ui.components.LocalFloatingNavInset
 
 @Composable
 fun AnalysisScreen(viewModel: AnalyticsViewModel = koinViewModel()) {
@@ -224,7 +225,7 @@ fun AnalysisScreen(viewModel: AnalyticsViewModel = koinViewModel()) {
                     contentPadding = PaddingValues(
                         start = MaterialTheme.spacing.medium,
                         end = MaterialTheme.spacing.medium,
-                        bottom = MaterialTheme.spacing.extraLarge
+                        bottom = MaterialTheme.spacing.extraLarge + LocalFloatingNavInset.current
                     ),
                     verticalArrangement = Arrangement.spacedBy(gap)
                 ) {

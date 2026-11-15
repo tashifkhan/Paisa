@@ -49,6 +49,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.data.AppTab
+import codes.tashif.paisa.ui.components.LocalFloatingNavInset
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import codes.tashif.paisa.ui.accounts.AccountsScreen
 import codes.tashif.paisa.ui.analytics.AnalysisScreen
 import codes.tashif.paisa.ui.budgets.BudgetsScreen
@@ -127,6 +130,10 @@ fun AppShell(
     val detailPane = wide && selectedTxId != null
     val topScreen = state.topScreen
 
+    // The floating bar lets the tabs draw behind it, to the bottom of the screen.
+    val floatingBar = !useRail && settings?.floatingNavBar == true
+    val hazeState = remember { HazeState() }
+    val frostedBar = floatingBar && settings?.floatingNavFrosted == true
     LaunchedEffect(currentTab, topScreen) {
         setWindowTitle(
             listOfNotNull(topScreen?.title ?: currentTab.label, "Paisa").joinToString(" · ")
@@ -315,9 +322,11 @@ fun AppShell(
                         AppNavBar(
                             navTabs = navTabs,
                             currentTab = currentTab,
-                            floating = settings?.floatingNavBar == true,
+                            floating = floatingBar,
                             showLabels = settings?.navBarLabels != false,
-                            onSelect = selectTab
+                            onSelect = selectTab,
+                            floatingLabels = settings?.floatingNavLabels == true,
+                            hazeState = hazeState.takeIf { frostedBar }
                         )
                     }
                 }
@@ -329,7 +338,11 @@ fun AppShell(
                         .padding(
                             start = innerPadding.calculateStartPadding(layoutDirection),
                             end = innerPadding.calculateEndPadding(layoutDirection),
-                            bottom = innerPadding.calculateBottomPadding()
+                // Under a floating bar the tabs run to the bottom edge, and each
+                // one pads its own scrolling content by what the bar covers.
+                val barInset = if (floatingBar) innerPadding.calculateBottomPadding() else 0.dp
+                            bottom = if (floatingBar) 0.dp else innerPadding.calculateBottomPadding()
+                CompositionLocalProvider(LocalFloatingNavInset provides barInset) {
                         )
                         .fillMaxSize()
                 ) {
@@ -338,6 +351,8 @@ fun AppShell(
                             topScreen = topScreen,
                             showMoreList = currentTab == AppTab.MORE,
                             state = state,
+                        // What the frosted bar blurs. The bar is a sibling, never a child.
+                        .then(if (frostedBar) Modifier.hazeSource(hazeState) else Modifier)
                             navTabs = if (large) AppTab.entries else navTabs,
                             viewModel = viewModel
                         )
@@ -397,6 +412,7 @@ fun AppShell(
                     val density = LocalDensity.current
                     SnackbarHost(
                         hostState = snackbarHostState,
+                }
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(bottom = innerPadding.calculateBottomPadding())

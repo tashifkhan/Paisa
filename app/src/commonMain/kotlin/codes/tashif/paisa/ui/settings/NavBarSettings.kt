@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Label
+import androidx.compose.material.icons.rounded.BlurOn
 import androidx.compose.material.icons.rounded.CallToAction
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import codes.tashif.paisa.data.AppTab
@@ -19,6 +21,7 @@ import codes.tashif.paisa.data.NavTabs
 import codes.tashif.paisa.ui.app.icon
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.spacing
+import dev.chrisbanes.haze.HazeDefaults
 
 /**
  * Navbar style toggles and the list of tabs shown in it. A ColumnScope
@@ -29,11 +32,17 @@ fun ColumnScope.NavBarSettings(
     floatingNavBar: Boolean,
     navBarLabels: Boolean,
     navTabs: String,
+    floatingNavLabels: Boolean,
+    floatingNavFrosted: Boolean,
+    onFloatingNavLabelsChange: (Boolean) -> Unit,
+    onFloatingNavFrostedChange: (Boolean) -> Unit,
     onFloatingNavBarChange: (Boolean) -> Unit,
     onNavBarLabelsChange: (Boolean) -> Unit,
     onNavTabsChange: (List<AppTab>) -> Unit
 ) {
     val haptics = rememberHaptics()
+    // Haze blurs on Android 12 and later, and on the web.
+    val backdropBlurSupported = remember { HazeDefaults.blurEnabled() }
 
     Text(
         text = "Navigation bar",
@@ -48,14 +57,43 @@ fun ColumnScope.NavBarSettings(
     AppearanceToggleCard(
         icon = Icons.Rounded.CallToAction,
         title = "Floating navbar",
-        subtitle = "Pill-shaped bar that floats above the bottom edge",
+        subtitle = "Pill-shaped bar that floats over the screen, with the list scrolling behind it",
         checked = floatingNavBar,
         onCheckedChange = {
             haptics.toggle(on = it)
             onFloatingNavBarChange(it)
         }
     )
-    // The floating bar always labels just the selected tab.
+    AnimatedVisibility(visible = floatingNavBar) {
+        Column {
+            Spacer(Modifier.height(MaterialTheme.spacing.smaller))
+            AppearanceToggleCard(
+                icon = Icons.AutoMirrored.Rounded.Label,
+                title = "Tab titles",
+                subtitle = "A title under every tab. Off, only the selected tab shows its name",
+                checked = floatingNavLabels,
+                onCheckedChange = {
+                    haptics.toggle(on = it)
+                    onFloatingNavLabelsChange(it)
+                }
+            )
+            Spacer(Modifier.height(MaterialTheme.spacing.smaller))
+            AppearanceToggleCard(
+                icon = Icons.Rounded.BlurOn,
+                title = "Frosted glass",
+                subtitle = if (backdropBlurSupported) {
+                    "Blurs and tints what scrolls behind the bar"
+                } else {
+                    "See-through tinted bar. Blur needs Android 12 or later"
+                },
+                checked = floatingNavFrosted,
+                onCheckedChange = {
+                    haptics.toggle(on = it)
+                    onFloatingNavFrostedChange(it)
+                }
+            )
+        }
+    }
     AnimatedVisibility(visible = !floatingNavBar) {
         Column {
             Spacer(Modifier.height(MaterialTheme.spacing.smaller))
