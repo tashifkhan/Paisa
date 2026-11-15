@@ -16,7 +16,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.TrendingDown
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
-import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
@@ -40,6 +39,11 @@ import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.data.Account
 import codes.tashif.paisa.ui.components.MoneyText
 import codes.tashif.paisa.ui.theme.spacing
+import codes.tashif.paisa.ui.components.springCollapse
+import codes.tashif.paisa.ui.components.springExpand
+import codes.tashif.paisa.ui.components.expandArrowRotation
+import codes.tashif.paisa.ui.components.elasticCard
+import androidx.compose.ui.draw.rotate
 
 /**
  * M3 multi-shape balance cluster — distinct corner radii per tile (shape scale:
@@ -72,6 +76,7 @@ internal fun BalanceCard(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
+                .elasticCard()
                 .clickable { expanded = !expanded },
             shape = heroShape,
             color = MaterialTheme.colorScheme.primary
@@ -118,18 +123,14 @@ internal fun BalanceCard(
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
-                                imageVector = if (expanded) {
-                                    Icons.Rounded.ExpandLess
-                                } else {
-                                    Icons.Rounded.ExpandMore
-                                },
+                                imageVector = Icons.Rounded.ExpandMore,
                                 contentDescription = if (expanded) {
                                     "Hide breakdown"
                                 } else {
                                     "Show breakdown"
                                 },
                                 tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(20.dp).rotate(expandArrowRotation(expanded))
                             )
                         }
                     }
@@ -142,10 +143,11 @@ internal fun BalanceCard(
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimary,
-                    maskCount = 7
+                    maskCount = 7,
+                    animated = true
                 )
 
-                AnimatedVisibility(visible = expanded) {
+                AnimatedVisibility(visible = expanded, enter = springExpand(), exit = springCollapse()) {
                     val (creditCards, bankAccounts) = accounts.partition {
                         it.type == "Credit Card"
                     }

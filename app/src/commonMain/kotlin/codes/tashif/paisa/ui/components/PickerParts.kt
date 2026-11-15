@@ -57,6 +57,7 @@ internal fun PickerCollapsedRow(
     Card(
         modifier = modifier
             .fillMaxWidth()
+            .elasticCard()
             .clickable(onClick = onClick),
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(
@@ -227,8 +228,8 @@ internal fun SearchablePickerSheet(
                     .verticalScroll(rememberScrollState())
             ) {
                 content(query)
-            }
                 Spacer(Modifier.size(endSpace))
+            }
         }
     }
 }

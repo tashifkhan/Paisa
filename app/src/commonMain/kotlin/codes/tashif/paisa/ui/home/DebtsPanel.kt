@@ -24,6 +24,7 @@ import codes.tashif.paisa.ui.theme.ExpenseRed
 import codes.tashif.paisa.ui.theme.IncomeGreen
 import codes.tashif.paisa.ui.theme.spacing
 import kotlin.math.abs
+import codes.tashif.paisa.ui.components.elasticCard
 
 /**
  * Money between you and other people in one compact card: the net position
@@ -44,6 +45,7 @@ internal fun DebtsPanel(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .elasticCard()
             .clickable(onClick = onOpen),
         shape = OverviewShapes.heroAlone,
         color = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -62,7 +64,8 @@ internal fun DebtsPanel(
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = onCard,
-                    maskCount = 6
+                    maskCount = 6,
+                    animated = true
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(

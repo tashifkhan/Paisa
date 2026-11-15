@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.ui.theme.spacing
+import codes.tashif.paisa.ui.components.elasticCard
 
 @Composable
 fun AppearanceToggleCard(
@@ -38,6 +39,7 @@ fun AppearanceToggleCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .elasticCard()
             .clickable { onCheckedChange(!checked) },
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(

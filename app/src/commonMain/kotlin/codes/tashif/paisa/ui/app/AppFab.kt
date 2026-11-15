@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.data.AppTab
+import codes.tashif.paisa.ui.components.elasticButton
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.spacing
 
@@ -63,7 +64,8 @@ fun AppFab(
                             val canReadSms = smsScan.hasReadSmsPermission()
                             if (canReadSms) onRescanSms() else onOpenSmsSetup()
                         }
-                    }
+                    },
+                    modifier = Modifier.elasticButton()
                 ) {
                     if (scanRunning) {
                         LoadingIndicator(modifier = Modifier.size(20.dp))
@@ -76,7 +78,8 @@ fun AppFab(
                 onClick = {
                     haptics.click()
                     onAdd(addSheetFor(currentTab))
-                }
+                },
+                modifier = Modifier.elasticButton()
             ) {
                 Icon(Icons.Rounded.Add, contentDescription = addLabelFor(currentTab))
             }
