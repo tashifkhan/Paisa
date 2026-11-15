@@ -2,6 +2,35 @@
 
 Every Paisa release, newest first. Each version's APK is on the [releases page](https://github.com/tashifkhan/Paisa/releases) and in the F-Droid repo at `https://tashif.codes/fdroid/repo`.
 
+## 1.7.2
+
+A floating navbar that sits over your list, a way to add a category without leaving the picker, and motion across the app.
+
+### Floating navbar
+
+- **The list shows behind the bar.** Tabs now draw to the bottom edge of the screen and scroll under the floating bar, instead of stopping above it.
+- **Tab titles.** A new toggle in More → Appearance puts a title under every tab. Off, only the selected tab shows its name, as before.
+- **Frosted glass.** A second toggle blurs and tints what scrolls behind the bar. Blur needs Android 12 or later. Older phones get a see-through tinted bar.
+- The bar picks up a little of your accent colour, and on light themes its shadow does too.
+- **It moves.** One pill slides between tabs. The bar gives under your finger and lights up where you touch. Each icon makes its own small move when tapped: Home hops, Budgets spins, More turns over.
+
+### Categories
+
+- **Add a category from the picker.** The category list ends with a New category row. Type in the search box first and it reads Create "your text", with the name filled in. Saving selects the new category.
+- The new category takes the transaction's type, expense or income. In budgets it is always an expense category.
+- Fixed a gap between the category list and the keyboard. The list now runs down to the keyboard.
+
+### Motion
+
+- **Amounts roll.** The balance, income, expense, credit and debts amounts on Home roll up or down when they change, and fade when you hide or show them.
+- **Cards give under a finger.** Home cards, budget cards, appearance toggles, picker rows and the add buttons dip when pressed and spring back.
+- **Lists glide.** When you add or remove a budget, a person in Debts, a debt entry or a day of transactions, the rows around it slide into place.
+- Opening a transaction or a settings screen on a phone fades in with a small rise. Empty states do the same.
+- Balance and credit card breakdowns open on a spring, and their arrow turns over.
+- Budget bars fill from empty when they appear.
+
+The navbar and press motion is adapted from [Expressive Clock](https://github.com/samuelbeckman/expressive-clock) by Sam Beckman, built on Material Clock by Rayane Bouafia, under the MIT licence.
+
 ## 1.7.1
 
 Add transactions by talking, and delete several accounts at once.
