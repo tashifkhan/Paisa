@@ -276,7 +276,8 @@ fun TransactionDetailScreen(
             CategoryPicker(
                 categories = filteredCategories,
                 selectedId = selectedCategoryId,
-                onSelect = { selectedCategoryId = it }
+                onSelect = { selectedCategoryId = it },
+                type = current.type
             )
 
             DetailToggles(

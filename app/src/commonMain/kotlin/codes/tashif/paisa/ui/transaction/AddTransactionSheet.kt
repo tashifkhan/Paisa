@@ -250,7 +250,8 @@ fun AddTransactionSheet(
                 categories = filteredCategories,
                 selectedId = selectedCategoryId,
                 onSelect = { selectedCategoryId = it },
-                emptyText = "No $type categories yet — add some in More → Categories"
+                emptyText = "No $type categories yet",
+                type = type
             )
 
             Spacer(Modifier.height(MaterialTheme.spacing.smaller))

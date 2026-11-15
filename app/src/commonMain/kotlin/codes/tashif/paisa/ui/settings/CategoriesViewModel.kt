@@ -23,11 +23,12 @@ class CategoriesViewModel(
     val merchantMappings: StateFlow<List<MerchantMapping>> = categoriesRepository.allMerchantMappings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    fun addCategory(name: String, type: String, color: String) {
+    /** [onAdded] gets the new category's id, so a picker can select it. */
+    fun addCategory(name: String, type: String, color: String, onAdded: (Int) -> Unit = {}) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
         viewModelScope.launch {
-            categoriesRepository.insertCategory(
+            val id = categoriesRepository.insertCategory(
                 Category(
                     name = trimmed,
                     type = type,
@@ -37,6 +38,7 @@ class CategoriesViewModel(
                 )
             )
             snackbarManager.show("Category added")
+            onAdded(id.toInt())
         }
     }
 
