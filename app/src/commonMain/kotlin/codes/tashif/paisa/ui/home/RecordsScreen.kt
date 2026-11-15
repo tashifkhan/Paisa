@@ -193,7 +193,7 @@ fun RecordsScreen(viewModel: HomeViewModel = koinViewModel()) {
                             item(key = "day_$day") {
                                 val dayIds = dayTxs.map { it.id }
                                 Box(
-                                    Modifier.then(
+                                    Modifier.animateItem(placementSpec = listPlacementSpring()).then(
                                         if (selecting) Modifier.clickable {
                                             selection = if (selection.containsAll(dayIds)) selection - dayIds.toSet()
                                             else selection + dayIds
@@ -209,6 +209,8 @@ fun RecordsScreen(viewModel: HomeViewModel = koinViewModel()) {
                                 }
                             }
                             item(key = "group_$day") {
+                                // Days glide up when one above them empties out.
+                                Box(Modifier.animateItem(placementSpec = listPlacementSpring())) {
                                 TransactionGroup(dayTxs) { tx, position ->
                                     TransactionRow(
                                         tx = tx,
@@ -221,6 +223,7 @@ fun RecordsScreen(viewModel: HomeViewModel = koinViewModel()) {
                                         onLongClick = { if (selecting) selectRange(tx.id) else toggle(tx.id) },
                                         onClick = { if (selecting) toggle(tx.id) else viewModel.openTransaction(tx.id) }
                                     )
+                                }
                                 }
                             }
                         }

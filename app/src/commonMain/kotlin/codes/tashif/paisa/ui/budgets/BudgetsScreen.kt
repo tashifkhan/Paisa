@@ -89,6 +89,7 @@ fun BudgetsScreen(viewModel: BudgetsViewModel = koinViewModel()) {
                                 (budget.categoryId == null || tx.categoryId == budget.categoryId)
                         }
                         .sumOf { it.amount }
+                    Box(Modifier.animateItem(placementSpec = listPlacementSpring())) {
                     BudgetCard(
                         budget = budget,
                         title = budget.budgetName ?: category?.name ?: "Overall spending",
@@ -98,6 +99,7 @@ fun BudgetsScreen(viewModel: BudgetsViewModel = koinViewModel()) {
                         categoryName = category?.name,
                         categoryColor = category?.color
                     )
+                    }
                 }
             }
             VerticalScrollbarFor(gridState, Modifier.align(Alignment.CenterEnd).fillMaxHeight())

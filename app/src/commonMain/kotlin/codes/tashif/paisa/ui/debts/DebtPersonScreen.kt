@@ -131,6 +131,7 @@ internal fun DebtPersonScreen(
                 }
             }
             itemsIndexed(entries, key = { _, e -> e.id }) { index, e ->
+                Box(Modifier.animateItem(placementSpec = listPlacementSpring())) {
                 DebtEntryRow(
                     entry = e,
                     currency = currency,
@@ -142,6 +143,7 @@ internal fun DebtPersonScreen(
                         if (syncId != null) onOpenTransaction(syncId) else editing = e
                     }
                 )
+                }
             }
         }
     }
@@ -160,7 +162,8 @@ internal fun DebtPersonScreen(
                 confirmSettle = true
             },
             modifier = Modifier
-                // The app frame already pads for the bottom bar and gesture bar.
+                // The app frame pads for a docked bar and the gesture bar; a
+                // floating bar leaves that to us.
                 .align(Alignment.BottomCenter)
                 .padding(bottom = MaterialTheme.spacing.medium + LocalFloatingNavInset.current)
         )

@@ -132,6 +132,7 @@ fun DebtsScreen(viewModel: DebtsViewModel = koinViewModel()) {
                 Spacer(Modifier.height(MaterialTheme.spacing.medium))
             }
             itemsIndexed(people, key = { _, p -> p.person.id }) { index, p ->
+                Box(Modifier.animateItem(placementSpec = listPlacementSpring())) {
                 DebtPersonRow(
                     entry = p,
                     currency = currency,
@@ -140,6 +141,7 @@ fun DebtsScreen(viewModel: DebtsViewModel = koinViewModel()) {
                     selected = wide && p.person.id == openId,
                     onClick = { viewModel.openDebtPerson(p.person.id) }
                 )
+                }
             }
         }
     }
