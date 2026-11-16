@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.transaction
 
+import codes.tashif.paisa.ui.components.markdown.MarkdownField
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -57,15 +58,14 @@ internal fun TransactionTypeChoice(
     )
 }
 
-/** Title (stored as the merchant) and the free-text note. */
+/** Title (stored as the merchant) and the Markdown description. */
 @Composable
 internal fun TitleAndNoteFields(
     title: String,
     onTitleChange: (String) -> Unit,
     note: String,
     onNoteChange: (String) -> Unit,
-    onTitleNext: () -> Unit,
-    onNoteDone: () -> Unit
+    onTitleNext: () -> Unit
 ) {
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -90,18 +90,14 @@ internal fun TitleAndNoteFields(
 
     Spacer(Modifier.height(MaterialTheme.spacing.smaller))
 
-    OutlinedTextField(
+    MarkdownField(
         value = note,
         onValueChange = onNoteChange,
-        label = { Text("Note") },
-        placeholder = { Text("Optional") },
-        minLines = 1,
-        maxLines = 3,
-        shape = MaterialTheme.shapes.extraLarge,
-        colors = fieldColors,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(onDone = { onNoteDone() }),
-        modifier = Modifier.fillMaxWidth()
+        label = "Description",
+        placeholder = "Optional",
+        alwaysOpen = true,
+        // Short until there is something in it, so the sheet stays compact.
+        minHeight = 48.dp
     )
 }
 

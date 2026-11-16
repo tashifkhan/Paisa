@@ -97,7 +97,8 @@ fun SplitBillSheet(
                 plan = plan,
                 onPlanChange = { plan = it },
                 outcome = outcome,
-                currency = currency
+                currency = currency,
+                onScannedTotal = { totalText = plain(it) }
             )
 
             Text("Who paid", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)

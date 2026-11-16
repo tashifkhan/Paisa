@@ -5,18 +5,13 @@ import codes.tashif.paisa.platform.PaisaCalendar
 import codes.tashif.paisa.ui.platform.PlatformBackHandler
 import codes.tashif.paisa.platform.formatFixed
 import org.koin.compose.viewmodel.koinViewModel
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -24,7 +19,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -38,17 +38,20 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.text.font.FontWeight
 import codes.tashif.paisa.ui.components.AccountPicker
 import codes.tashif.paisa.ui.components.CategoryPicker
 import codes.tashif.paisa.ui.components.CircleIconButton
 import codes.tashif.paisa.ui.components.DetailHeader
 import codes.tashif.paisa.ui.components.markdown.Markdown
 import codes.tashif.paisa.ui.components.markdown.MarkdownField
+import codes.tashif.paisa.ui.components.markdown.MarkdownText
 import codes.tashif.paisa.ui.debts.DebtsViewModel
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.spacing
@@ -70,7 +73,6 @@ fun TransactionDetailScreen(
     val currency = settings?.currency ?: "₹"
     val haptics = rememberHaptics()
 
-    PlatformBackHandler(onBack = onBack)
 
     val current = transactions.firstOrNull { it.id == selectedId }
     // Only bail out once data has loaded and the id is genuinely gone
@@ -94,6 +96,9 @@ fun TransactionDetailScreen(
     }
     var rememberMerchant by remember(current.id) { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var editing by remember(current.id) { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     var smsExpanded by remember(current.id) { mutableStateOf(false) }
     var title by remember(current.id) { mutableStateOf(current.merchantName.orEmpty()) }
     var note by remember(current.id) { mutableStateOf(current.note) }
@@ -166,201 +171,231 @@ fun TransactionDetailScreen(
     val canSave = detailsChanged || categoryChanged ||
         (rememberMerchant && merchantForMapping.isNotEmpty())
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        DetailHeader(
-            title = "Transaction",
-            onBack = onBack,
-            actions = {
-                CircleIconButton(
-                    icon = Icons.Rounded.Delete,
-                    contentDescription = "Delete",
-                    onClick = {
-                        haptics.click()
-                        showDeleteConfirm = true
-                    }
-                )
-            }
-        )
+    fun resetEdits() {
+        title = current.merchantName.orEmpty()
+        note = current.note
+        amountText = initialAmountText
+        selectedCategoryId = current.categoryId
+        selectedAccountId = current.accountId
+        rememberMerchant = false
+        year = initialCal.get(PaisaCalendar.YEAR)
+        month = initialCal.get(PaisaCalendar.MONTH)
+        day = initialCal.get(PaisaCalendar.DAY_OF_MONTH)
+        hour = initialCal.get(PaisaCalendar.HOUR_OF_DAY)
+        minute = initialCal.get(PaisaCalendar.MINUTE)
+    }
+    val startEditing = {
+        haptics.click()
+        resetEdits()
+        editing = true
+    }
+    val stopEditing = {
+        focusManager.clearFocus()
+        resetEdits()
+        editing = false
+    }
 
-        val focusManager = LocalFocusManager.current
-        val keyboardController = LocalSoftwareKeyboardController.current
+    // Back leaves the edit page first, then the transaction.
+    PlatformBackHandler(onBack = { if (editing) stopEditing() else onBack() })
 
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .imePadding()
-                .navigationBarsPadding()
-        ) {
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = MaterialTheme.spacing.medium)
-                .padding(bottom = MaterialTheme.spacing.large),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-        ) {
-            // --- HERO ---
-            TransactionHeroCard(
-                categoryIcon = current.categoryIcon,
-                categoryName = current.categoryName,
-                categoryColor = current.categoryColor,
-                displayTitle = title.trim().ifBlank {
-                    current.merchantName?.takeIf { it.isNotBlank() }
-                        ?: Markdown.plainText(note).ifBlank { current.categoryName }
-                },
-                isIncome = isIncome,
-                sourceLabel = sourceLabel,
-                currency = currency,
-                amount = parsedAmount ?: current.amount
-            )
-
-            // --- WHAT YOU CAN CHANGE ---
-            EditTextFields(
-                isManual = isManual,
-                currency = currency,
-                amountText = amountText,
-                onAmountChange = { amountText = it.filter { ch -> ch.isDigit() || ch == '.' } },
-                title = title,
-                onTitleChange = { title = it },
-                onNext = { focusManager.moveFocus(FocusDirection.Down) },
-                onDone = {
-                    keyboardController?.hide()
-                    focusManager.clearFocus()
-                }
-            )
-
-            MarkdownField(
-                value = note,
-                onValueChange = { note = it },
-                label = "Description",
-                placeholder = "Add a description. Markdown works."
-            )
-
-            CategoryPicker(
-                categories = filteredCategories,
-                selectedId = selectedCategoryId,
-                onSelect = { selectedCategoryId = it },
-                type = current.type
-            )
-
-            if (isManual) {
-                EditDateTimeRow(
-                    year = year,
-                    month = month,
-                    day = day,
-                    hour = hour,
-                    minute = minute,
-                    onPickDate = { showDatePicker = true },
-                    onPickTime = { showTimePicker = true }
-                )
-                AccountPicker(
-                    accounts = accounts,
-                    selectedId = selectedAccountId,
-                    onSelect = { selectedAccountId = it }
-                )
-            }
-
-            DetailToggles(
-                merchantForMapping = merchantForMapping,
-                fromSmsOrImport = isSms || isStatement,
-                rememberMerchant = rememberMerchant,
-                onRememberMerchantChange = { rememberMerchant = it }
-            )
-
-            // --- SPLIT (who owes for this, in Debts) ---
-            TransactionSplitSection(
-                split = split,
-                people = debtPeople,
-                total = current.amount,
-                isExpense = current.type == "expense",
-                currency = currency,
-                onOpenPerson = { personId ->
-                    debtsViewModel.openDebtPersonFromTransaction(personId, current.id)
-                },
-                onSave = { viewModel.saveTransactionSplit(current.id, it) },
-                onRemove = { viewModel.removeTransactionSplit(current.id) }
-            )
-
-            // --- WHAT THE BANK SAID (read-only) ---
-            Spacer(Modifier.height(MaterialTheme.spacing.extraSmall))
-            Text(
-                text = "Details",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            TransactionDetailsCard(rows = detailRows)
-
-            if (isSms && !current.smsBody.isNullOrBlank()) {
-                SmsMessageCard(
-                    body = current.smsBody,
-                    sender = current.smsSender,
-                    expanded = smsExpanded,
-                    onToggle = { smsExpanded = !smsExpanded }
-                )
-            }
-        }
-
-        // Save stays in reach instead of sitting under everything, and only
-        // shows once there is something to save.
-        AnimatedVisibility(
-            visible = canSave,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut()
-        ) {
-            Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            haptics.click()
-                            focusManager.clearFocus()
-                            title = current.merchantName.orEmpty()
-                            note = current.note
-                            amountText = initialAmountText
-                            selectedCategoryId = current.categoryId
-                            selectedAccountId = current.accountId
-                            rememberMerchant = false
-                            year = initialCal.get(PaisaCalendar.YEAR)
-                            month = initialCal.get(PaisaCalendar.MONTH)
-                            day = initialCal.get(PaisaCalendar.DAY_OF_MONTH)
-                            hour = initialCal.get(PaisaCalendar.HOUR_OF_DAY)
-                            minute = initialCal.get(PaisaCalendar.MINUTE)
-                        }
-                    ) {
-                        Text("Discard")
-                    }
-                    Button(
-                        onClick = {
-                            if (isManual && (parsedAmount == null || parsedAmount <= 0.0)) {
-                                haptics.reject()
-                                viewModel.showSnackbar("Enter a valid amount")
-                                return@Button
+    if (!editing) {
+        // --- THE TRANSACTION, READ-ONLY. Tap a card or the button to edit. ---
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                DetailHeader(
+                    title = "Transaction",
+                    onBack = onBack,
+                    actions = {
+                        CircleIconButton(
+                            icon = Icons.Rounded.Delete,
+                            contentDescription = "Delete",
+                            onClick = {
+                                haptics.click()
+                                showDeleteConfirm = true
                             }
-                            haptics.confirm()
-                            viewModel.saveTransactionEdits(
-                                transactionId = current.id,
-                                title = title,
-                                note = note,
-                                categoryId = selectedCategoryId,
-                                rememberMerchant = rememberMerchant && merchantForMapping.isNotEmpty(),
-                                amount = if (isManual) parsedAmount else null,
-                                transactionDate = if (isManual) originalIso else null,
-                                accountId = if (isManual) selectedAccountId else null
-                            )
-                            onBack()
+                        )
+                    }
+                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .navigationBarsPadding()
+                        .padding(horizontal = MaterialTheme.spacing.medium)
+                        // Room for the Edit button, so it never covers the last card.
+                        .padding(bottom = 96.dp),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                ) {
+                    TransactionHeroCard(
+                        categoryIcon = current.categoryIcon,
+                        categoryName = current.categoryName,
+                        categoryColor = current.categoryColor,
+                        displayTitle = current.merchantName?.takeIf { it.isNotBlank() }
+                            ?: Markdown.plainText(current.note).ifBlank { current.categoryName },
+                        isIncome = isIncome,
+                        sourceLabel = sourceLabel,
+                        currency = currency,
+                        amount = current.amount
+                    )
+
+                    DescriptionCard(note = current.note, onClick = startEditing)
+
+                    TransactionDetailsCard(rows = detailRows, onClick = startEditing)
+
+                    if (isSms && !current.smsBody.isNullOrBlank()) {
+                        SmsMessageCard(
+                            body = current.smsBody,
+                            sender = current.smsSender,
+                            expanded = smsExpanded,
+                            onToggle = { smsExpanded = !smsExpanded }
+                        )
+                    }
+
+                    TransactionSplitSection(
+                        split = split,
+                        people = debtPeople,
+                        total = current.amount,
+                        isExpense = current.type == "expense",
+                        currency = currency,
+                        onOpenPerson = { personId ->
+                            debtsViewModel.openDebtPersonFromTransaction(personId, current.id)
                         },
-                        modifier = Modifier.weight(1f)
+                        onSave = { viewModel.saveTransactionSplit(current.id, it) },
+                        onRemove = { viewModel.removeTransactionSplit(current.id) }
+                    )
+                }
+            }
+            ExtendedFloatingActionButton(
+                onClick = startEditing,
+                icon = { Icon(Icons.Rounded.Edit, contentDescription = null) },
+                text = { Text("Edit") },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .padding(MaterialTheme.spacing.medium)
+            )
+        }
+    } else {
+        // --- THE EDIT PAGE ---
+        Column(modifier = Modifier.fillMaxSize()) {
+            DetailHeader(title = "Edit", onBack = stopEditing)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .imePadding()
+                    .navigationBarsPadding()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = MaterialTheme.spacing.medium)
+                        .padding(bottom = MaterialTheme.spacing.large),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                ) {
+                    EditTextFields(
+                        isManual = isManual,
+                        currency = currency,
+                        amountText = amountText,
+                        onAmountChange = { amountText = it.filter { ch -> ch.isDigit() || ch == '.' } },
+                        title = title,
+                        onTitleChange = { title = it },
+                        onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                        onDone = {
+                            keyboardController?.hide()
+                            focusManager.clearFocus()
+                        }
+                    )
+
+                    MarkdownField(
+                        value = note,
+                        onValueChange = { note = it },
+                        label = "Description",
+                        placeholder = "Add a description",
+                        alwaysOpen = true
+                    )
+
+                    CategoryPicker(
+                        categories = filteredCategories,
+                        selectedId = selectedCategoryId,
+                        onSelect = { selectedCategoryId = it },
+                        type = current.type
+                    )
+
+                    if (isManual) {
+                        EditDateTimeRow(
+                            year = year,
+                            month = month,
+                            day = day,
+                            hour = hour,
+                            minute = minute,
+                            onPickDate = { showDatePicker = true },
+                            onPickTime = { showTimePicker = true }
+                        )
+                        AccountPicker(
+                            accounts = accounts,
+                            selectedId = selectedAccountId,
+                            onSelect = { selectedAccountId = it }
+                        )
+                    }
+
+                    DetailToggles(
+                        merchantForMapping = merchantForMapping,
+                        fromSmsOrImport = isSms || isStatement,
+                        rememberMerchant = rememberMerchant,
+                        onRememberMerchantChange = { rememberMerchant = it }
+                    )
+                }
+
+                Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = MaterialTheme.spacing.medium,
+                                vertical = MaterialTheme.spacing.small
+                            ),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
                     ) {
-                        Text("Save changes")
+                        OutlinedButton(
+                            onClick = {
+                                haptics.click()
+                                stopEditing()
+                            }
+                        ) {
+                            Text("Cancel")
+                        }
+                        Button(
+                            onClick = {
+                                if (isManual && (parsedAmount == null || parsedAmount <= 0.0)) {
+                                    haptics.reject()
+                                    viewModel.showSnackbar("Enter a valid amount")
+                                    return@Button
+                                }
+                                haptics.confirm()
+                                focusManager.clearFocus()
+                                viewModel.saveTransactionEdits(
+                                    transactionId = current.id,
+                                    title = title,
+                                    note = note,
+                                    categoryId = selectedCategoryId,
+                                    rememberMerchant = rememberMerchant && merchantForMapping.isNotEmpty(),
+                                    amount = if (isManual) parsedAmount else null,
+                                    transactionDate = if (isManual) originalIso else null,
+                                    accountId = if (isManual) selectedAccountId else null
+                                )
+                                // Back to the transaction, which now shows what was saved.
+                                editing = false
+                            },
+                            modifier = Modifier.weight(1f),
+                            enabled = canSave
+                        ) {
+                            Text("Save changes")
+                        }
                     }
                 }
             }
-        }
         }
     }
 
@@ -401,5 +436,38 @@ fun TransactionDetailScreen(
                 minute = m
             }
         )
+    }
+}
+
+/** The description, rendered. Blank notes get a one-line prompt instead. */
+@Composable
+private fun DescriptionCard(note: String, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(MaterialTheme.shapes.extraLarge)
+            .clickable(onClick = onClick),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(MaterialTheme.spacing.medium),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)
+        ) {
+            Text(
+                text = "Description",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (note.isBlank()) {
+                Text(
+                    text = "Add a description",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            } else {
+                MarkdownText(source = note)
+            }
+        }
     }
 }

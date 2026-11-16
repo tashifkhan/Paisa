@@ -28,6 +28,7 @@ import codes.tashif.paisa.ui.settings.SettingsViewModel
 import codes.tashif.paisa.ui.sms.SmsViewModel
 import codes.tashif.paisa.ui.statement.StatementImportViewModel
 import codes.tashif.paisa.ui.quickadd.AiAddViewModel
+import codes.tashif.paisa.ai.BillScanService
 import codes.tashif.paisa.ai.QuickAddService
 import codes.tashif.paisa.ui.transaction.TransactionViewModel
 import codes.tashif.paisa.ai.AiRepository
@@ -85,6 +86,7 @@ val aiServicesModule = module {
     singleOf(::StatementExtractionService)
     singleOf(::StatementImportUseCase)
     singleOf(::QuickAddService)
+    singleOf(::BillScanService)
 }
 
 /** Every screen's viewmodel. */

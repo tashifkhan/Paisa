@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import codes.tashif.paisa.ui.debts.split.plain
 import codes.tashif.paisa.ui.components.AccountPicker
 import codes.tashif.paisa.ui.components.CategoryPicker
 import codes.tashif.paisa.ui.components.PillTabs
@@ -231,11 +232,7 @@ fun AddTransactionSheet(
                 onTitleChange = { title = it },
                 note = note,
                 onNoteChange = { note = it },
-                onTitleNext = { focusManager.moveFocus(FocusDirection.Down) },
-                onNoteDone = {
-                    keyboardController?.hide()
-                    focusManager.clearFocus()
-                }
+                onTitleNext = { focusManager.moveFocus(FocusDirection.Down) }
             )
 
             Spacer(Modifier.height(MaterialTheme.spacing.small))
@@ -268,7 +265,8 @@ fun AddTransactionSheet(
                 isExpense = type == "expense",
                 people = people,
                 amountText = amountText,
-                currency = currency
+                currency = currency,
+                onScannedTotal = { amountText = plain(it) }
             )
 
             if (title.isNotBlank()) {

@@ -57,6 +57,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import codes.tashif.paisa.ui.haptics.rememberHaptics
@@ -158,7 +159,8 @@ private val TOOLS = listOf(
 /**
  * A Markdown note in a card. At rest it shows the rendered note. Tapping it
  * opens the editor, which formats the text while it is typed and has a toolbar
- * for the common marks.
+ * for the common marks. With [alwaysOpen] it starts as the editor, for pages
+ * that are already an edit form, and a Preview button shows the rendered note.
  */
 @Composable
 fun MarkdownField(
@@ -166,14 +168,16 @@ fun MarkdownField(
     onValueChange: (String) -> Unit,
     label: String,
     placeholder: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    alwaysOpen: Boolean = false,
+    minHeight: Dp = 96.dp
 ) {
     val haptics = rememberHaptics()
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
     val colors = mdColors()
     val styling = remember(colors) { MarkdownStyling(colors) }
-    var editing by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf(alwaysOpen) }
     var hadFocus by remember { mutableStateOf(false) }
     var field by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
     // The value can change from outside, e.g. a task box ticked in the rendered view.
@@ -185,7 +189,8 @@ fun MarkdownField(
     }
 
     LaunchedEffect(editing) {
-        if (editing) focusRequester.requestFocus()
+        // An always-open editor waits for a tap, so the keyboard doesn't jump up with the page.
+        if (editing && !alwaysOpen) focusRequester.requestFocus()
     }
 
     Card(
@@ -205,7 +210,18 @@ fun MarkdownField(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f)
             )
-            TextButton(
+            if (alwaysOpen) {
+                // On an edit form the field starts as the editor. Preview shows the finished note.
+                TextButton(
+                    onClick = {
+                        haptics.click()
+                        if (editing) focusManager.clearFocus()
+                        editing = !editing
+                    }
+                ) {
+                    Text(if (editing) "Preview" else "Write")
+                }
+            } else TextButton(
                 onClick = {
                     haptics.click()
                     // Clearing focus closes the editor through onFocusChanged, so read the state first.
@@ -254,14 +270,14 @@ fun MarkdownField(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 96.dp)
+                    .heightIn(min = minHeight)
                     .padding(horizontal = MaterialTheme.spacing.medium)
                     .padding(bottom = MaterialTheme.spacing.small)
                     .focusRequester(focusRequester)
                     .onFocusChanged { state ->
                         if (state.isFocused) {
                             hadFocus = true
-                        } else if (hadFocus) {
+                        } else if (hadFocus && !alwaysOpen) {
                             // Tapping elsewhere finishes the edit and shows the rendered note.
                             hadFocus = false
                             editing = false
