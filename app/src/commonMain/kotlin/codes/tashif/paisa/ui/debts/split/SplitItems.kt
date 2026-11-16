@@ -1,32 +1,39 @@
 package codes.tashif.paisa.ui.debts.split
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PhotoCamera
+import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import codes.tashif.paisa.ui.components.SheetFieldCard
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.ui.format.formatMoney
@@ -46,8 +53,10 @@ internal fun SplitItemsEditor(
     outcome: SplitOutcome,
     currency: String,
     scanning: Boolean,
+    scanMessage: String? = null,
     onPlanChange: (SplitPlan) -> Unit,
-    onScan: () -> Unit,
+    onTakePhoto: () -> Unit,
+    onChoosePhoto: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val haptics = rememberHaptics()
@@ -58,21 +67,42 @@ internal fun SplitItemsEditor(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
     ) {
-        OutlinedButton(
-            onClick = onScan,
-            enabled = !scanning,
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.extraLarge
-        ) {
-            if (scanning) {
-                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                Spacer(Modifier.width(MaterialTheme.spacing.smaller))
-                Text("Reading the bill")
-            } else {
-                Icon(Icons.Rounded.PhotoCamera, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(MaterialTheme.spacing.smaller))
-                Text("Scan a bill")
+        if (scanning) {
+            SheetFieldCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(MaterialTheme.spacing.small))
+                    Text("Reading the bill", style = MaterialTheme.typography.titleSmall)
+                }
             }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)
+            ) {
+                BillSourceCard(
+                    icon = Icons.Rounded.PhotoCamera,
+                    title = "Take photo",
+                    subtitle = "Open the camera",
+                    onClick = onTakePhoto,
+                    modifier = Modifier.weight(1f)
+                )
+                BillSourceCard(
+                    icon = Icons.Rounded.PhotoLibrary,
+                    title = "Choose photo",
+                    subtitle = "From your gallery",
+                    onClick = onChoosePhoto,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        if (!scanMessage.isNullOrBlank()) {
+            Text(
+                text = scanMessage,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error
+            )
         }
 
         if (plan.items.isEmpty()) {
@@ -145,10 +175,13 @@ internal fun SplitItemsEditor(
             }
         }
 
-        TextButton(onClick = {
-            haptics.tick()
-            onPlanChange(plan.copy(items = plan.items + BillItem()))
-        }) {
+        TextButton(
+            onClick = {
+                haptics.tick()
+                onPlanChange(plan.copy(items = plan.items + BillItem()))
+            },
+            modifier = Modifier.padding(bottom = MaterialTheme.spacing.small)
+        ) {
             Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(MaterialTheme.spacing.extraSmall))
             Text("Add an item")
@@ -174,6 +207,43 @@ internal fun SplitItemsEditor(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+    }
+}
+
+/**
+ * Half of a row, built like the date and account cards: a tinted circle, a
+ * title, and a short line under it.
+ */
+@Composable
+private fun BillSourceCard(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    SheetFieldCard(onClick = onClick, modifier = modifier) {
+        Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

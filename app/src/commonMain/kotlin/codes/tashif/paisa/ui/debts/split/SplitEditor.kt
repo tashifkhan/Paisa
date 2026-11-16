@@ -26,6 +26,8 @@ import codes.tashif.paisa.core.AppLockGuard
 import codes.tashif.paisa.core.SnackbarManager
 import codes.tashif.paisa.data.DebtPersonBalance
 import codes.tashif.paisa.ui.format.formatMoney
+import codes.tashif.paisa.statement.StatementSource
+import codes.tashif.paisa.ui.statement.rememberCameraCapture
 import codes.tashif.paisa.ui.statement.rememberPhotoPicker
 import codes.tashif.paisa.ui.theme.ExpenseRed
 import codes.tashif.paisa.ui.theme.spacing
@@ -57,10 +59,15 @@ fun SplitEditor(
     val latestOnPlan by rememberUpdatedState(onPlanChange)
     val latestOnTotal by rememberUpdatedState(onScannedTotal)
     var scanning by remember { mutableStateOf(false) }
-    val openPhotos = rememberPhotoPicker { files ->
-        val file = files.firstOrNull() ?: return@rememberPhotoPicker
+    var scanMessage by remember { mutableStateOf<String?>(null) }
+    fun readBill(file: StatementSource) {
+        if (!scanner.canRun()) {
+            scanMessage = "Add a model in Settings before a bill can be read"
+            return
+        }
         scope.launch {
             scanning = true
+            scanMessage = null
             try {
                 val bill = scanner.scan(file)
                 val items = bill.items.map { BillItem(it.name, plain(it.amount)) }
@@ -70,20 +77,24 @@ fun SplitEditor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                snackbar.show(e.message?.takeIf { it.isNotBlank() } ?: "Couldn't read that bill")
+                scanMessage = e.message?.takeIf { it.isNotBlank() } ?: "Couldn't read that bill"
             } finally {
                 scanning = false
             }
         }
     }
-    fun scan() {
+    val openPhotos = rememberPhotoPicker { files ->
+        files.firstOrNull()?.let(::readBill)
+    }
+    val openCamera = rememberCameraCapture(
+        onCaptured = ::readBill,
+        onUnavailable = { scanMessage = "No camera on this device. Choose a photo instead." },
+        onPermissionDenied = { scanMessage = "Camera permission is needed to take a photo of the bill" }
+    )
+    fun beginScan(camera: Boolean) {
         if (scanning) return
-        if (!scanner.canRun()) {
-            snackbar.show("Add an AI provider in Settings before scanning a bill")
-            return
-        }
         lock.onExternalActivityLaunched()
-        openPhotos()
+        if (camera) openCamera() else openPhotos()
     }
 
     Column(
@@ -155,8 +166,10 @@ fun SplitEditor(
                 outcome = outcome,
                 currency = currency,
                 scanning = scanning,
+                scanMessage = scanMessage,
                 onPlanChange = onPlanChange,
-                onScan = ::scan
+                onTakePhoto = { beginScan(camera = true) },
+                onChoosePhoto = { beginScan(camera = false) }
             )
         }
     }

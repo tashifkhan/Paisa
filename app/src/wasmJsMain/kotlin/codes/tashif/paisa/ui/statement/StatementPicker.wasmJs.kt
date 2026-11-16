@@ -19,20 +19,39 @@ import org.w3c.files.get
 internal actual fun rememberStatementPicker(onPicked: (List<StatementSource>) -> Unit): () -> Unit =
     rememberFileInput(accept = null, onPicked = onPicked)
 
-/** The same input, limited to images, so phones offer the camera too. */
+/** The same input, limited to images. */
 @Composable
 internal actual fun rememberPhotoPicker(onPicked: (List<StatementSource>) -> Unit): () -> Unit =
     rememberFileInput(accept = "image/jpeg,image/png,image/webp", onPicked = onPicked)
 
+/** `capture` asks a phone browser to open the camera. Desktop browsers ignore it. */
 @Composable
-private fun rememberFileInput(accept: String?, onPicked: (List<StatementSource>) -> Unit): () -> Unit {
+internal actual fun rememberCameraCapture(
+    onCaptured: (StatementSource) -> Unit,
+    onUnavailable: () -> Unit,
+    onPermissionDenied: () -> Unit
+): () -> Unit = rememberFileInput(
+    accept = "image/*",
+    capture = "environment",
+    multiple = false,
+    onPicked = { files -> files.firstOrNull()?.let(onCaptured) }
+)
+
+@Composable
+private fun rememberFileInput(
+    accept: String?,
+    onPicked: (List<StatementSource>) -> Unit,
+    capture: String? = null,
+    multiple: Boolean = true
+): () -> Unit {
     val callback by rememberUpdatedState(onPicked)
-    return remember(accept) {
+    return remember(accept, capture, multiple) {
         {
             val input = document.createElement("input") as HTMLInputElement
             input.type = "file"
-            input.multiple = true
+            input.multiple = multiple
             if (accept != null) input.accept = accept
+            if (capture != null) input.setAttribute("capture", capture)
             input.onchange = {
                 val files = input.files
                 val picked = mutableListOf<StatementSource>()

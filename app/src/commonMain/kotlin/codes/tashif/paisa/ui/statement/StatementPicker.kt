@@ -14,8 +14,21 @@ internal expect fun rememberStatementPicker(onPicked: (List<StatementSource>) ->
 
 /**
  * The platform's photo picker, for receipts and payment screenshots. Android
- * uses the system photo picker, the web an image-only `<input type=file>`,
- * which phones offer the camera for.
+ * uses the system photo picker, the web an image-only `<input type=file>`.
  */
 @Composable
 internal expect fun rememberPhotoPicker(onPicked: (List<StatementSource>) -> Unit): () -> Unit
+
+/**
+ * Opens the camera and returns the photo. Android shows the in-app CameraX
+ * capture screen (the same pipeline Pixel Camera uses). The web uses an image
+ * input with `capture`, which opens the camera on a phone.
+ * [onUnavailable] runs when this device has no camera.
+ * [onPermissionDenied] runs when the user refuses the camera.
+ */
+@Composable
+internal expect fun rememberCameraCapture(
+    onCaptured: (StatementSource) -> Unit,
+    onUnavailable: () -> Unit = {},
+    onPermissionDenied: () -> Unit = {}
+): () -> Unit

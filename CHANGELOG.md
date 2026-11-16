@@ -2,6 +2,14 @@
 
 Every Paisa release, newest first. Each version's APK is on the [releases page](https://github.com/tashifkhan/Paisa/releases) and in the F-Droid repo at `https://tashif.codes/fdroid/repo`.
 
+## 1.7.4
+
+### Bill splitting
+
+- On an item split, take a photo of the bill or choose one you already have. The camera stays inside Paisa. Pixel photos, including Ultra HDR, are straightened and reduced before they're read, and the lines come back for you to check.
+- Take photo and Choose photo sit in the same cards as the rest of the sheet.
+- Add an item no longer runs into the Save button.
+
 ## 1.7.3
 
 Markdown descriptions, more ways to split a bill, category fixes, and support for more bank messages.
