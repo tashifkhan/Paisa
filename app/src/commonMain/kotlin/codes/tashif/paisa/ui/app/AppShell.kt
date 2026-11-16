@@ -48,7 +48,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.unit.dp
-import codes.tashif.paisa.data.AppTab
+import codes.tashif.paisa.core.AppTab
 import codes.tashif.paisa.ui.components.LocalFloatingNavInset
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource

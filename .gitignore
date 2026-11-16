@@ -62,3 +62,10 @@ google-services.json
 
 # Agent worktrees
 .claude/worktrees/
+
+# Agents
+.claude/
+
+# docs
+.docs/
+.agent-scratch/

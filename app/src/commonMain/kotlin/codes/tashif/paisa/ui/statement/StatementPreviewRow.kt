@@ -22,7 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import codes.tashif.paisa.ai.ExtractedTransaction
+import codes.tashif.paisa.statement.ExtractedTransaction
 import codes.tashif.paisa.ui.format.formatMoney
 import codes.tashif.paisa.ui.theme.ExpenseRed
 import codes.tashif.paisa.ui.theme.IncomeGreen

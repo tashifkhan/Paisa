@@ -9,7 +9,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxSize
-import codes.tashif.paisa.data.AppTab
+import codes.tashif.paisa.core.AppTab
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 
 /**

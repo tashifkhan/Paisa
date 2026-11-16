@@ -2,10 +2,10 @@ package codes.tashif.paisa.di
 
 import codes.tashif.paisa.ai.AiCredentialsStore
 import codes.tashif.paisa.ai.AiRepository
-import codes.tashif.paisa.ai.StatementExtractionService
-import codes.tashif.paisa.ai.StatementImportUseCase
-import codes.tashif.paisa.ai.StatementNotifier
-import codes.tashif.paisa.ai.WebStatementNotifier
+import codes.tashif.paisa.statement.StatementExtractionService
+import codes.tashif.paisa.statement.StatementImportUseCase
+import codes.tashif.paisa.statement.StatementNotifier
+import codes.tashif.paisa.statement.WebStatementNotifier
 import codes.tashif.paisa.ai.catalog.AiCacheStore
 import codes.tashif.paisa.ai.catalog.LiveModelLister
 import codes.tashif.paisa.ai.catalog.LocalStorageAiCacheStore

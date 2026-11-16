@@ -37,18 +37,20 @@ import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Wallet
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Categories store a material icon name string (e.g. "restaurant") and a hex
- * color. These helpers turn that into a consistent icon + tinted circle
- * everywhere categories appear.
+ * Categories store an icon and a hex color. The icon is either a material icon
+ * name (e.g. "restaurant") or an emoji the user typed. These helpers turn that
+ * into a consistent icon + tinted circle everywhere categories appear.
  */
 object CategoryVisuals {
 
@@ -83,6 +85,12 @@ object CategoryVisuals {
         "receipt" to Icons.Rounded.Receipt,
         "category" to Icons.Rounded.Category
     )
+
+    /** Every built-in icon name, in the order the icon picker shows them. */
+    val iconNames: List<String> = iconsByName.keys.toList()
+
+    /** True when a stored icon is an emoji instead of a built-in icon name. Names are ASCII. */
+    fun isEmoji(icon: String?): Boolean = !icon.isNullOrBlank() && icon.any { it.code > 127 }
 
     /** Keyword → icon name, used to pick icons for user-created categories. */
     private val keywordIcons = listOf(
@@ -154,12 +162,21 @@ fun CategoryBadge(
             .background(tint, CircleShape),
         contentAlignment = Alignment.Center
     ) {
-        Icon(
-            imageVector = CategoryVisuals.icon(iconName, categoryName),
-            contentDescription = null,
-            // Pastel category swatches read best with a soft dark glyph
-            tint = Color.Black.copy(alpha = 0.62f),
-            modifier = Modifier.size(size * 0.48f)
-        )
+        if (CategoryVisuals.isEmoji(iconName)) {
+            Text(
+                text = iconName.orEmpty(),
+                fontSize = with(LocalDensity.current) { (size * 0.5f).toSp() },
+                maxLines = 1,
+                softWrap = false
+            )
+        } else {
+            Icon(
+                imageVector = CategoryVisuals.icon(iconName, categoryName),
+                contentDescription = null,
+                // Pastel category swatches read best with a soft dark glyph
+                tint = Color.Black.copy(alpha = 0.62f),
+                modifier = Modifier.size(size * 0.48f)
+            )
+        }
     }
 }

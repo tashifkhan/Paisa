@@ -25,8 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.data.Category
 import codes.tashif.paisa.ui.haptics.rememberHaptics
-import codes.tashif.paisa.ui.settings.CategoriesViewModel
-import codes.tashif.paisa.ui.settings.CategoryDialog
+import codes.tashif.paisa.ui.categories.CategoriesViewModel
+import codes.tashif.paisa.ui.categories.CategoryDialog
 import codes.tashif.paisa.ui.theme.spacing
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -196,7 +196,7 @@ private fun NewCategoryDialog(
         initialName = initialName,
         fixedType = type,
         onDismiss = onDismiss,
-        onSave = { name, savedType, color -> viewModel.addCategory(name, savedType, color, onAdded) }
+        onSave = { name, savedType, color, icon -> viewModel.addCategory(name, savedType, color, icon, onAdded) }
     )
 }
 

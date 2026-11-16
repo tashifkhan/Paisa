@@ -4,11 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import codes.tashif.paisa.ai.AiRepository
 import codes.tashif.paisa.ui.ai.AiSummary
-import codes.tashif.paisa.ai.ExtractedTransaction
-import codes.tashif.paisa.ai.StatementExtractionService
-import codes.tashif.paisa.ai.StatementImportUseCase
-import codes.tashif.paisa.ai.StatementNotifier
-import codes.tashif.paisa.ai.StatementSource
+import codes.tashif.paisa.statement.ExtractedTransaction
+import codes.tashif.paisa.statement.StatementExtractionService
+import codes.tashif.paisa.statement.StatementImportUseCase
+import codes.tashif.paisa.statement.StatementNotifier
+import codes.tashif.paisa.statement.StatementSource
 import codes.tashif.paisa.ai.ladder.AiLadderRunner
 import codes.tashif.paisa.ai.ladder.AiService
 import codes.tashif.paisa.core.AppLockGuard

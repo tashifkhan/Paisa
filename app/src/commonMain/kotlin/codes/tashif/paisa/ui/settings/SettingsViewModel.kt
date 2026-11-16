@@ -1,20 +1,20 @@
 package codes.tashif.paisa.ui.settings
 
-import codes.tashif.paisa.ui.backup.BackupService
+import codes.tashif.paisa.backup.BackupService
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import codes.tashif.paisa.ai.AiRepository
 import codes.tashif.paisa.core.PrivacySession
 import codes.tashif.paisa.core.SnackbarManager
-import codes.tashif.paisa.data.AppTab
-import codes.tashif.paisa.data.NavTabs
+import codes.tashif.paisa.core.AppTab
+import codes.tashif.paisa.core.NavTabs
 import codes.tashif.paisa.data.Settings
 import codes.tashif.paisa.data.repository.CategoryRepository
 import codes.tashif.paisa.data.repository.SettingsRepository
 import codes.tashif.paisa.data.repository.SmsInboxRepository
 import codes.tashif.paisa.data.repository.TransactionRepository
-import codes.tashif.paisa.ui.sms.SmsScanProgress
-import codes.tashif.paisa.ui.sms.SmsScanService
+import codes.tashif.paisa.sms.SmsScanProgress
+import codes.tashif.paisa.sms.SmsScanService
 import codes.tashif.paisa.ui.ai.AiSummary
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import codes.tashif.paisa.export.ExportSink
+import codes.tashif.paisa.export.TransactionExporter
 
 /** Settings rows plus the counts and export actions the More screen shows. */
 class SettingsViewModel(

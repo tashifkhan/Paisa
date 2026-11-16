@@ -1,6 +1,6 @@
 package codes.tashif.paisa.ai
 
-import codes.tashif.paisa.ui.transaction.AiAddViewModel
+import codes.tashif.paisa.ui.quickadd.AiAddViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue

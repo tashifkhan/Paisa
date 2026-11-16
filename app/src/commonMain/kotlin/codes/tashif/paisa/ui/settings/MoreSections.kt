@@ -13,7 +13,7 @@ import androidx.compose.material.icons.rounded.Sms
 import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import codes.tashif.paisa.data.AppTab
+import codes.tashif.paisa.core.AppTab
 import codes.tashif.paisa.data.Settings
 import codes.tashif.paisa.ui.ai.AiSummary
 import codes.tashif.paisa.ui.app.icon
@@ -21,7 +21,7 @@ import codes.tashif.paisa.ui.components.SettingsGroup
 import codes.tashif.paisa.ui.components.SettingsItem
 import codes.tashif.paisa.ui.components.SettingsSectionLabel
 import codes.tashif.paisa.ui.components.groupPositionOf
-import codes.tashif.paisa.ui.sms.SmsScanProgress
+import codes.tashif.paisa.sms.SmsScanProgress
 import codes.tashif.paisa.ui.theme.PaisaPalette
 
 // The groups on the More screen. Each emits its label and group into the

@@ -19,6 +19,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import codes.tashif.paisa.R
 import codes.tashif.paisa.data.repository.SettingsRepository
 import com.pennywiseai.parser.core.bank.BankParserFactory
 import kotlinx.coroutines.Dispatchers
@@ -237,7 +238,7 @@ class SmsReaderWorker(
             )
         }
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_popup_sync)
+            .setSmallIcon(R.drawable.ic_stat_sync)
             .setContentTitle("Scanning bank SMS…")
             .setContentText(if (total > 0) "Processed $processed / $total" else "Reading inbox…")
             .setProgress(total.coerceAtLeast(0), processed, total == 0)

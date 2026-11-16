@@ -16,8 +16,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import codes.tashif.paisa.data.AppTab
-import codes.tashif.paisa.data.NavTabs
+import codes.tashif.paisa.core.AppTab
+import codes.tashif.paisa.core.NavTabs
 import codes.tashif.paisa.ui.app.icon
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.spacing

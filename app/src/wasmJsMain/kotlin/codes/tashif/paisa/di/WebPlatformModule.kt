@@ -4,7 +4,7 @@ import codes.tashif.paisa.data.AppDatabase
 import codes.tashif.paisa.data.createWebDatabase
 import codes.tashif.paisa.ui.app.AppPlatform
 import codes.tashif.paisa.ui.app.WebAppPlatform
-import codes.tashif.paisa.ui.settings.TransactionExporter
+import codes.tashif.paisa.export.TransactionExporter
 import org.koin.dsl.module
 
 /** The web's database and shell services. PDF export has no web renderer yet. */

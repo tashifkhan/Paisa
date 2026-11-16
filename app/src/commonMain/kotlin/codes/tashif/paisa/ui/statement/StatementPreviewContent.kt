@@ -17,7 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import codes.tashif.paisa.ai.ExtractedTransaction
+import codes.tashif.paisa.statement.ExtractedTransaction
 import codes.tashif.paisa.data.Account
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.spacing

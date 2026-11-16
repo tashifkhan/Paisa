@@ -7,8 +7,8 @@ import codes.tashif.paisa.core.AppNavigator
 import codes.tashif.paisa.core.PrivacySession
 import codes.tashif.paisa.core.SnackbarEvent
 import codes.tashif.paisa.core.SnackbarManager
-import codes.tashif.paisa.data.AppTab
-import codes.tashif.paisa.data.NavTabs
+import codes.tashif.paisa.core.AppTab
+import codes.tashif.paisa.core.NavTabs
 import codes.tashif.paisa.data.Settings
 import codes.tashif.paisa.data.repository.AccountRepository
 import codes.tashif.paisa.data.repository.SettingsRepository

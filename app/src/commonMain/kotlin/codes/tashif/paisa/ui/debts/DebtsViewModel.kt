@@ -3,7 +3,7 @@ package codes.tashif.paisa.ui.debts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import codes.tashif.paisa.core.AppNavigator
-import codes.tashif.paisa.data.AppTab
+import codes.tashif.paisa.core.AppTab
 import codes.tashif.paisa.core.SnackbarManager
 import codes.tashif.paisa.data.DebtEntry
 import codes.tashif.paisa.data.DebtPerson

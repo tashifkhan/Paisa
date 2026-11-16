@@ -32,7 +32,7 @@ import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import codes.tashif.paisa.data.AppTab
+import codes.tashif.paisa.core.AppTab
 
 private val digitKeys = listOf(
     Key.One, Key.Two, Key.Three, Key.Four, Key.Five, Key.Six, Key.Seven, Key.Eight, Key.Nine

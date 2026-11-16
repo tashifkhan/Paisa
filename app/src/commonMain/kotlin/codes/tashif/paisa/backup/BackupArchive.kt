@@ -2,10 +2,10 @@ package codes.tashif.paisa.backup
 
 import codes.tashif.paisa.data.AppDatabase
 import codes.tashif.paisa.data.sql.JsonOut
+import codes.tashif.paisa.data.mergeOthersIntoOther
 import codes.tashif.paisa.data.sql.Sql
 import codes.tashif.paisa.platform.nowMillis
 import codes.tashif.paisa.data.sql.toScalar
-import codes.tashif.paisa.shared.Gzip
 import codes.tashif.paisa.sync.SyncEngine
 import codes.tashif.paisa.sync.SyncSchema
 import kotlinx.io.IOException
@@ -168,6 +168,7 @@ object BackupArchive {
         if (broken != null) {
             throw BackupCrypto.NotABackupException("Backup has broken references (${broken.getString(0)})")
         }
+        if (snapshot.dbVersion < 14) mergeOthersIntoOther(db)
         if (SyncSchema.isInstalled(db)) {
             // Backups from before sync have no sync ids or balance anchors.
             SyncSchema.backfillIds(db, stamp = 1)

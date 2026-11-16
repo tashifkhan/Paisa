@@ -4,8 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import codes.tashif.paisa.ai.StatementSource
-import codes.tashif.paisa.ai.WebStatementSource
+import codes.tashif.paisa.statement.StatementSource
+import codes.tashif.paisa.statement.WebStatementSource
 import kotlinx.browser.document
 import org.w3c.dom.HTMLInputElement
 import org.w3c.files.File

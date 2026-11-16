@@ -1,7 +1,6 @@
 package codes.tashif.paisa.ui.transaction
 
 import codes.tashif.paisa.ui.components.AdaptiveSheet
-
 import codes.tashif.paisa.platform.formatDate
 import codes.tashif.paisa.platform.PaisaCalendar
 import androidx.compose.foundation.layout.Column
@@ -43,6 +42,9 @@ import codes.tashif.paisa.ui.statement.rememberStatementPicker
 import androidx.compose.runtime.saveable.rememberSaveable
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.spacing
+import codes.tashif.paisa.ui.quickadd.AiNoteStep
+import codes.tashif.paisa.ui.quickadd.AiReviewStep
+import codes.tashif.paisa.ui.quickadd.AiAddViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -8,7 +8,7 @@ import androidx.compose.material.icons.rounded.Handshake
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.ui.graphics.vector.ImageVector
-import codes.tashif.paisa.data.AppTab
+import codes.tashif.paisa.core.AppTab
 import codes.tashif.paisa.ui.components.TabMotion
 
 internal val AppTab.icon: ImageVector

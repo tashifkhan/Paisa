@@ -1,6 +1,6 @@
 package codes.tashif.paisa.ui.app
 
-import codes.tashif.paisa.ui.settings.rememberBiometrics
+import codes.tashif.paisa.ui.lock.rememberBiometrics
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -16,7 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import codes.tashif.paisa.ui.backup.BackupScreen
 import codes.tashif.paisa.ui.onboarding.OnboardingScreen
-import codes.tashif.paisa.ui.settings.AppLockScreen
+import codes.tashif.paisa.ui.lock.AppLockScreen
 import codes.tashif.paisa.ui.theme.PaisaPalette
 import codes.tashif.paisa.ui.theme.PaisaTheme
 

@@ -7,9 +7,9 @@ import codes.tashif.paisa.ui.backup.BackupScreen
 import codes.tashif.paisa.ui.onboarding.OnboardingViewModel
 import codes.tashif.paisa.ui.settings.AboutScreen
 import codes.tashif.paisa.ui.settings.AppearanceScreen
-import codes.tashif.paisa.ui.settings.CategoriesScreen
+import codes.tashif.paisa.ui.categories.CategoriesScreen
 import codes.tashif.paisa.ui.settings.CurrencyScreen
-import codes.tashif.paisa.ui.settings.MerchantMappingsScreen
+import codes.tashif.paisa.ui.categories.MerchantMappingsScreen
 import codes.tashif.paisa.ui.sms.SmsSetupScreen
 import codes.tashif.paisa.ui.statement.StatementImportScreen
 

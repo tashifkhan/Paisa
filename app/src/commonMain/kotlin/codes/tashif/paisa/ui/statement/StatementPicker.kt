@@ -1,7 +1,7 @@
 package codes.tashif.paisa.ui.statement
 
 import androidx.compose.runtime.Composable
-import codes.tashif.paisa.ai.StatementSource
+import codes.tashif.paisa.statement.StatementSource
 
 /**
  * The platform's multi-file picker for statements. Calling the returned

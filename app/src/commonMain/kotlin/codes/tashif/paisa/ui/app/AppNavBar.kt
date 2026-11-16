@@ -5,7 +5,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import codes.tashif.paisa.data.AppTab
+import codes.tashif.paisa.core.AppTab
 import codes.tashif.paisa.ui.components.FloatingNavBar
 import codes.tashif.paisa.ui.components.NavTab
 import codes.tashif.paisa.ui.haptics.rememberHaptics

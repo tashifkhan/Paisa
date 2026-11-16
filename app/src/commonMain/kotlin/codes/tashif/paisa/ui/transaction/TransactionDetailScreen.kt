@@ -5,8 +5,14 @@ import codes.tashif.paisa.platform.PaisaCalendar
 import codes.tashif.paisa.ui.platform.PlatformBackHandler
 import codes.tashif.paisa.platform.formatFixed
 import org.koin.compose.viewmodel.koinViewModel
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +27,8 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,6 +47,8 @@ import codes.tashif.paisa.ui.components.AccountPicker
 import codes.tashif.paisa.ui.components.CategoryPicker
 import codes.tashif.paisa.ui.components.CircleIconButton
 import codes.tashif.paisa.ui.components.DetailHeader
+import codes.tashif.paisa.ui.components.markdown.Markdown
+import codes.tashif.paisa.ui.components.markdown.MarkdownField
 import codes.tashif.paisa.ui.debts.DebtsViewModel
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.spacing
@@ -87,15 +97,14 @@ fun TransactionDetailScreen(
     var smsExpanded by remember(current.id) { mutableStateOf(false) }
     var title by remember(current.id) { mutableStateOf(current.merchantName.orEmpty()) }
     var note by remember(current.id) { mutableStateOf(current.note) }
-    var amountText by remember(current.id) {
-        mutableStateOf(
-            if (current.amount % 1.0 == 0.0) {
-                current.amount.toInt().toString()
-            } else {
-                formatFixed(current.amount, 2, machine = true)
-            }
-        )
+    val initialAmountText = remember(current.id, current.amount) {
+        if (current.amount % 1.0 == 0.0) {
+            current.amount.toInt().toString()
+        } else {
+            formatFixed(current.amount, 2, machine = true)
+        }
     }
+    var amountText by remember(current.id) { mutableStateOf(initialAmountText) }
 
     val initialCal = remember(current.id, current.transactionDate) {
         parseToCalendar(current.transactionDate)
@@ -178,12 +187,17 @@ fun TransactionDetailScreen(
 
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .weight(1f)
                 .imePadding()
-                .verticalScroll(rememberScrollState())
                 .navigationBarsPadding()
+        ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = MaterialTheme.spacing.medium)
-                .padding(bottom = MaterialTheme.spacing.extraLarge),
+                .padding(bottom = MaterialTheme.spacing.large),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
         ) {
             // --- HERO ---
@@ -193,7 +207,7 @@ fun TransactionDetailScreen(
                 categoryColor = current.categoryColor,
                 displayTitle = title.trim().ifBlank {
                     current.merchantName?.takeIf { it.isNotBlank() }
-                        ?: note.trim().ifBlank { current.categoryName }
+                        ?: Markdown.plainText(note).ifBlank { current.categoryName }
                 },
                 isIncome = isIncome,
                 sourceLabel = sourceLabel,
@@ -201,18 +215,58 @@ fun TransactionDetailScreen(
                 amount = parsedAmount ?: current.amount
             )
 
-            // --- DETAILS (read-only snapshot) ---
-            TransactionDetailsCard(rows = detailRows)
+            // --- WHAT YOU CAN CHANGE ---
+            EditTextFields(
+                isManual = isManual,
+                currency = currency,
+                amountText = amountText,
+                onAmountChange = { amountText = it.filter { ch -> ch.isDigit() || ch == '.' } },
+                title = title,
+                onTitleChange = { title = it },
+                onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                onDone = {
+                    keyboardController?.hide()
+                    focusManager.clearFocus()
+                }
+            )
 
-            // --- SMS (only when source is SMS and body exists) ---
-            if (isSms && !current.smsBody.isNullOrBlank()) {
-                SmsMessageCard(
-                    body = current.smsBody,
-                    sender = current.smsSender,
-                    expanded = smsExpanded,
-                    onToggle = { smsExpanded = !smsExpanded }
+            MarkdownField(
+                value = note,
+                onValueChange = { note = it },
+                label = "Description",
+                placeholder = "Add a description. Markdown works."
+            )
+
+            CategoryPicker(
+                categories = filteredCategories,
+                selectedId = selectedCategoryId,
+                onSelect = { selectedCategoryId = it },
+                type = current.type
+            )
+
+            if (isManual) {
+                EditDateTimeRow(
+                    year = year,
+                    month = month,
+                    day = day,
+                    hour = hour,
+                    minute = minute,
+                    onPickDate = { showDatePicker = true },
+                    onPickTime = { showTimePicker = true }
+                )
+                AccountPicker(
+                    accounts = accounts,
+                    selectedId = selectedAccountId,
+                    onSelect = { selectedAccountId = it }
                 )
             }
+
+            DetailToggles(
+                merchantForMapping = merchantForMapping,
+                fromSmsOrImport = isSms || isStatement,
+                rememberMerchant = rememberMerchant,
+                onRememberMerchantChange = { rememberMerchant = it }
+            )
 
             // --- SPLIT (who owes for this, in Debts) ---
             TransactionSplitSection(
@@ -228,91 +282,85 @@ fun TransactionDetailScreen(
                 onRemove = { viewModel.removeTransactionSplit(current.id) }
             )
 
-            // --- EDIT FIELDS ---
+            // --- WHAT THE BANK SAID (read-only) ---
             Spacer(Modifier.height(MaterialTheme.spacing.extraSmall))
             Text(
-                text = "Edit",
+                text = "Details",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
+            TransactionDetailsCard(rows = detailRows)
 
-            EditTextFields(
-                isManual = isManual,
-                currency = currency,
-                amountText = amountText,
-                onAmountChange = { amountText = it.filter { ch -> ch.isDigit() || ch == '.' } },
-                title = title,
-                onTitleChange = { title = it },
-                note = note,
-                onNoteChange = { note = it },
-                onNext = { focusManager.moveFocus(FocusDirection.Down) },
-                onDone = {
-                    keyboardController?.hide()
-                    focusManager.clearFocus()
-                }
-            )
-
-            if (isManual) {
-                Spacer(Modifier.height(MaterialTheme.spacing.extraSmall))
-                EditDateTimeRow(
-                    year = year,
-                    month = month,
-                    day = day,
-                    hour = hour,
-                    minute = minute,
-                    onPickDate = { showDatePicker = true },
-                    onPickTime = { showTimePicker = true }
-                )
-
-                Spacer(Modifier.height(MaterialTheme.spacing.smaller))
-                AccountPicker(
-                    accounts = accounts,
-                    selectedId = selectedAccountId,
-                    onSelect = { selectedAccountId = it }
+            if (isSms && !current.smsBody.isNullOrBlank()) {
+                SmsMessageCard(
+                    body = current.smsBody,
+                    sender = current.smsSender,
+                    expanded = smsExpanded,
+                    onToggle = { smsExpanded = !smsExpanded }
                 )
             }
+        }
 
-            Spacer(Modifier.height(MaterialTheme.spacing.smaller))
-            CategoryPicker(
-                categories = filteredCategories,
-                selectedId = selectedCategoryId,
-                onSelect = { selectedCategoryId = it },
-                type = current.type
-            )
-
-            DetailToggles(
-                merchantForMapping = merchantForMapping,
-                fromSmsOrImport = isSms || isStatement,
-                rememberMerchant = rememberMerchant,
-                onRememberMerchantChange = { rememberMerchant = it }
-            )
-
-            Spacer(Modifier.height(MaterialTheme.spacing.medium))
-            Button(
-                onClick = {
-                    if (isManual && (parsedAmount == null || parsedAmount <= 0.0)) {
-                        haptics.reject()
-                        viewModel.showSnackbar("Enter a valid amount")
-                        return@Button
+        // Save stays in reach instead of sitting under everything, and only
+        // shows once there is something to save.
+        AnimatedVisibility(
+            visible = canSave,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            haptics.click()
+                            focusManager.clearFocus()
+                            title = current.merchantName.orEmpty()
+                            note = current.note
+                            amountText = initialAmountText
+                            selectedCategoryId = current.categoryId
+                            selectedAccountId = current.accountId
+                            rememberMerchant = false
+                            year = initialCal.get(PaisaCalendar.YEAR)
+                            month = initialCal.get(PaisaCalendar.MONTH)
+                            day = initialCal.get(PaisaCalendar.DAY_OF_MONTH)
+                            hour = initialCal.get(PaisaCalendar.HOUR_OF_DAY)
+                            minute = initialCal.get(PaisaCalendar.MINUTE)
+                        }
+                    ) {
+                        Text("Discard")
                     }
-                    haptics.confirm()
-                    viewModel.saveTransactionEdits(
-                        transactionId = current.id,
-                        title = title,
-                        note = note,
-                        categoryId = selectedCategoryId,
-                        rememberMerchant = rememberMerchant && merchantForMapping.isNotEmpty(),
-                        amount = if (isManual) parsedAmount else null,
-                        transactionDate = if (isManual) originalIso else null,
-                        accountId = if (isManual) selectedAccountId else null
-                    )
-                    onBack()
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = canSave
-            ) {
-                Text("Save changes")
+                    Button(
+                        onClick = {
+                            if (isManual && (parsedAmount == null || parsedAmount <= 0.0)) {
+                                haptics.reject()
+                                viewModel.showSnackbar("Enter a valid amount")
+                                return@Button
+                            }
+                            haptics.confirm()
+                            viewModel.saveTransactionEdits(
+                                transactionId = current.id,
+                                title = title,
+                                note = note,
+                                categoryId = selectedCategoryId,
+                                rememberMerchant = rememberMerchant && merchantForMapping.isNotEmpty(),
+                                amount = if (isManual) parsedAmount else null,
+                                transactionDate = if (isManual) originalIso else null,
+                                accountId = if (isManual) selectedAccountId else null
+                            )
+                            onBack()
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Save changes")
+                    }
+                }
             }
+        }
         }
     }
 
