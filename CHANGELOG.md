@@ -2,6 +2,38 @@
 
 Every Paisa release, newest first. Each version's APK is on the [releases page](https://github.com/tashifkhan/Paisa/releases) and in the F-Droid repo at `https://tashif.codes/fdroid/repo`.
 
+## 1.7.3
+
+Markdown descriptions, more ways to split a bill, category fixes, and support for more bank messages.
+
+### Transactions
+
+- Write descriptions with Markdown when adding or editing a transaction. The toolbar adds formatting, and Preview shows the rendered note. Task boxes can be checked from the rendered description.
+- Editable fields come first on the transaction page. Save and Discard stay at the bottom while you have unsaved changes. Bank details and the original message sit under Details.
+- Formatting a description now moves typing into that field, so the transaction title stays unchanged.
+
+### Bill splitting
+
+- Split by percentage as well as equally or by custom amounts. Percentage mode starts with the shares already entered.
+- Split by item and assign each line to one person or several. Tax, tip and discounts follow each person's share.
+- Scan a bill photo to fill the item list, then review the lines and assign people before saving.
+
+### Categories and notifications
+
+- Pick an emoji or a built-in icon when creating or editing a category.
+- The duplicate expense categories "Others" and "Other" become one "Other" category. Existing transactions, budgets, recurring entries and merchant rules move to it. Restoring older backups applies the same correction.
+- Status bar notifications use new icons that remain readable at small sizes.
+
+### Bank messages
+
+- Added parsers for Barq, IFIC Bank Bangladesh and Mobily Pay.
+- SBI Card bill-due reminders no longer become transactions.
+
+### Fixes and maintenance
+
+- Fixed a crash when app lock replaced a screen that held keyboard focus, including during device PIN authentication.
+- Reorganised the app's packages and combined the shared module into the app module. Scheduled workers, widgets and Android entry points keep their existing class names.
+
 ## 1.7.2
 
 A floating navbar that sits over your list, a way to add a category without leaving the picker, and motion across the app.
