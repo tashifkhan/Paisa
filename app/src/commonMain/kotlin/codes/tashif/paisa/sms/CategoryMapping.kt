@@ -831,7 +831,7 @@ object CategoryMapping {
                 return rule.categoryName
             }
         }
-        return "Others"
+        return "Other"
     }
 
     /**

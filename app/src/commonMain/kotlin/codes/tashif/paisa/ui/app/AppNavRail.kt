@@ -45,9 +45,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import codes.tashif.paisa.data.AppTab
+import codes.tashif.paisa.core.AppTab
 import codes.tashif.paisa.ui.haptics.rememberHaptics
-import codes.tashif.paisa.ui.sms.SmsScanService
+import codes.tashif.paisa.sms.SmsScanService
 import org.koin.compose.koinInject
 
 /** What the add and rescan buttons at the top of the rail or drawer need. */

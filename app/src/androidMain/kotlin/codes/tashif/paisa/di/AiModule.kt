@@ -1,7 +1,7 @@
 package codes.tashif.paisa.di
 
-import codes.tashif.paisa.ai.AndroidStatementNotifier
-import codes.tashif.paisa.ai.StatementNotifier
+import codes.tashif.paisa.statement.AndroidStatementNotifier
+import codes.tashif.paisa.statement.StatementNotifier
 import codes.tashif.paisa.ai.catalog.AiCacheStore
 import codes.tashif.paisa.ai.catalog.FileAiCacheStore
 import org.koin.android.ext.koin.androidContext

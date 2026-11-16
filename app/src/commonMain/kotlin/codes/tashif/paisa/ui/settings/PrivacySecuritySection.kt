@@ -13,6 +13,7 @@ import codes.tashif.paisa.ui.components.SettingsItem
 import codes.tashif.paisa.ui.components.SettingsSectionLabel
 import codes.tashif.paisa.ui.components.groupPositionOf
 import codes.tashif.paisa.ui.haptics.rememberHaptics
+import codes.tashif.paisa.ui.lock.rememberBiometrics
 
 /**
  * Hide balances and app lock toggles. Turning the lock on asks for biometrics

@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.components
 
+import codes.tashif.paisa.ui.components.markdown.Markdown
 import androidx.compose.material.icons.rounded.CheckCircle
 
 import androidx.compose.material.icons.rounded.Check
@@ -147,7 +148,7 @@ fun TransactionRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = tx.merchantName?.takeIf { it.isNotBlank() }
-                        ?: tx.note.takeIf { it.isNotBlank() }
+                        ?: Markdown.plainText(tx.note).takeIf { it.isNotBlank() }
                         ?: tx.categoryName,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold

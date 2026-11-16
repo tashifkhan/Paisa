@@ -101,7 +101,7 @@ with a keyboard: `n` adds, `/` or `ctrl k` searches, `1` to `6` switch tabs, `es
 
 backup and sync are the same code as on the phone, so a browser and a phone can share one nextcloud or google drive and stay in step. the browser syncs when the page opens, every 15 minutes, when it comes back online or into view, and 20 seconds after an edit. there's no background sync once the tab is closed. sync now covers the rest.
 
-- **nextcloud:** nextcloud sends no cors headers, so browsers need a small proxy. deploy [tools/nextcloud-proxy](tools/nextcloud-proxy) to your own cloudflare account (one command) and paste its address into the nextcloud sheet. it only forwards to your server and stores nothing. if you run the server and add cors headers yourself, leave the proxy empty
+- **nextcloud:** nextcloud sends no cors headers, so browsers need a small proxy. deploy [nextcloud-proxy](nextcloud-proxy) to your own cloudflare account (one command) and paste its address into the nextcloud sheet. it only forwards to your server and stores nothing. if you run the server and add cors headers yourself, leave the proxy empty
 - **google drive:** needs a "web application" oauth client id from google cloud. put it in the `paisa-google-client-id` meta tag in `app/src/wasmJsMain/resources/index.html`. browsers get no refresh token, so after about an hour you tap connect again
 
 ### ai on the web
@@ -123,25 +123,29 @@ app/src/
 ├── commonMain/       everything both platforms share
 │   ├── data/         room 3 database, daos, repositories, demo data
 │   ├── sync/         change files and merge rules
-│   ├── backup/       the .paisa format and its crypto
-│   ├── ai/           bring-your-own-key statement import
+│   ├── backup/       the .paisa container, its crypto, drive and nextcloud
+│   ├── ai/           bring-your-own-key providers, model ladder, add with ai
+│   ├── statement/    statement import: read the file, extract rows, dedupe
+│   ├── sms/          merchant to category mapping, the scan service
+│   ├── export/       csv and pdf export
+│   ├── core/         tabs, navigation, app lock and privacy state
 │   ├── platform/     dates, numbers and a calendar that work everywhere
-│   └── ui/           theme, components, every screen and viewmodel
+│   ├── di/           koin modules
+│   └── ui/           one folder per screen area, plus theme and components
 ├── androidMain/      sms, widgets, workmanager, biometrics, drive sign-in, pdf
 └── wasmJsMain/       the web host, browser storage, file downloads
-app/sqlite-worker/    sqlite in a web worker, for room on the web
-shared/               the .paisa container, tested on jvm and in node
+    └── sqlite-worker/  sqlite in a web worker, for room on the web
 parser-core/          bank sms parsers, from PennyWise (AGPL)
-tools/PORTING.md      how to move android code into commonMain
+nextcloud-proxy/      the cors proxy the web build needs for nextcloud
 ```
 
 ## roadmap
 
 - [ ] recurring transactions
-- [ ] better material 3 charts. the current ones work, they're just not pretty
-- [x] a web app, from the same compose multiplatform code. see [the web version](#the-web-version) for what's missing
-- [ ] ios, which the shared code now makes much shorter work
-- [ ] swap paisa's own relayroom code (`ai/provider/RelayRoomStyle.kt` and the relayroom bits in `ai/catalog/`) for the official kotlin client, `sh.taf.relayroom:relayroom-kotlin`
+- [x] better material 3 charts
+- [x] a web app
+- [ ] ios
+- [ ] use the official kotlin client, `sh.taf.relayroom:relayroom-kotlin` for relayroom
 
 the web version is kotlin multiplatform, not a typescript rewrite. done so far:
 

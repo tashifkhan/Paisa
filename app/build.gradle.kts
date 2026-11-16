@@ -46,6 +46,13 @@ kotlin {
             commonWebpackConfig {
                 outputFileName = "paisa-web.js"
             }
+            // commonTest runs in headless Chrome, so the backup container is
+            // tested against the browser's own WebCrypto.
+            testTask {
+                useKarma {
+                    useChromeHeadless()
+                }
+            }
         }
         binaries.executable()
     }
@@ -60,7 +67,6 @@ kotlin {
             kotlin.srcDir(generateWebVersion)
         }
         commonMain.dependencies {
-            implementation(project(":shared"))
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.io.core)
             implementation(libs.kotlinx.serialization.json)
@@ -115,6 +121,10 @@ kotlin {
             // Google Drive backup sign-in (AuthorizationClient)
             implementation(libs.play.services.auth)
         }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
+        }
         androidUnitTest.dependencies {
             implementation(libs.androidx.compose.ui.test.junit4)
             implementation(libs.androidx.core)
@@ -130,7 +140,7 @@ kotlin {
             implementation(libs.kotlinx.browser)
             implementation(libs.ktor.client.js)
             implementation(libs.sqlite.web)
-            // SQLite compiled to Wasm, run by sqlite-worker/worker.js.
+            // SQLite compiled to Wasm, run by src/wasmJsMain/sqlite-worker/worker.js.
             // webpack.config.d/sqlite-worker.js points webpack at that file.
             implementation(npm("@sqlite.org/sqlite-wasm", "3.54.1-build1"))
         }
@@ -145,8 +155,8 @@ android {
         applicationId = "codes.tashif.paisa"
         minSdk = 24
         targetSdk = 35
-        versionCode = 13
-        versionName = "1.7.2"
+        versionCode = 14
+        versionName = "1.7.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

@@ -149,7 +149,7 @@ internal fun DeleteTransactionDialog(
     )
 }
 
-/** Amount (manual entries only), title and note fields on the detail screen. */
+/** Amount (manual entries only) and title fields on the detail screen. The note has its own Markdown card. */
 @Composable
 internal fun EditTextFields(
     isManual: Boolean,
@@ -158,8 +158,6 @@ internal fun EditTextFields(
     onAmountChange: (String) -> Unit,
     title: String,
     onTitleChange: (String) -> Unit,
-    note: String,
-    onNoteChange: (String) -> Unit,
     onNext: () -> Unit,
     onDone: () -> Unit
 ) {
@@ -185,16 +183,6 @@ internal fun EditTextFields(
         label = { Text("Title") },
         placeholder = { Text("Merchant or description") },
         singleLine = true,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-        keyboardActions = KeyboardActions(onNext = { onNext() }),
-        modifier = Modifier.fillMaxWidth()
-    )
-    OutlinedTextField(
-        value = note,
-        onValueChange = onNoteChange,
-        label = { Text("Note") },
-        placeholder = { Text("Add a note…") },
-        minLines = 2,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
         keyboardActions = KeyboardActions(onDone = { onDone() }),
         modifier = Modifier.fillMaxWidth()

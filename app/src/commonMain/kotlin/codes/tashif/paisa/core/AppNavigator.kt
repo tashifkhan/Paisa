@@ -1,6 +1,5 @@
 package codes.tashif.paisa.core
 
-import codes.tashif.paisa.data.AppTab
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

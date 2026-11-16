@@ -57,7 +57,7 @@ class CategoryMappingTest {
     }
 
     @Test
-    fun unknown_falls_back_to_others() {
-        assertEquals("Others", CategoryMapping.getCategory("ZZZ Unknown Vendor XYZ"))
+    fun unknown_falls_back_to_other() {
+        assertEquals("Other", CategoryMapping.getCategory("ZZZ Unknown Vendor XYZ"))
     }
 }

@@ -99,7 +99,7 @@ class SmsTransactionProcessor(
 
             val type = mapType(parsed.type)
             val merchant = normalizeMerchant(parsed.merchant)
-            // User merchant mapping → keyword rules → Others (canonical seed names)
+            // User merchant mapping → keyword rules → Other (canonical seed names)
             val categoryName = categoryRepository.resolveCategoryName(
                 merchantName = merchant,
                 transactionType = type

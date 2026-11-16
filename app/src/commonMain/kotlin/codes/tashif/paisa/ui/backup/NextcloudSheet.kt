@@ -92,7 +92,7 @@ internal fun NextcloudSheet(
                     label = { Text("CORS proxy") },
                     supportingText = {
                         Text(
-                            "Browsers can't reach Nextcloud directly. Deploy tools/nextcloud-proxy " +
+                            "Browsers can't reach Nextcloud directly. Deploy nextcloud-proxy " +
                                 "from the Paisa repo and paste its address."
                         )
                     },

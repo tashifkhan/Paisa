@@ -4,8 +4,8 @@ import codes.tashif.paisa.backup.AndroidCloudPlatform
 import codes.tashif.paisa.backup.BackupPrefs
 import codes.tashif.paisa.backup.CloudPlatform
 import codes.tashif.paisa.backup.androidBackupPrefs
-import codes.tashif.paisa.ui.backup.AndroidBackupHooks
-import codes.tashif.paisa.ui.backup.BackupServiceHooks
+import codes.tashif.paisa.backup.AndroidBackupHooks
+import codes.tashif.paisa.backup.BackupServiceHooks
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 

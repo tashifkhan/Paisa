@@ -1,8 +1,8 @@
 package codes.tashif.paisa.di
 
-import codes.tashif.paisa.ui.sms.SmsScanService
+import codes.tashif.paisa.sms.SmsScanService
 import codes.tashif.paisa.ui.sms.SmsViewModel
-import codes.tashif.paisa.ui.sms.WebSmsScanService
+import codes.tashif.paisa.sms.WebSmsScanService
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 

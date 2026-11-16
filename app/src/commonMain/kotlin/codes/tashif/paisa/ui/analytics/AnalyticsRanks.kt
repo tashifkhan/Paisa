@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.analytics
 
+import codes.tashif.paisa.ui.components.markdown.Markdown
 import codes.tashif.paisa.ui.platform.parseColor
 import codes.tashif.paisa.platform.formatFixed
 import androidx.compose.ui.graphics.Color
@@ -82,7 +83,7 @@ internal fun accountRanks(expenses: List<TransactionWithDetails>, totalExpense: 
 
 internal fun merchantKey(tx: TransactionWithDetails): String =
     tx.merchantName?.trim()?.takeIf { it.isNotEmpty() }
-        ?: tx.note.trim().takeIf { it.isNotEmpty() }
+        ?: Markdown.plainText(tx.note).takeIf { it.isNotEmpty() }
         ?: "Unknown"
 
 internal fun AnalyticsGroup.matches(tx: TransactionWithDetails): Boolean = when (kind) {

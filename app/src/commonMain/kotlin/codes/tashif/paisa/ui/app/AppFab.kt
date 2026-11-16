@@ -1,6 +1,6 @@
 package codes.tashif.paisa.ui.app
 
-import codes.tashif.paisa.ui.sms.SmsScanService
+import codes.tashif.paisa.sms.SmsScanService
 import org.koin.compose.koinInject
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -23,7 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import codes.tashif.paisa.data.AppTab
+import codes.tashif.paisa.core.AppTab
 import codes.tashif.paisa.ui.components.elasticButton
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.spacing

@@ -5,8 +5,8 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
-import codes.tashif.paisa.ai.AndroidStatementSource
-import codes.tashif.paisa.ai.StatementSource
+import codes.tashif.paisa.statement.AndroidStatementSource
+import codes.tashif.paisa.statement.StatementSource
 
 @Composable
 internal actual fun rememberStatementPicker(onPicked: (List<StatementSource>) -> Unit): () -> Unit {

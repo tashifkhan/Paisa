@@ -22,6 +22,8 @@ import codes.tashif.paisa.ui.debts.split.SplitPerson
 import codes.tashif.paisa.ui.debts.split.SplitPlan
 import codes.tashif.paisa.ui.debts.split.billEntries
 import codes.tashif.paisa.ui.debts.split.computeBill
+import codes.tashif.paisa.core.AppTab
+import codes.tashif.paisa.core.NavTabs
 
 /** Debts: people, entries, settling up, and tying transactions to people. */
 @RunWith(RobolectricTestRunner::class)

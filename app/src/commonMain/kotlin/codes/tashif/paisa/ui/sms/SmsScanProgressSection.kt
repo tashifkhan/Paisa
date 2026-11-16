@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.platform.formatDate
+import codes.tashif.paisa.sms.SmsScanProgress
 import codes.tashif.paisa.ui.theme.spacing
 
 /**

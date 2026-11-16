@@ -7,13 +7,12 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import codes.tashif.paisa.backup.BackupFile
 import codes.tashif.paisa.backup.BackupNames
 import codes.tashif.paisa.backup.GoogleDriveAuth
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.CommonStatusCodes
-
-actual class BackupFile(val uri: Uri)
 
 actual fun urlHost(url: String): String? = Uri.parse(url).host
 

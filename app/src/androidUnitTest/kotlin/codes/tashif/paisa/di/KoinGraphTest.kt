@@ -2,8 +2,10 @@ package codes.tashif.paisa.di
 
 import codes.tashif.paisa.ai.AiCredentialsStore
 import codes.tashif.paisa.ai.AiRepository
-import codes.tashif.paisa.ai.StatementExtractionService
-import codes.tashif.paisa.ai.StatementImportUseCase
+import codes.tashif.paisa.ai.BillScanService
+import codes.tashif.paisa.ai.QuickAddService
+import codes.tashif.paisa.statement.StatementExtractionService
+import codes.tashif.paisa.statement.StatementImportUseCase
 import codes.tashif.paisa.ai.catalog.LiveModelLister
 import codes.tashif.paisa.ai.catalog.ModelCatalog
 import codes.tashif.paisa.ai.ladder.AiLadderRunner
@@ -38,9 +40,9 @@ import codes.tashif.paisa.ui.budgets.BudgetsViewModel
 import codes.tashif.paisa.ui.debts.DebtsViewModel
 import codes.tashif.paisa.ui.home.HomeViewModel
 import codes.tashif.paisa.ui.onboarding.OnboardingViewModel
-import codes.tashif.paisa.ui.settings.CategoriesViewModel
+import codes.tashif.paisa.ui.categories.CategoriesViewModel
 import codes.tashif.paisa.ui.settings.SettingsViewModel
-import codes.tashif.paisa.ui.settings.TransactionExporter
+import codes.tashif.paisa.export.TransactionExporter
 import codes.tashif.paisa.ui.sms.SmsViewModel
 import codes.tashif.paisa.ui.statement.StatementImportViewModel
 import codes.tashif.paisa.ui.transaction.TransactionViewModel
@@ -81,6 +83,8 @@ class KoinGraphTest {
         koin.get<AiRepository>()
         koin.get<StatementExtractionService>()
         koin.get<StatementImportUseCase>()
+        koin.get<QuickAddService>()
+        koin.get<BillScanService>()
         koin.get<BackupManager>()
         koin.get<TransactionExporter>()
         koin.get<AppViewModel>()

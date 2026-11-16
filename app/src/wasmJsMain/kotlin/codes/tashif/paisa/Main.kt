@@ -2,7 +2,7 @@ package codes.tashif.paisa
 
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport
-import codes.tashif.paisa.backup.WebSyncScheduler
+import codes.tashif.paisa.sync.WebSyncScheduler
 import codes.tashif.paisa.data.AppDatabase
 import codes.tashif.paisa.sync.SyncManager
 import codes.tashif.paisa.data.demo.DemoData

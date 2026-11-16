@@ -44,13 +44,8 @@ class CategoryRepository(db: AppDatabase) {
             add(canonical)
             add(name)
             CATEGORY_ALIASES[name.lowercase()]?.let { add(it) }
-            if (type == "expense") {
-                add("Others")
-                add("Other")
-            } else {
-                add("Income")
-                add("Other")
-            }
+            if (type == "income") add("Income")
+            add("Other")
         }.distinct()
         for (alias in aliases) {
             categoryDao.getCategoryByName(alias, type)?.let { return it.id }
@@ -139,8 +134,8 @@ class CategoryRepository(db: AppDatabase) {
             "grocery" to "Groceries",
             "utilities" to "Bills & Utilities",
             "bills" to "Bills & Utilities",
-            "other" to "Others",
-            "uncategorized" to "Others"
+            "others" to "Other",
+            "uncategorized" to "Other"
         )
     }
 }

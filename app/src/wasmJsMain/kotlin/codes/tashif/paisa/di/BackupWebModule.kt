@@ -5,7 +5,7 @@ import codes.tashif.paisa.backup.CloudPlatform
 import codes.tashif.paisa.backup.WebBackupHooks
 import codes.tashif.paisa.backup.WebCloudPlatform
 import codes.tashif.paisa.platform.LocalStorageSettingsStore
-import codes.tashif.paisa.ui.backup.BackupServiceHooks
+import codes.tashif.paisa.backup.BackupServiceHooks
 import org.koin.dsl.module
 
 /** The browser's side of backup and sync: localStorage settings, downloads, a CORS proxy for Nextcloud. */

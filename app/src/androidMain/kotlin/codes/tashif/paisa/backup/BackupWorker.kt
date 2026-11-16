@@ -55,7 +55,7 @@ class BackupWorker(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setSmallIcon(R.drawable.ic_stat_paisa)
             .setContentTitle("Backup didn't run")
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))

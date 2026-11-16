@@ -69,7 +69,8 @@ internal fun AddTransactionSplitSection(
     isExpense: Boolean,
     people: List<DebtPersonBalance>,
     amountText: String,
-    currency: String
+    currency: String,
+    onScannedTotal: (Double) -> Unit = {}
 ) {
     Spacer(Modifier.height(MaterialTheme.spacing.small))
     SheetToggleCard(
@@ -94,7 +95,8 @@ internal fun AddTransactionSplitSection(
                     plan = state.plan,
                     onPlanChange = { state.plan = it },
                     outcome = outcome,
-                    currency = currency
+                    currency = currency,
+                    onScannedTotal = onScannedTotal
                 )
                 SplitPreview(
                     outcome = outcome,

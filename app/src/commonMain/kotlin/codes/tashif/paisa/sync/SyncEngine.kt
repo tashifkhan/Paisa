@@ -5,7 +5,7 @@ import codes.tashif.paisa.data.AppDatabase
 import codes.tashif.paisa.data.sql.JsonOut
 import codes.tashif.paisa.data.sql.Sql
 import codes.tashif.paisa.data.sql.toScalar
-import codes.tashif.paisa.shared.Gzip
+import codes.tashif.paisa.backup.Gzip
 import kotlinx.io.IOException
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json

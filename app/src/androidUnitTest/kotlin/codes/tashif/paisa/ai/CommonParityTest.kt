@@ -5,6 +5,7 @@ import codes.tashif.paisa.ai.json.JSONArray
 import codes.tashif.paisa.ai.json.JSONObject
 import codes.tashif.paisa.ai.json.JSONTokener
 import codes.tashif.paisa.ai.provider.AiUrl
+import codes.tashif.paisa.statement.md5Hex
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

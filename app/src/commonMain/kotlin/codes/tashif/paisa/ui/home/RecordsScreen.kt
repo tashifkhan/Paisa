@@ -45,7 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import codes.tashif.paisa.data.AppTab
+import codes.tashif.paisa.core.AppTab
 import codes.tashif.paisa.data.TransactionWithDetails
 import codes.tashif.paisa.ui.app.CenteredContent
 import codes.tashif.paisa.ui.app.LocalWindowWidth

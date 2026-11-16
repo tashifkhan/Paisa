@@ -41,7 +41,7 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         /** Bump with every migration. Backups made on a newer schema are refused. */
-        const val SCHEMA_VERSION = 13
+        const val SCHEMA_VERSION = 14
 
         private val MIGRATION_2_3 = object : Migration(2, 3) {
             override suspend fun migrate(connection: SQLiteConnection) {
@@ -205,6 +205,13 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** One catch-all expense category instead of both "Others" and "Other". */
+        private val MIGRATION_13_14 = object : Migration(13, 14) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                mergeOthersIntoOther(Sql.of(connection))
+            }
+        }
+
         internal val MIGRATIONS: Array<Migration>
             get() = arrayOf(
                 MIGRATION_2_3,
@@ -217,7 +224,8 @@ abstract class AppDatabase : RoomDatabase() {
                 MIGRATION_9_10,
                 MIGRATION_10_11,
                 MIGRATION_11_12,
-                MIGRATION_12_13
+                MIGRATION_12_13,
+                MIGRATION_13_14
             )
 
         /** Seeds a new database and keeps the sync triggers installed. Tests add it too. */
@@ -293,8 +301,7 @@ abstract class AppDatabase : RoomDatabase() {
                             "('Personal Care', 'expense', 'spa', '#FFDFBA', 0, 18)," +
                             "('Tax', 'expense', 'receipt', '#E8AEB2', 0, 19)," +
                             "('Investments', 'expense', 'trending_up', '#9BF6FF', 0, 20)," +
-                            "('Others', 'expense', 'more_horiz', '#E8AEB2', 0, 21)," +
-                            "('Other', 'expense', 'more_horiz', '#E8AEB2', 0, 22)"
+                            "('Other', 'expense', 'more_horiz', '#E8AEB2', 0, 21)"
                     )
 
                     db.exec(

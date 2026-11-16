@@ -35,7 +35,7 @@ import kotlin.io.encoding.Base64
 /**
  * How requests reach Nextcloud. Android talks to the server directly. A
  * browser can't, because Nextcloud sends no CORS headers, so the web sends
- * each request to a small proxy that forwards it (see tools/nextcloud-proxy).
+ * each request to a small proxy that forwards it (see nextcloud-proxy).
  */
 fun interface NextcloudTransport {
     /** The URL to call for [target], plus any extra headers. */

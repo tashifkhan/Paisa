@@ -8,7 +8,7 @@ import androidx.lifecycle.viewModelScope
 import codes.tashif.paisa.core.AppNavigator
 import codes.tashif.paisa.core.PrivacySession
 import codes.tashif.paisa.data.Account
-import codes.tashif.paisa.data.AppTab
+import codes.tashif.paisa.core.AppTab
 import codes.tashif.paisa.data.Category
 import codes.tashif.paisa.data.DebtPersonBalance
 import codes.tashif.paisa.data.Settings

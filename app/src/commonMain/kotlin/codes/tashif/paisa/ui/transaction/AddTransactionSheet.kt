@@ -1,7 +1,6 @@
 package codes.tashif.paisa.ui.transaction
 
 import codes.tashif.paisa.ui.components.AdaptiveSheet
-
 import codes.tashif.paisa.platform.formatDate
 import codes.tashif.paisa.platform.PaisaCalendar
 import androidx.compose.foundation.layout.Column
@@ -33,6 +32,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import codes.tashif.paisa.ui.debts.split.plain
 import codes.tashif.paisa.ui.components.AccountPicker
 import codes.tashif.paisa.ui.components.CategoryPicker
 import codes.tashif.paisa.ui.components.PillTabs
@@ -43,6 +43,9 @@ import codes.tashif.paisa.ui.statement.rememberStatementPicker
 import androidx.compose.runtime.saveable.rememberSaveable
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.spacing
+import codes.tashif.paisa.ui.quickadd.AiNoteStep
+import codes.tashif.paisa.ui.quickadd.AiReviewStep
+import codes.tashif.paisa.ui.quickadd.AiAddViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -229,11 +232,7 @@ fun AddTransactionSheet(
                 onTitleChange = { title = it },
                 note = note,
                 onNoteChange = { note = it },
-                onTitleNext = { focusManager.moveFocus(FocusDirection.Down) },
-                onNoteDone = {
-                    keyboardController?.hide()
-                    focusManager.clearFocus()
-                }
+                onTitleNext = { focusManager.moveFocus(FocusDirection.Down) }
             )
 
             Spacer(Modifier.height(MaterialTheme.spacing.small))
@@ -266,7 +265,8 @@ fun AddTransactionSheet(
                 isExpense = type == "expense",
                 people = people,
                 amountText = amountText,
-                currency = currency
+                currency = currency,
+                onScannedTotal = { amountText = plain(it) }
             )
 
             if (title.isNotBlank()) {

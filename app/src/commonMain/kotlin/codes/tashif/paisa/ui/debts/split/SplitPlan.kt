@@ -12,7 +12,15 @@ data class SplitPerson(val personId: Int?, val name: String) {
     fun toShare(amount: Double) = DebtShare(personId, name.trim().takeIf { personId == null }, amount)
 }
 
-enum class SplitMode { EQUAL, CUSTOM }
+enum class SplitMode { EQUAL, CUSTOM, PERCENT, ITEMS }
+
+/**
+ * One line of a bill. [who] holds the [SplitPerson.key]s sharing it, and
+ * [SplitPlan.ME_KEY] for you. Several people on one item split it equally.
+ */
+data class BillItem(val name: String = "", val amountText: String = "", val who: Set<String> = emptySet()) {
+    val amount: Double get() = amountText.toDoubleOrNull()?.takeIf { it > 0.0 }?.let(::toPaise) ?: 0.0
+}
 
 /** Why a split can't be saved yet. */
 enum class SplitProblem { NO_TOTAL, NO_PEOPLE, NOTHING_ASSIGNED, OVER_TOTAL, NEEDS_ME }
@@ -26,8 +34,21 @@ data class SplitPlan(
     val includeMe: Boolean = true,
     val mode: SplitMode = SplitMode.EQUAL,
     /** Custom amount text per [SplitPerson.key], and [ME_KEY] for your own share. */
-    val customText: Map<String, String> = emptyMap()
+    val customText: Map<String, String> = emptyMap(),
+    /** Percent text per key, for [SplitMode.PERCENT]. */
+    val percentText: Map<String, String> = emptyMap(),
+    /** The bill's lines, for [SplitMode.ITEMS]. */
+    val items: List<BillItem> = emptyList()
 ) {
+    /** Everyone in the split, you last, as keys. */
+    val keys: List<String> get() = people.map { it.key } + if (includeMe) listOf(ME_KEY) else emptyList()
+
+    /** What the bill's items add up to, before tax and other charges. */
+    val itemsTotal: Double get() = toPaise(items.sumOf { it.amount })
+
+    /** Percent typed so far, across everyone in the split. */
+    val percentTotal: Double get() = keys.sumOf { percentOf(it) }
+
     fun has(person: SplitPerson) = people.any { it.key == person.key }
 
     fun toggle(person: SplitPerson): SplitPlan =
@@ -76,6 +97,9 @@ data class SplitOutcome(
 
     /** What the people in the split owe you, for a transaction or a bill you paid. */
     fun owedToMe(): List<DebtShare> = shares.filter { it.amount > 0.0 }.map { it.person.toShare(it.amount) }
+
+    /** The total this was worked out against. Null when there was no total. */
+    fun total(): Double? = toPaise(shares.sumOf { it.amount } + myShare + left).takeIf { it > 0.0 }
 }
 
 /**
@@ -108,6 +132,8 @@ fun SplitPlan.compute(total: Double?): SplitOutcome {
             val mine = if (includeMe) amountOf(SplitPlan.ME_KEY) else 0.0
             SplitOutcome(shares, mine, toPaise(sum - shares.sumOf { it.amount } - mine), null)
         }
+        SplitMode.PERCENT -> fromAmounts(sum, percentAmounts(sum))
+        SplitMode.ITEMS -> fromAmounts(sum, itemAmounts(sum))
     }
     val problem = when {
         total == null || total <= 0.0 -> SplitProblem.NO_TOTAL
@@ -150,6 +176,100 @@ fun SplitPlan.toCustom(current: SplitOutcome): SplitPlan {
     val filled = current.shares.associate { it.person.key to plain(it.amount) } +
         if (includeMe && current.myShare > 0.0) mapOf(SplitPlan.ME_KEY to plain(current.myShare)) else emptyMap()
     return copy(mode = SplitMode.CUSTOM, customText = filled)
+}
+
+private fun SplitPlan.fromAmounts(total: Double, byKey: Map<String, Double>): SplitOutcome {
+    val shares = people.map { SplitShare(it, byKey[it.key] ?: 0.0) }
+    val mine = if (includeMe) byKey[SplitPlan.ME_KEY] ?: 0.0 else 0.0
+    return SplitOutcome(shares, mine, toPaise(total - shares.sumOf { it.amount } - mine), null)
+}
+
+internal fun SplitPlan.percentOf(key: String): Double =
+    percentText[key]?.toDoubleOrNull()?.takeIf { it > 0.0 } ?: 0.0
+
+/**
+ * Each person's percent of [total], in whole paise. When the percents come to
+ * 100 the amounts add up to the total exactly, whatever the rounding.
+ */
+private fun SplitPlan.percentAmounts(total: Double): Map<String, Double> {
+    val weights = keys.associateWith { percentOf(it) }
+    val percent = weights.values.sum()
+    val whole = abs(percent - 100.0) < 0.005
+    val target = if (whole) total else total * percent / 100.0
+    return proportional(target, weights)
+}
+
+/**
+ * Each person's part of an itemised bill of [total]. An item is divided
+ * equally between the people on it. Tax, tip and discounts are whatever
+ * [total] has beyond the items, and each person takes them in proportion to
+ * their items: someone who ate 40% of the food pays 40% of the tax. Items
+ * nobody is on stay unassigned, along with their part of the tax.
+ */
+private fun SplitPlan.itemAmounts(total: Double): Map<String, Double> {
+    val active = keys
+    val subtotal = active.associateWith { 0.0 }.toMutableMap()
+    for (item in items) {
+        val sharers = active.filter { it in item.who }
+        if (item.amount <= 0.0 || sharers.isEmpty()) continue
+        // Exact shares here. Rounding twice (once per item, again for tax)
+        // can leave people a couple of paise apart on an even split.
+        val each = item.amount / sharers.size
+        for (key in sharers) subtotal[key] = subtotal.getValue(key) + each
+    }
+    val all = itemsTotal
+    if (all <= 0.0) return emptyMap()
+    val assigned = subtotal.values.sum()
+    if (assigned <= 0.0) return emptyMap()
+    val target = if (abs(assigned - all) < 0.001) total else total * assigned / all
+    return proportional(target, subtotal)
+}
+
+/** Each person's share of the bill's items, as a percent. This is how the tax is divided. */
+fun SplitPlan.itemPercents(): Map<String, Double> {
+    val amounts = itemAmounts(100.0)
+    return keys.associateWith { amounts[it] ?: 0.0 }
+}
+
+/**
+ * Divides [target] between the keys by [weights], in whole paise. Paise lost
+ * to rounding go to the largest remainders, so the parts add up to [target].
+ */
+private fun proportional(target: Double, weights: Map<String, Double>): Map<String, Double> {
+    val sum = weights.values.sum()
+    if (sum <= 0.0 || target <= 0.0) return weights.mapValues { 0.0 }
+    val paise = (target * 100).roundToLong()
+    val exact = weights.mapValues { paise * it.value / sum }
+    val floor = exact.mapValues { kotlin.math.floor(it.value + 1e-9).toLong() }.toMutableMap()
+    var spare = paise - floor.values.sum()
+    for (key in exact.keys.sortedByDescending { exact.getValue(it) - floor.getValue(it) }) {
+        if (spare <= 0) break
+        floor[key] = floor.getValue(key) + 1
+        spare--
+    }
+    return floor.mapValues { it.value / 100.0 }
+}
+
+/** Switches to Percent, starting from the shares in [current]. */
+fun SplitPlan.toPercent(current: SplitOutcome, total: Double?): SplitPlan {
+    val sum = total?.takeIf { it > 0.0 }
+    val amounts = current.shares.associate { it.person.key to it.amount } +
+        if (includeMe) mapOf(SplitPlan.ME_KEY to current.myShare) else emptyMap()
+    val assigned = amounts.values.sum()
+    val filled = if (sum == null || assigned <= 0.0) {
+        // Nothing to go on yet: an even split.
+        val each = if (keys.isEmpty()) 0.0 else 100.0 / keys.size
+        keys.associateWith { percentText(each) }
+    } else {
+        amounts.mapValues { percentText(it.value / sum * 100.0) }
+    }
+    return copy(mode = SplitMode.PERCENT, percentText = filled)
+}
+
+/** 33.333 to "33.33", 50.0 to "50". */
+internal fun percentText(percent: Double): String {
+    val hundredths = (percent * 100).roundToLong()
+    return if (hundredths % 100 == 0L) (hundredths / 100).toString() else (hundredths / 100.0).toString()
 }
 
 private fun SplitPlan.amountOf(key: String): Double =

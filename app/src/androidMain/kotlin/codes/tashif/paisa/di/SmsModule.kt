@@ -1,7 +1,7 @@
 package codes.tashif.paisa.di
 
-import codes.tashif.paisa.ui.sms.AndroidSmsScanService
-import codes.tashif.paisa.ui.sms.SmsScanService
+import codes.tashif.paisa.sms.AndroidSmsScanService
+import codes.tashif.paisa.sms.SmsScanService
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
