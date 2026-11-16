@@ -38,10 +38,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusTarget
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalFocusManager
@@ -206,15 +202,8 @@ fun AppShell(
 
     // Keyboard shortcuts for windows with a hardware keyboard nearby. The
     // shell holds focus whenever nothing else does, so keys reach it.
-    val shellFocus = remember { FocusRequester() }
     val shortcutTabs = if (large) AppTab.entries else navTabs
-    val keys = Modifier
-        .onFocusChanged { focus ->
-            if (!focus.hasFocus) runCatching { shellFocus.requestFocus() }
-        }
-        .focusRequester(shellFocus)
-        // A focus target with no semantics, so TalkBack still sees each button.
-        .focusTarget()
+    val keys = rememberShellKeyboardFocus(useRail)
         .onKeyEvent { event ->
             handleShortcut(
                 event = event,
@@ -232,7 +221,6 @@ fun AppShell(
             )
         }
     if (useRail) {
-        LaunchedEffect(Unit) { runCatching { shellFocus.requestFocus() } }
         PageKeys { key, command ->
             handlePageShortcut(
                 key = key,

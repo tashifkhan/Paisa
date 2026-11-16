@@ -314,6 +314,7 @@ fun MarkdownField(
                             val sel = field.selection
                             val edit = tool.apply(MdEdit(field.text, sel.min, sel.max))
                             set(TextFieldValue(edit.text, TextRange(edit.start, edit.end)))
+                            focusRequester.requestFocus()
                         }
                     ) {
                         Icon(
