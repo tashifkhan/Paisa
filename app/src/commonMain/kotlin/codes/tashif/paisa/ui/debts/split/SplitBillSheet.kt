@@ -120,7 +120,8 @@ fun SplitBillSheet(
                 )
             }
 
-            SplitPreview(outcome = outcome, currency = currency, payer = payer)
+            // The editor lists every share. Only the debt to a payer needs its own line.
+            if (payer != null) SplitPreview(outcome = outcome, currency = currency, payer = payer)
             SplitSaveButton(
                 outcome = outcome,
                 onClick = { onSave(outcome.billEntries(payer), note, date) }

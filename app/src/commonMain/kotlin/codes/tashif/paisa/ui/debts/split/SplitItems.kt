@@ -1,8 +1,6 @@
 package codes.tashif.paisa.ui.debts.split
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -12,16 +10,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.PhotoLibrary
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,13 +32,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import codes.tashif.paisa.ui.components.SheetFieldCard
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.ui.format.formatMoney
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.spacing
@@ -65,45 +65,32 @@ internal fun SplitItemsEditor(
 
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)
     ) {
         if (scanning) {
-            SheetFieldCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(MaterialTheme.spacing.small))
-                    Text("Reading the bill", style = MaterialTheme.typography.titleSmall)
-                }
-            }
+            Text(
+                "Reading the bill",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         } else {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)
             ) {
-                BillSourceCard(
-                    icon = Icons.Rounded.PhotoCamera,
-                    title = "Take photo",
-                    subtitle = "Open the camera",
-                    onClick = onTakePhoto,
-                    modifier = Modifier.weight(1f)
-                )
-                BillSourceCard(
-                    icon = Icons.Rounded.PhotoLibrary,
-                    title = "Choose photo",
-                    subtitle = "From your gallery",
-                    onClick = onChoosePhoto,
-                    modifier = Modifier.weight(1f)
-                )
+                FilledTonalButton(onClick = onTakePhoto, modifier = Modifier.weight(1f)) {
+                    ButtonIcon(Icons.Rounded.PhotoCamera)
+                    Text("Scan a bill", maxLines = 1)
+                }
+                OutlinedButton(onClick = onChoosePhoto, modifier = Modifier.weight(1f)) {
+                    ButtonIcon(Icons.Rounded.PhotoLibrary)
+                    Text("Choose photo", maxLines = 1)
+                }
             }
         }
 
-        if (!scanMessage.isNullOrBlank()) {
-            Text(
-                text = scanMessage,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error
-            )
-        }
+        if (!scanMessage.isNullOrBlank()) SplitCaption(scanMessage, isError = true)
 
         if (plan.items.isEmpty()) {
             Text(
@@ -114,61 +101,80 @@ internal fun SplitItemsEditor(
         }
 
         plan.items.forEachIndexed { index, item ->
-            Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-                    verticalAlignment = Alignment.CenterVertically
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
+            ) {
+                Column(
+                    modifier = Modifier.padding(
+                        start = MaterialTheme.spacing.small,
+                        top = MaterialTheme.spacing.smaller,
+                        bottom = MaterialTheme.spacing.smaller
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)
                 ) {
-                    OutlinedTextField(
-                        value = item.name,
-                        onValueChange = { name ->
-                            onPlanChange(plan.replaceItem(index, item.copy(name = name.take(60))))
-                        },
-                        label = { Text("Item") },
-                        singleLine = true,
-                        shape = MaterialTheme.shapes.extraLarge,
-                        modifier = Modifier.weight(1.4f)
-                    )
-                    OutlinedTextField(
-                        value = item.amountText,
-                        onValueChange = { text ->
-                            if (text.matches(AMOUNT)) {
-                                onPlanChange(plan.replaceItem(index, item.copy(amountText = text)))
-                            }
-                        },
-                        label = { Text("Amount") },
-                        prefix = { Text(currency) },
-                        singleLine = true,
-                        shape = MaterialTheme.shapes.extraLarge,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = {
-                        haptics.tick()
-                        onPlanChange(plan.copy(items = plan.items.filterIndexed { i, _ -> i != index }))
-                    }) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Remove item")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = item.name,
+                            onValueChange = { name ->
+                                onPlanChange(plan.replaceItem(index, item.copy(name = name.take(60))))
+                            },
+                            label = { Text("Item") },
+                            singleLine = true,
+                            shape = MaterialTheme.shapes.large,
+                            modifier = Modifier.weight(1.4f)
+                        )
+                        OutlinedTextField(
+                            value = item.amountText,
+                            onValueChange = { text ->
+                                if (text.matches(AMOUNT)) {
+                                    onPlanChange(plan.replaceItem(index, item.copy(amountText = text)))
+                                }
+                            },
+                            label = { Text("Amount") },
+                            prefix = { Text(currency) },
+                            singleLine = true,
+                            shape = MaterialTheme.shapes.large,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = {
+                            haptics.tick()
+                            onPlanChange(plan.copy(items = plan.items.filterIndexed { i, _ -> i != index }))
+                        }) {
+                            Icon(Icons.Rounded.Close, contentDescription = "Remove item")
+                        }
                     }
-                }
-                if (who.isEmpty()) {
-                    Text(
-                        text = "Add someone above to assign this",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)) {
-                        who.forEach { (key, label) ->
-                            FilterChip(
-                                selected = key in item.who,
-                                onClick = {
-                                    haptics.tick()
-                                    val next = if (key in item.who) item.who - key else item.who + key
-                                    onPlanChange(plan.replaceItem(index, item.copy(who = next)))
-                                },
-                                label = { Text(label) }
-                            )
+                    if (who.isEmpty()) {
+                        Text(
+                            text = "Add someone above to assign this",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)) {
+                            who.forEach { (key, label) ->
+                                val selected = key in item.who
+                                FilterChip(
+                                    selected = selected,
+                                    onClick = {
+                                        haptics.tick()
+                                        val next = if (selected) item.who - key else item.who + key
+                                        onPlanChange(plan.replaceItem(index, item.copy(who = next)))
+                                    },
+                                    label = { Text(label) },
+                                    leadingIcon = if (selected) {
+                                        { Icon(Icons.Rounded.Check, null, Modifier.size(FilterChipDefaults.IconSize)) }
+                                    } else {
+                                        null
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -179,73 +185,33 @@ internal fun SplitItemsEditor(
             onClick = {
                 haptics.tick()
                 onPlanChange(plan.copy(items = plan.items + BillItem()))
-            },
-            modifier = Modifier.padding(bottom = MaterialTheme.spacing.small)
+            }
         ) {
-            Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(MaterialTheme.spacing.extraSmall))
+            ButtonIcon(Icons.Rounded.Add)
             Text("Add an item")
         }
 
         val total = outcome.total()
         if (plan.items.any { it.amount > 0.0 } && total != null) {
             val tax = toPaise(total - plan.itemsTotal)
-            val caption = when {
-                tax > 0.004 -> "${formatMoney(currency, tax)} in tax and charges, split by what each person had"
-                tax < -0.004 -> "${formatMoney(currency, -tax)} off, taken off in the same shares"
-                else -> "Items add up to the total"
-            }
-            Text(
-                text = caption,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            SplitCaption(
+                when {
+                    tax > 0.004 -> "${formatMoney(currency, tax)} in tax and charges, split by what each person had"
+                    tax < -0.004 -> "${formatMoney(currency, -tax)} off, taken off in the same shares"
+                    else -> "Items add up to the total"
+                }
             )
             if (outcome.left >= 0.005) {
-                Text(
-                    text = "${formatMoney(currency, outcome.left)} still on nobody",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                SplitCaption("${formatMoney(currency, outcome.left)} still on nobody")
             }
         }
     }
 }
 
-/**
- * Half of a row, built like the date and account cards: a tinted circle, a
- * title, and a short line under it.
- */
 @Composable
-private fun BillSourceCard(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    SheetFieldCard(onClick = onClick, modifier = modifier) {
-        Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
+private fun ButtonIcon(icon: ImageVector) {
+    Icon(icon, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
 }
 
 private fun SplitPlan.replaceItem(index: Int, item: BillItem): SplitPlan =

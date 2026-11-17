@@ -6,30 +6,38 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.InputChipDefaults
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,9 +45,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import codes.tashif.paisa.data.DebtPersonBalance
 import codes.tashif.paisa.ui.format.debtStatus
@@ -49,13 +58,16 @@ import codes.tashif.paisa.ui.theme.spacing
 import kotlin.math.abs
 
 private const val MAX_RESULTS = 6
+private const val MAX_SUGGESTIONS = 6
 
 /**
- * Who's in a split, built to cope with a long list of people:
- * - the chosen people (and You) as removable chips,
- * - one field that searches your Debts people and adds a new name if nobody matches.
- * Nobody is listed until you type, so a long Debts list never floods the sheet.
+ * Who's in a split:
+ * - a filter chip for You and a removable input chip per person,
+ * - a search field that finds your Debts people and adds a new name if nobody matches,
+ * - a few one-tap suggestions while the field is empty.
+ * The full Debts list only shows up as search results, so a long list never floods the sheet.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun SplitPeoplePicker(
     people: List<DebtPersonBalance>,
@@ -86,54 +98,44 @@ internal fun SplitPeoplePicker(
         .sortedBy { if (it.person.name.startsWith(q, ignoreCase = true)) 0 else 1 }
     val exact = people.any { it.person.name.equals(q, ignoreCase = true) } ||
         plan.people.any { it.name.equals(q, ignoreCase = true) }
+    val suggestions = if (q.isNotEmpty()) emptyList() else people
+        .filterNot { plan.has(personFor(it)) }
+        .take(MAX_SUGGESTIONS)
 
-    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)) {
-        // ── Who's in ──
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-            verticalAlignment = Alignment.CenterVertically
+    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall)) {
+        // Who's in
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)
         ) {
-            InputChip(
+            FilterChip(
                 selected = plan.includeMe,
                 onClick = {
                     haptics.tick()
                     onPlanChange(plan.copy(includeMe = !plan.includeMe))
                 },
                 label = { Text("You") },
-                leadingIcon = {
-                    Avatar("Y", plan.includeMe)
-                },
-                trailingIcon = if (plan.includeMe) {
-                    { Icon(Icons.Rounded.Check, "Included", Modifier.size(InputChipDefaults.IconSize)) }
+                leadingIcon = if (plan.includeMe) {
+                    { Icon(Icons.Rounded.Check, null, Modifier.size(FilterChipDefaults.IconSize)) }
                 } else {
                     null
-                },
-                avatar = null
+                }
             )
             plan.people.forEach { person ->
                 InputChip(
                     selected = true,
                     onClick = { toggle(person) },
-                    label = { Text(person.name, maxLines = 1) },
-                    leadingIcon = { Avatar(person.name, true) },
+                    label = { Text(person.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    avatar = { SplitAvatar(person.name, InputChipDefaults.AvatarSize) },
                     trailingIcon = {
                         Icon(Icons.Rounded.Close, "Remove ${person.name}", Modifier.size(InputChipDefaults.IconSize))
                     }
                 )
             }
-            if (plan.people.isEmpty()) {
-                Text(
-                    "Add who you split with",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 4.dp)
-                )
-            }
         }
 
-        // ── Search or add ──
-        OutlinedTextField(
+        // Search or add
+        TextField(
             value = query,
             onValueChange = { query = it },
             placeholder = { Text(if (people.isEmpty()) "Type a name to add" else "Search or add a person") },
@@ -144,7 +146,13 @@ internal fun SplitPeoplePicker(
                 null
             },
             singleLine = true,
-            shape = MaterialTheme.shapes.extraLarge,
+            shape = CircleShape,
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent
+            ),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = {
                 // Enter picks the top match, or adds what was typed.
@@ -161,104 +169,124 @@ internal fun SplitPeoplePicker(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // ── Results while typing ──
-        AnimatedVisibility(visible = q.isNotEmpty()) {
-            ResultList {
-                // Known people first; "Add" goes last unless nobody matches.
-                matches.take(MAX_RESULTS).forEachIndexed { i, p ->
-                    if (i > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                    val person = personFor(p)
-                    ResultRow(
-                        title = p.person.name,
-                        subtitle = balanceLine(p, currency),
-                        avatar = { Avatar(p.person.name, plan.has(person), large = true) },
-                        checked = plan.has(person),
-                        onClick = {
-                            toggle(person)
-                            query = ""
+        // One-tap adds while nothing is typed
+        if (suggestions.isNotEmpty()) {
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)
+            ) {
+                suggestions.forEach { p ->
+                    AssistChip(
+                        onClick = { toggle(personFor(p)) },
+                        label = { Text(p.person.name, maxLines = 1) },
+                        leadingIcon = {
+                            Icon(Icons.Rounded.Add, null, Modifier.size(AssistChipDefaults.IconSize))
                         }
-                    )
-                }
-                if (!exact) {
-                    if (matches.isNotEmpty()) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                    ResultRow(
-                        title = "Add \"$q\"",
-                        subtitle = "New person in Debts",
-                        avatar = { NewAvatar() },
-                        checked = false,
-                        onClick = { addNew(q) }
-                    )
-                }
-                if (matches.size > MAX_RESULTS) {
-                    Text(
-                        "${matches.size - MAX_RESULTS} more match. Keep typing to narrow it down.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(MaterialTheme.spacing.small)
                     )
                 }
             }
         }
 
+        // Results while typing
+        AnimatedVisibility(visible = q.isNotEmpty()) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = MaterialTheme.spacing.extraSmall),
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
+            ) {
+                Column {
+                    // Known people first; "Add" goes last unless nobody matches.
+                    matches.take(MAX_RESULTS).forEachIndexed { i, p ->
+                        if (i > 0) RowDivider()
+                        val person = personFor(p)
+                        val inSplit = plan.has(person)
+                        ResultRow(
+                            title = p.person.name,
+                            subtitle = balanceLine(p, currency),
+                            avatar = { SplitAvatar(p.person.name) },
+                            checked = inSplit,
+                            onClick = {
+                                toggle(person)
+                                query = ""
+                            }
+                        )
+                    }
+                    if (!exact) {
+                        if (matches.isNotEmpty()) RowDivider()
+                        ResultRow(
+                            title = "Add \"$q\"",
+                            subtitle = "New person in Debts",
+                            avatar = { NewAvatar() },
+                            checked = false,
+                            onClick = { addNew(q) }
+                        )
+                    }
+                    if (matches.size > MAX_RESULTS) {
+                        Text(
+                            "${matches.size - MAX_RESULTS} more match. Keep typing to narrow it down.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(
+                                horizontal = MaterialTheme.spacing.medium,
+                                vertical = MaterialTheme.spacing.small
+                            )
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
 private fun balanceLine(p: DebtPersonBalance, currency: String): String =
     if (abs(p.balance) < 0.005) "Settled" else "${debtStatus(p.balance)} ${formatMoney(currency, abs(p.balance))}"
 
+/** Inset divider between rows of a list that sits in a tinted container. */
 @Composable
-private fun ResultList(content: @Composable () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow
-    ) {
-        Column { content() }
-    }
+internal fun RowDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
+        color = MaterialTheme.colorScheme.outlineVariant
+    )
 }
 
 @Composable
 private fun ResultRow(
     title: String,
-    subtitle: String?,
+    subtitle: String,
     avatar: @Composable () -> Unit,
     checked: Boolean,
     onClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = MaterialTheme.spacing.small, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        avatar()
-        Spacer(Modifier.width(MaterialTheme.spacing.small))
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            subtitle?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        if (checked) Icon(Icons.Rounded.Check, "In the split", tint = MaterialTheme.colorScheme.primary)
-    }
+    ListItem(
+        headlineContent = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        supportingContent = { Text(subtitle) },
+        leadingContent = avatar,
+        trailingContent = if (checked) {
+            { Icon(Icons.Rounded.Check, "In the split", tint = MaterialTheme.colorScheme.primary) }
+        } else {
+            null
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier.clickable(onClick = onClick)
+    )
 }
 
-/** Initial in a circle; filled when the person is in the split. */
+/** A person's initial in a tinted circle. */
 @Composable
-private fun Avatar(name: String, on: Boolean, large: Boolean = false) {
-    val size = if (large) 36.dp else InputChipDefaults.AvatarSize
+internal fun SplitAvatar(name: String, size: Dp = 40.dp) {
     Surface(
         shape = CircleShape,
-        color = if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         modifier = Modifier.size(size)
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
                 name.trim().take(1).uppercase().ifEmpty { "?" },
-                style = if (large) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                style = if (size >= 40.dp) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelMedium
             )
         }
     }
@@ -266,13 +294,14 @@ private fun Avatar(name: String, on: Boolean, large: Boolean = false) {
 
 @Composable
 private fun NewAvatar() {
-    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.size(36.dp)) {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        modifier = Modifier.size(40.dp)
+    ) {
         Box(contentAlignment = Alignment.Center) {
-            Icon(
-                Icons.Rounded.PersonAdd, null,
-                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier.size(20.dp)
-            )
+            Icon(Icons.Rounded.PersonAdd, null, modifier = Modifier.size(20.dp))
         }
     }
 }

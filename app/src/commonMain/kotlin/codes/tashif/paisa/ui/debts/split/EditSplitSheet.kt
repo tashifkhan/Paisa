@@ -70,7 +70,6 @@ fun EditSplitSheet(
                 outcome = outcome,
                 currency = currency
             )
-            SplitPreview(outcome = outcome, currency = currency)
             SplitSaveButton(outcome = outcome, onClick = { onSave(outcome.owedToMe()) })
         }
     }

@@ -1,14 +1,20 @@
 package codes.tashif.paisa.ui.debts.split
 
-import codes.tashif.paisa.ui.components.PillTabs
-
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -19,7 +25,13 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.KeyboardType
 import codes.tashif.paisa.ai.BillScanService
 import codes.tashif.paisa.core.AppLockGuard
@@ -29,7 +41,7 @@ import codes.tashif.paisa.ui.format.formatMoney
 import codes.tashif.paisa.statement.StatementSource
 import codes.tashif.paisa.ui.statement.rememberCameraCapture
 import codes.tashif.paisa.ui.statement.rememberPhotoPicker
-import codes.tashif.paisa.ui.theme.ExpenseRed
+import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.spacing
 import kotlin.math.abs
 import kotlinx.coroutines.CancellationException
@@ -97,10 +109,12 @@ fun SplitEditor(
         if (camera) openCamera() else openPhotos()
     }
 
+    val haptics = rememberHaptics()
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)
     ) {
+        SplitSectionLabel("Split between")
         SplitPeoplePicker(
             people = people,
             plan = plan,
@@ -108,60 +122,38 @@ fun SplitEditor(
             currency = currency
         )
 
-        PillTabs(
-            options = listOf(
-                "Equal" to SplitMode.EQUAL,
-                "Amount" to SplitMode.CUSTOM,
-                "%" to SplitMode.PERCENT,
-                "Items" to SplitMode.ITEMS
-            ),
-            selected = plan.mode,
-            onSelect = { mode ->
-                if (mode != plan.mode) {
-                    val next = when (mode) {
-                        SplitMode.CUSTOM -> plan.toCustom(outcome)
-                        SplitMode.PERCENT -> plan.toPercent(outcome, outcome.total())
-                        else -> plan.copy(mode = mode)
-                    }
-                    onPlanChange(next)
-                }
-            }
+        SplitSectionLabel("Divide by", Modifier.padding(top = MaterialTheme.spacing.smaller))
+        val modes = listOf(
+            "Equal" to SplitMode.EQUAL,
+            "Amount" to SplitMode.CUSTOM,
+            "%" to SplitMode.PERCENT,
+            "Items" to SplitMode.ITEMS
         )
-
-        val rows = plan.people.map { it.key to it.name } +
-            if (plan.includeMe) listOf(SplitPlan.ME_KEY to "Your share") else emptyList()
-        when (plan.mode) {
-            SplitMode.EQUAL -> Unit
-            SplitMode.CUSTOM -> {
-                ShareFields(
-                    rows = rows,
-                    prefix = currency,
-                    valueOf = { plan.customText[it].orEmpty() }
-                ) { key, text ->
-                    onPlanChange(plan.copy(customText = plan.customText + (key to text)))
-                }
-                ShareRemainder(outcome, currency)
-            }
-            SplitMode.PERCENT -> {
-                ShareFields(
-                    rows = rows,
-                    suffix = "%",
-                    valueOf = { plan.percentText[it].orEmpty() }
-                ) { key, text ->
-                    onPlanChange(plan.copy(percentText = plan.percentText + (key to text)))
-                }
-                Text(
-                    text = "${percentText(plan.percentTotal)}%",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (plan.percentTotal > 100.005) {
-                        ExpenseRed
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    }
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            modes.forEachIndexed { index, (label, mode) ->
+                SegmentedButton(
+                    selected = plan.mode == mode,
+                    onClick = {
+                        if (mode != plan.mode) {
+                            haptics.tick()
+                            val next = when (mode) {
+                                SplitMode.CUSTOM -> plan.toCustom(outcome)
+                                SplitMode.PERCENT -> plan.toPercent(outcome, outcome.total())
+                                else -> plan.copy(mode = mode)
+                            }
+                            onPlanChange(next)
+                        }
+                    },
+                    shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
+                    // Four segments on a phone leave no room for the check icon.
+                    icon = {},
+                    label = { Text(label, maxLines = 1) }
                 )
-                ShareRemainder(outcome, currency)
             }
-            SplitMode.ITEMS -> SplitItemsEditor(
+        }
+
+        if (plan.mode == SplitMode.ITEMS) {
+            SplitItemsEditor(
                 plan = plan,
                 outcome = outcome,
                 currency = currency,
@@ -172,46 +164,132 @@ fun SplitEditor(
                 onChoosePhoto = { beginScan(camera = false) }
             )
         }
+
+        SplitShareList(plan = plan, outcome = outcome, currency = currency, onPlanChange = onPlanChange)
+
+        when (plan.mode) {
+            SplitMode.CUSTOM -> ShareRemainder(outcome, currency)
+            SplitMode.PERCENT -> {
+                val over = plan.percentTotal > 100.005
+                SplitCaption("${percentText(plan.percentTotal)}% of 100% assigned", isError = over)
+                ShareRemainder(outcome, currency)
+            }
+            else -> Unit
+        }
+    }
+}
+
+/** Small heading over a part of the split editor. */
+@Composable
+internal fun SplitSectionLabel(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier
+    )
+}
+
+@Composable
+internal fun SplitCaption(text: String, isError: Boolean = false) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = MaterialTheme.spacing.extraSmall)
+    )
+}
+
+/**
+ * One list item per person in the split, you last, with their share at the
+ * end. In Amount and % modes the share is a field.
+ */
+@Composable
+private fun SplitShareList(
+    plan: SplitPlan,
+    outcome: SplitOutcome,
+    currency: String,
+    onPlanChange: (SplitPlan) -> Unit
+) {
+    if (plan.people.isEmpty()) return
+    val rows = outcome.shares.map { Triple(it.person.key, it.person.name, it.amount) } +
+        if (plan.includeMe) listOf(Triple(SplitPlan.ME_KEY, "You", outcome.myShare)) else emptyList()
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh
+    ) {
+        Column {
+            rows.forEachIndexed { index, (key, name, amount) ->
+                if (index > 0) RowDivider()
+                ListItem(
+                    headlineContent = { Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    supportingContent = if (plan.mode == SplitMode.PERCENT) {
+                        { Text(formatMoney(currency, amount)) }
+                    } else {
+                        null
+                    },
+                    leadingContent = { SplitAvatar(name) },
+                    trailingContent = {
+                        when (plan.mode) {
+                            SplitMode.CUSTOM -> ShareField(
+                                value = plan.customText[key].orEmpty(),
+                                label = "$name's amount",
+                                prefix = currency
+                            ) { onPlanChange(plan.copy(customText = plan.customText + (key to it))) }
+                            SplitMode.PERCENT -> ShareField(
+                                value = plan.percentText[key].orEmpty(),
+                                label = "$name's percent",
+                                suffix = "%"
+                            ) { onPlanChange(plan.copy(percentText = plan.percentText + (key to it))) }
+                            else -> Text(
+                                text = formatMoney(currency, amount),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                )
+            }
+        }
     }
 }
 
 @Composable
-private fun ShareFields(
-    rows: List<Pair<String, String>>,
+private fun ShareField(
+    value: String,
+    label: String,
     prefix: String? = null,
     suffix: String? = null,
-    valueOf: (String) -> String,
-    onValue: (String, String) -> Unit
+    onValue: (String) -> Unit
 ) {
-    rows.forEach { (key, label) ->
-        OutlinedTextField(
-            value = valueOf(key),
-            onValueChange = { text ->
-                if (text.isEmpty() || text.toDoubleOrNull() != null) onValue(key, text)
-            },
-            label = { Text(label) },
-            prefix = prefix?.let { { Text(it) } },
-            suffix = suffix?.let { { Text(it) } },
-            singleLine = true,
-            shape = MaterialTheme.shapes.extraLarge,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
+    OutlinedTextField(
+        value = value,
+        onValueChange = { text ->
+            if (text.isEmpty() || text.toDoubleOrNull() != null) onValue(text)
+        },
+        placeholder = { Text("0") },
+        prefix = prefix?.let { { Text(it) } },
+        suffix = suffix?.let { { Text(it) } },
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.End),
+        shape = MaterialTheme.shapes.large,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        modifier = Modifier
+            .width(128.dp)
+            .semantics { contentDescription = label }
+    )
 }
 
 @Composable
 private fun ShareRemainder(outcome: SplitOutcome, currency: String) {
     if (abs(outcome.left) < 0.005) return
-    Text(
-        text = if (outcome.left > 0) {
-            "${formatMoney(currency, outcome.left)} left"
-        } else {
-            "${formatMoney(currency, -outcome.left)} over the total"
-        },
-        style = MaterialTheme.typography.bodyMedium,
-        color = if (outcome.left > 0) MaterialTheme.colorScheme.onSurfaceVariant else ExpenseRed
-    )
+    if (outcome.left > 0) {
+        SplitCaption("${formatMoney(currency, outcome.left)} left to assign")
+    } else {
+        SplitCaption("${formatMoney(currency, -outcome.left)} over the total", isError = true)
+    }
 }
 
 /**

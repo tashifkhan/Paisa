@@ -2,6 +2,20 @@
 
 Every Paisa release, newest first. Each version's APK is on the [releases page](https://github.com/tashifkhan/Paisa/releases) and in the F-Droid repo at `https://tashif.codes/fdroid/repo`.
 
+## 1.7.5
+
+The split sheet is rebuilt on stock Material 3 components.
+
+### Bill splitting
+
+- Split with others is one card. The switch sits in a list row at the top, and the editor opens under a divider in the same card.
+- People are chips. You is a filter chip, each added person is an input chip with an avatar and a remove icon, and the chips wrap onto new lines.
+- The search field is filled and pill shaped. Matches show as list rows, and people you already have in Debts appear as one-tap chips while the field is empty.
+- Equal, Amount, % and Items are a segmented button under a Divide by label.
+- Every mode shows one list of shares, with an avatar, the name and the amount at the end of the row. Amount and % modes edit the share in a compact field on that row.
+- Scan a bill and Choose photo sit side by side. Each bill line has its own card with who-had-it chips, and scanning shows a progress bar.
+- The Split a bill and edit split sheets in Debts use the same layout.
+
 ## 1.7.4
 
 ### Bill splitting
