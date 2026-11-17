@@ -60,6 +60,9 @@ class AndroidStatementSource(
         return ""
     }
 
+    override suspend fun spreadsheetText(): String =
+        context.contentResolver.openInputStream(uri)?.use { XlsxText.read(it) }.orEmpty()
+
     private companion object {
         @Volatile
         private var pdfBoxReady = false

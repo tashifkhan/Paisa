@@ -1,12 +1,13 @@
 package codes.tashif.paisa.statement
 
+import codes.tashif.paisa.ai.LlmException
 import codes.tashif.paisa.ai.LlmPdf
 import codes.tashif.paisa.ai.aiIoDispatcher
 import kotlinx.coroutines.withContext
 import kotlin.io.encoding.Base64
 
 /**
- * Pulls plain text from a user-selected statement file (PDF / CSV / text).
+ * Pulls plain text from a user-selected statement file (PDF / CSV / XLSX / text).
  */
 object StatementTextExtractor {
 
@@ -19,6 +20,10 @@ object StatementTextExtractor {
         val name = source.name?.lowercase().orEmpty()
 
         when {
+            isSpreadsheet(source) -> source.spreadsheetText()
+            isLegacyExcel(source) -> throw LlmException(
+                "Old .xls workbooks can't be read. Save it as .xlsx or CSV and share that."
+            )
             mime.contains("pdf") || name.endsWith(".pdf") -> source.pdfText()
             mime.contains("csv") || name.endsWith(".csv") ||
                 mime.contains("text") || name.endsWith(".txt") ||
@@ -33,6 +38,24 @@ object StatementTextExtractor {
 
     private suspend fun extractText(source: StatementSource): String =
         source.readBytes()?.decodeToString().orEmpty()
+
+    /** An .xlsx workbook (Excel, Google Sheets or Numbers export). */
+    fun isSpreadsheet(source: StatementSource): Boolean {
+        val mime = source.mimeType?.lowercase().orEmpty()
+        val name = source.name?.lowercase().orEmpty()
+        return mime == XLSX_MIME || name.endsWith(".xlsx")
+    }
+
+    private fun isLegacyExcel(source: StatementSource): Boolean {
+        val mime = source.mimeType?.lowercase().orEmpty()
+        val name = source.name?.lowercase().orEmpty()
+        if (name.endsWith(".xls")) return true
+        // Plenty of apps label CSV files with the Excel type, so trust a text extension first.
+        val textName = listOf(".csv", ".tsv", ".txt").any(name::endsWith)
+        return mime == "application/vnd.ms-excel" && !textName
+    }
+
+    private const val XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
     fun isPdf(source: StatementSource): Boolean {
         val mime = source.mimeType?.lowercase().orEmpty()
