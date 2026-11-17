@@ -67,6 +67,7 @@ fun MoreScreen(
     val unrecognizedCount by viewModel.unrecognizedSmsCount.collectAsState()
     val merchantRuleCount by viewModel.merchantRuleCount.collectAsState()
     val ai by viewModel.aiSummary.collectAsState()
+    val aiEnabled = settings?.aiEnabled != false
     val transactionCount by viewModel.transactionCount.collectAsState()
     val isExporting by viewModel.isExporting.collectAsState()
 
@@ -137,6 +138,7 @@ fun MoreScreen(
                 scan = scan,
                 unrecognizedCount = unrecognizedCount,
                 ai = ai,
+                aiEnabled = aiEnabled,
                 onOpenSmsSetup = onOpenSmsSetup,
                 onOpenStatementImport = onOpenStatementImport
             )
@@ -150,6 +152,7 @@ fun MoreScreen(
 
             MoreIntelligenceSection(
                 ai = ai,
+                aiEnabled = aiEnabled,
                 merchantRuleCount = merchantRuleCount,
                 onOpenAiSettings = onOpenAiSettings,
                 onOpenMerchantMappings = onOpenMerchantMappings

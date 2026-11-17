@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import codes.tashif.paisa.core.AppLockGuard
 import codes.tashif.paisa.core.AppNavigator
+import codes.tashif.paisa.core.SharedInput
 import codes.tashif.paisa.core.PrivacySession
 import codes.tashif.paisa.core.SnackbarEvent
 import codes.tashif.paisa.core.SnackbarManager
@@ -18,7 +19,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -69,6 +72,13 @@ class AppViewModel(
         navigator.requestWidgetDestination(destination)
 
     fun consumeWidgetDestination() = navigator.consumeWidgetDestination()
+
+    /** Files or text shared from another app, waiting for the AI add sheet. */
+    val pendingShare: StateFlow<SharedInput?> = navigator.pendingShare
+
+    fun requestShare(input: SharedInput) = navigator.requestShare(input)
+
+    fun consumeShare() = navigator.consumeShare()
 
     // --- PRIVACY AND SNACKBAR ---
     val balancesHidden: StateFlow<Boolean> = privacySession.balancesHidden
@@ -122,6 +132,12 @@ class AppViewModel(
             accountRepository.allAccounts.collect {
                 platform.refreshWidgets()
             }
+        }
+        viewModelScope.launch {
+            settingsRepository.settings
+                .mapNotNull { it?.aiEnabled }
+                .distinctUntilChanged()
+                .collect { platform.applyAiEnabled(it) }
         }
     }
 }

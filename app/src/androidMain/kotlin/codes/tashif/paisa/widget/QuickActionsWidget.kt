@@ -52,7 +52,7 @@ class QuickActionsWidget : GlanceAppWidget() {
         val snapshot = loadWidgetSnapshot(context)
         provideContent {
             PaisaGlanceTheme(context, snapshot.palette) {
-                QuickActionsContent(context)
+                QuickActionsContent(context, snapshot.aiEnabled)
             }
         }
     }
@@ -64,7 +64,7 @@ class QuickActionsWidget : GlanceAppWidget() {
 }
 
 @Composable
-private fun QuickActionsContent(context: Context) {
+private fun QuickActionsContent(context: Context, aiEnabled: Boolean) {
     val width = LocalSize.current.width
     // Drop the least-critical shortcuts first when the placement is tight.
     val actionCount = when {
@@ -142,18 +142,21 @@ private fun QuickActionsContent(context: Context) {
                 onClick = actionRunCallback<RescanSmsAction>(),
                 modifier = GlanceModifier.defaultWeight()
             )
-            Spacer(GlanceModifier.width(6.dp))
-            ActionTile(
-                iconRes = R.drawable.ic_widget_ai,
-                description = "Import a statement with AI",
-                background = GlanceTheme.colors.widgetBackground,
-                foreground = GlanceTheme.colors.primary,
-                onClick = actionStartActivity(
-                    WidgetDeepLink.intent(context, WidgetDeepLink.DEST_STATEMENT_IMPORT)
-                ),
-                modifier = GlanceModifier.defaultWeight()
-            )
-            if (actionCount >= 4) {
+            if (aiEnabled) {
+                Spacer(GlanceModifier.width(6.dp))
+                ActionTile(
+                    iconRes = R.drawable.ic_widget_ai,
+                    description = "Import a statement with AI",
+                    background = GlanceTheme.colors.widgetBackground,
+                    foreground = GlanceTheme.colors.primary,
+                    onClick = actionStartActivity(
+                        WidgetDeepLink.intent(context, WidgetDeepLink.DEST_STATEMENT_IMPORT)
+                    ),
+                    modifier = GlanceModifier.defaultWeight()
+                )
+            }
+            // With AI off, accounts takes the statement import tile's place.
+            if (actionCount >= 4 || !aiEnabled) {
                 Spacer(GlanceModifier.width(6.dp))
                 ActionTile(
                     iconRes = R.drawable.ic_widget_accounts,

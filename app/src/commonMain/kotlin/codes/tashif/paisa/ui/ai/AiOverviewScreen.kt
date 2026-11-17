@@ -24,6 +24,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,6 +45,7 @@ import codes.tashif.paisa.ui.components.rowTone
 import codes.tashif.paisa.ui.components.SettingsSectionLabel
 import codes.tashif.paisa.ui.components.groupPositionOf
 import codes.tashif.paisa.ui.theme.spacing
+import codes.tashif.paisa.ui.haptics.rememberHaptics
 
 @Composable
 fun AiOverviewScreen(
@@ -56,6 +58,8 @@ fun AiOverviewScreen(
     val catalog by viewModel.catalog.collectAsState()
     val ladders by viewModel.ladders.collectAsState()
     var addingProvider by remember { mutableStateOf(false) }
+    val aiEnabled = LocalAiEnabled.current
+    val haptics = rememberHaptics()
 
     LaunchedEffect(Unit) { viewModel.onOpen() }
 
@@ -69,6 +73,36 @@ fun AiOverviewScreen(
                 .padding(horizontal = MaterialTheme.spacing.medium)
                 .padding(bottom = MaterialTheme.spacing.extraLarge)
         ) {
+            SettingsGroup(modifier = Modifier.padding(top = MaterialTheme.spacing.small)) {
+                SettingsItem(
+                    title = "Use AI",
+                    subtitle = if (aiEnabled) {
+                        "Add with AI, statement import and bill scan"
+                    } else {
+                        "Off. Paisa shows no AI features"
+                    },
+                    icon = Icons.Rounded.AutoAwesome,
+                    position = groupPositionOf(0, 1),
+                    iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    iconContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    onClick = {
+                        haptics.toggle(on = !aiEnabled)
+                        viewModel.setAiEnabled(!aiEnabled)
+                    },
+                    trailing = {
+                        Switch(
+                            checked = aiEnabled,
+                            onCheckedChange = {
+                                haptics.toggle(on = it)
+                                viewModel.setAiEnabled(it)
+                            }
+                        )
+                    }
+                )
+            }
+            // Turned off, the page is just the switch. Keys and models stay saved.
+            if (!aiEnabled) return@Column
+            Spacer(Modifier.height(MaterialTheme.spacing.medium))
             NoteCard(
                 text = "Bring your own key for Add with AI and statement import. SMS stays on " +
                     "this device. Only the notes and files you send go out, and only to the " +

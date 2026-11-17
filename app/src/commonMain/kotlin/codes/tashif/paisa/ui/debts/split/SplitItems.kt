@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import codes.tashif.paisa.ui.format.formatMoney
+import codes.tashif.paisa.ui.ai.LocalAiEnabled
 import codes.tashif.paisa.ui.haptics.rememberHaptics
 import codes.tashif.paisa.ui.theme.spacing
 
@@ -74,7 +75,8 @@ internal fun SplitItemsEditor(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        } else {
+        } else if (LocalAiEnabled.current) {
+            // A model reads the bill, so the buttons go when AI is off.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)

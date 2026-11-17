@@ -8,12 +8,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import codes.tashif.paisa.ui.ai.LocalAiEnabled
 import codes.tashif.paisa.ui.backup.BackupScreen
 import codes.tashif.paisa.ui.onboarding.OnboardingScreen
 import codes.tashif.paisa.ui.lock.AppLockScreen
@@ -42,6 +44,7 @@ fun PaisaApp(viewModel: AppViewModel = koinViewModel()) {
         amoledDark = settings?.amoledDark ?: false,
         highContrast = settings?.highContrast ?: false
     ) {
+        CompositionLocalProvider(LocalAiEnabled provides (settings?.aiEnabled != false)) {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
@@ -73,6 +76,7 @@ fun PaisaApp(viewModel: AppViewModel = koinViewModel()) {
                 }
                 else -> AppShell(viewModel = viewModel)
             }
+        }
         }
     }
 }

@@ -1,12 +1,17 @@
 package codes.tashif.paisa.ui.app
 
+import android.content.ComponentName
 import android.content.Context
+import android.content.pm.PackageManager
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import codes.tashif.paisa.R
+import codes.tashif.paisa.share.ShareActivity
 import codes.tashif.paisa.widget.PaisaWidgets
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class AndroidAppPlatform(private val context: Context) : AppPlatform {
     override val versionName: String by lazy {
@@ -16,6 +21,23 @@ class AndroidAppPlatform(private val context: Context) : AppPlatform {
     }
 
     override suspend fun refreshWidgets() = PaisaWidgets.refresh(context)
+
+    override suspend fun applyAiEnabled(enabled: Boolean) {
+        // Share to Paisa only feeds Add with AI, so it leaves the share sheet with AI.
+        val share = ComponentName(context, ShareActivity::class.java)
+        val pm = context.packageManager
+        val wanted = if (enabled) {
+            PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
+        } else {
+            PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        }
+        withContext(Dispatchers.IO) {
+            if (pm.getComponentEnabledSetting(share) != wanted) {
+                pm.setComponentEnabledSetting(share, wanted, PackageManager.DONT_KILL_APP)
+            }
+        }
+        PaisaWidgets.refresh(context)
+    }
 }
 
 @Composable

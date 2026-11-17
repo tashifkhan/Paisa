@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <cache-path name="bill_photos" path="bill-photos/" />
+    <!-- Copies of files shared to Paisa, see SharedFiles -->
+    <cache-path name="shared" path="shared/" />
 </paths>

@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.onboarding
 
+import codes.tashif.paisa.ui.ai.LocalAiEnabled
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -364,23 +365,26 @@ internal fun DoneStep(onOpen: (String) -> Unit) {
         body = "Pick something to start with, or go straight to the app."
     )
     val scheme = MaterialTheme.colorScheme
+    val aiEnabled = LocalAiEnabled.current
     Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)) {
         NextStepCard(
             icon = Icons.Rounded.Add,
             container = scheme.primaryContainer,
             content = scheme.onPrimaryContainer,
             title = "Add a transaction",
-            body = "By hand, or describe it and let AI fill it in",
+            body = if (aiEnabled) "By hand, or describe it and let AI fill it in" else "Log an expense or income by hand",
             onClick = { onOpen(AppDestinations.ADD_TRANSACTION) }
         )
-        NextStepCard(
-            icon = Icons.Rounded.AutoAwesome,
-            container = scheme.tertiaryContainer,
-            content = scheme.onTertiaryContainer,
-            title = "Set up AI",
-            body = "Add a model and key for receipts, notes and statements",
-            onClick = { onOpen(AppDestinations.AI_SETTINGS) }
-        )
+        if (aiEnabled) {
+            NextStepCard(
+                icon = Icons.Rounded.AutoAwesome,
+                container = scheme.tertiaryContainer,
+                content = scheme.onTertiaryContainer,
+                title = "Set up AI",
+                body = "Add a model and key for receipts, notes and statements",
+                onClick = { onOpen(AppDestinations.AI_SETTINGS) }
+            )
+        }
         NextStepCard(
             icon = Icons.Rounded.CloudSync,
             container = scheme.secondaryContainer,
@@ -389,14 +393,16 @@ internal fun DoneStep(onOpen: (String) -> Unit) {
             body = "Google Drive, Nextcloud, or a file",
             onClick = { onOpen(AppDestinations.BACKUP) }
         )
-        NextStepCard(
-            icon = Icons.AutoMirrored.Rounded.ReceiptLong,
-            container = scheme.surfaceContainerHighest,
-            content = scheme.onSurfaceVariant,
-            title = "Import a bank statement",
-            body = "PDF, CSV or a photo, read by your AI model",
-            onClick = { onOpen(AppDestinations.STATEMENT_IMPORT) }
-        )
+        if (aiEnabled) {
+            NextStepCard(
+                icon = Icons.AutoMirrored.Rounded.ReceiptLong,
+                container = scheme.surfaceContainerHighest,
+                content = scheme.onSurfaceVariant,
+                title = "Import a bank statement",
+                body = "PDF, CSV or a photo, read by your AI model",
+                onClick = { onOpen(AppDestinations.STATEMENT_IMPORT) }
+            )
+        }
     }
 }
 

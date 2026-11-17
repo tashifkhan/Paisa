@@ -72,6 +72,8 @@ data class AiAddUiState(
     /** Files, or the note, that gave nothing back. */
     val failures: List<QuickAddFailure> = emptyList(),
     val error: String? = null,
+    /** Set when a share from another app arrived, so the sheet switches to the AI side. */
+    val shareArrived: Boolean = false,
 ) {
     val canDraft: Boolean get() = busy == null && (note.isNotBlank() || files.isNotEmpty() || voice != null)
     val selectedCount: Int get() = rows.count { it.selected }
@@ -120,6 +122,34 @@ class AiAddViewModel(
             _state.update { it.copy(files = it.files + added, error = null) }
         }
     }
+
+    /**
+     * Something shared from another app: files are attached, text becomes
+     * the note, and drafting starts right away when nothing else is running.
+     * Mid-review or mid-draft, the files wait on the note step instead, so
+     * the drafts on screen aren't thrown away.
+     */
+    fun receiveShared(sources: List<StatementSource>, text: String?) {
+        viewModelScope.launch {
+            val added = sources.map { source ->
+                val name = runCatching { source.displayName() }.getOrNull() ?: source.name ?: "File"
+                AttachedFile(nextKey++, source, name)
+            }
+            val sharedText = text?.trim().orEmpty()
+            _state.update {
+                it.copy(
+                    files = it.files + added,
+                    note = listOf(it.note.trim(), sharedText).filter(String::isNotEmpty).joinToString("\n"),
+                    error = null,
+                    shareArrived = true
+                )
+            }
+            val now = _state.value
+            if (now.busy == null && !now.reviewing && quickAdd.canRun()) draft()
+        }
+    }
+
+    fun consumeShareArrived() = _state.update { it.copy(shareArrived = false) }
 
     fun setVoice(clip: VoiceClip) = _state.update { it.copy(voice = clip, error = null) }
 

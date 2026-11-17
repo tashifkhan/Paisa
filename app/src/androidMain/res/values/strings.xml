@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Paisa</string>
+    <!-- Shown under the Paisa icon in the system share sheet -->
+    <string name="share_target_label">Add with AI</string>
     <string name="tab_home">Home</string>
     <string name="tab_analytics">Analytics</string>
     <string name="tab_budgets">Budgets</string>

@@ -10,6 +10,12 @@ interface AppPlatform {
 
     /** Redraws home screen widgets after data changes. Nothing on the web. */
     suspend fun refreshWidgets()
+
+    /**
+     * Follows the "Use AI" switch outside the app, in the share sheet and
+     * home screen widgets. Nothing on the web.
+     */
+    suspend fun applyAiEnabled(enabled: Boolean) = Unit
 }
 
 /** Where a widget tap or deep link asks the app to go. Same strings as WidgetDeepLink. */

@@ -24,7 +24,8 @@ internal data class WidgetSnapshot(
     val accounts: List<Account>,
     val creditCardDebt: Double,
     val palette: PaisaPalette,
-    val hideBalancesByDefault: Boolean
+    val hideBalancesByDefault: Boolean,
+    val aiEnabled: Boolean
 )
 
 internal suspend fun loadWidgetSnapshot(context: Context): WidgetSnapshot {
@@ -47,7 +48,8 @@ internal suspend fun loadWidgetSnapshot(context: Context): WidgetSnapshot {
         accounts = bankAccounts,
         creditCardDebt = creditCards.sumOf { -it.currentBalance }.coerceAtLeast(0.0),
         palette = PaisaPalette.fromId(settings?.colorPalette),
-        hideBalancesByDefault = settings?.hideBalancesByDefault ?: true
+        hideBalancesByDefault = settings?.hideBalancesByDefault ?: true,
+        aiEnabled = settings?.aiEnabled != false
     )
 }
 

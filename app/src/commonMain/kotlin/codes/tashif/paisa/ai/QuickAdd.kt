@@ -121,8 +121,8 @@ class QuickAddService(private val ladderRunner: AiLadderRunner) {
         val failures = mutableListOf<QuickAddFailure>()
         results.forEachIndexed { index, result ->
             result.fold(
-                onSuccess = { response ->
-                    val parsed = TransactionDraftParser.parse(response, context.today)
+                onSuccess = { responses ->
+                    val parsed = mergeChunks(responses.map { TransactionDraftParser.parse(it, context.today) })
                     if (parsed.isEmpty()) {
                         failures += QuickAddFailure(names[index], "No transactions found in it")
                     }
@@ -224,7 +224,7 @@ class QuickAddService(private val ladderRunner: AiLadderRunner) {
         names: List<String>,
         note: String,
         context: QuickAddContext,
-    ): String {
+    ): List<String> {
         val header = buildString {
             append(contextBlock(context))
             append("\n\n")
@@ -252,19 +252,29 @@ class QuickAddService(private val ladderRunner: AiLadderRunner) {
 
         if (StatementImageReader.isImage(file)) {
             val image = StatementImageReader.read(file)
-            return complete("$header\nRead the attached image.", image = image)
+            return listOf(complete("$header\nRead the attached image.", image = image))
         }
 
         val text = StatementTextExtractor.extract(file)
         if (text.isNotBlank()) {
-            return complete("$header\nThe file's text:\n\n${text.take(MAX_TEXT_CHARS)}")
+            // A statement or spreadsheet can run to hundreds of rows. Long text
+            // goes in parts, one call each, so nothing past the first part is lost.
+            val parts = StatementTextExtractor.chunkText(text, maxChars = MAX_TEXT_CHARS)
+                .take(MAX_TEXT_PARTS)
+            return parts.mapIndexed { i, part ->
+                val where = if (parts.size > 1) " (part ${i + 1} of ${parts.size})" else ""
+                complete("$header\nThe file's text$where:\n\n$part")
+            }
         }
         if (StatementTextExtractor.isPdf(file)) {
             val pdf = StatementTextExtractor.readPdf(file)
                 ?: throw LlmException("Couldn't open this PDF")
-            return complete("$header\nRead the attached PDF.", pdf = pdf)
+            return listOf(complete("$header\nRead the attached PDF.", pdf = pdf))
         }
-        throw LlmException("Couldn't read this file. Try a photo, a PDF or a CSV.")
+        if (StatementTextExtractor.isSpreadsheet(file)) {
+            throw LlmException("This spreadsheet has no cells to read.")
+        }
+        throw LlmException("Couldn't read this file. Try a photo, a PDF, a CSV or an Excel sheet.")
     }
 
     private suspend fun complete(
@@ -303,7 +313,33 @@ class QuickAddService(private val ladderRunner: AiLadderRunner) {
             "Also return what you heard, word for word, as a \"transcript\" string next to " +
                 "\"transactions\" in the same JSON object. Spoken amounts like \"two forty\" mean 240."
         private const val MAX_PARALLEL = 3
-        private const val MAX_TEXT_CHARS = 24_000
+        private const val MAX_TEXT_CHARS = 20_000
+
+        /** About 1,500 statement rows. Past that, the user should split the file. */
+        private const val MAX_TEXT_PARTS = 8
+
+        /**
+         * Joins the drafts from each part of one file. Parts overlap by a few
+         * lines, so a row at the seam can come back from both. Drop a draft
+         * from a later part when the part before had the same one.
+         */
+        internal fun mergeChunks(parts: List<List<TransactionDraft>>): List<TransactionDraft> {
+            if (parts.size <= 1) return parts.firstOrNull().orEmpty()
+            val out = mutableListOf<TransactionDraft>()
+            var previous = emptyList<TransactionDraft>()
+            parts.forEach { part ->
+                val seen = previous.map(::seamKey).toMutableList()
+                part.forEach { draft ->
+                    val key = seamKey(draft)
+                    if (!seen.remove(key)) out += draft
+                }
+                previous = part
+            }
+            return out
+        }
+
+        private fun seamKey(d: TransactionDraft) =
+            Triple(d.date, d.amount, d.type) to d.title.lowercase().filter(Char::isLetterOrDigit)
 
         val SYSTEM_PROMPT = """
             You turn what someone tells you about their money into transactions for a personal
@@ -327,6 +363,9 @@ class QuickAddService(private val ladderRunner: AiLadderRunner) {
             Rules:
             - One entry per separate payment. A receipt or bill is one transaction for its final
               total (after tax and tip), not one per line item, unless the user asks otherwise.
+            - A bank or card statement, spreadsheet, or expense export lists many payments: one
+              entry per row that moved money. Skip opening and closing balances, totals and
+              subtotals. With debit and credit columns, debits are expenses and credits income.
             - amount is a positive plain number: no currency symbols or thousands separators.
             - type is "expense" for money going out and "income" for money coming in (salary,
               refunds, someone paying the user back).

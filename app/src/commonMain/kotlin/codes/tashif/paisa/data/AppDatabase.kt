@@ -41,7 +41,7 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         /** Bump with every migration. Backups made on a newer schema are refused. */
-        const val SCHEMA_VERSION = 14
+        const val SCHEMA_VERSION = 15
 
         private val MIGRATION_2_3 = object : Migration(2, 3) {
             override suspend fun migrate(connection: SQLiteConnection) {
@@ -212,6 +212,13 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** A switch that turns off every AI feature. */
+        private val MIGRATION_14_15 = object : Migration(14, 15) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                Sql.of(connection).exec("ALTER TABLE settings ADD COLUMN aiEnabled INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
         internal val MIGRATIONS: Array<Migration>
             get() = arrayOf(
                 MIGRATION_2_3,
@@ -225,7 +232,8 @@ abstract class AppDatabase : RoomDatabase() {
                 MIGRATION_10_11,
                 MIGRATION_11_12,
                 MIGRATION_12_13,
-                MIGRATION_13_14
+                MIGRATION_13_14,
+                MIGRATION_14_15
             )
 
         /** Seeds a new database and keeps the sync triggers installed. Tests add it too. */

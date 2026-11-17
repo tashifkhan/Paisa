@@ -22,6 +22,12 @@ interface StatementSource {
 
     /** The text layer of a PDF, or "" when the file can't be opened or has none. */
     suspend fun pdfText(): String
+
+    /**
+     * An .xlsx workbook as tab-separated text, one block per sheet. "" when
+     * the platform can't read workbooks or the file has no cells.
+     */
+    suspend fun spreadsheetText(): String = ""
 }
 
 /** A statement file is bigger than the caller allows. */

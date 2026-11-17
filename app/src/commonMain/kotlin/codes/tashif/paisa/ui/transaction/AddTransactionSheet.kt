@@ -47,6 +47,7 @@ import codes.tashif.paisa.ui.theme.spacing
 import codes.tashif.paisa.ui.quickadd.AiNoteStep
 import codes.tashif.paisa.ui.quickadd.AiReviewStep
 import codes.tashif.paisa.ui.quickadd.AiAddViewModel
+import codes.tashif.paisa.ui.ai.LocalAiEnabled
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,7 +59,17 @@ fun AddTransactionSheet(
 ) {
     val aiState by aiViewModel.state.collectAsState()
     // Come back to the AI side when a draft is running or waiting for review.
-    var withAi by rememberSaveable { mutableStateOf(aiState.inProgress) }
+    var aiTab by rememberSaveable { mutableStateOf(aiState.inProgress || aiState.shareArrived) }
+    // With AI turned off in More the sheet is the manual form alone.
+    val aiEnabled = LocalAiEnabled.current
+    val withAi = aiEnabled && aiTab
+    // A share from another app lands on the AI side, even with the sheet already open.
+    LaunchedEffect(aiState.shareArrived) {
+        if (aiState.shareArrived) {
+            aiTab = true
+            aiViewModel.consumeShareArrived()
+        }
+    }
     val aiReady = remember(withAi) { aiViewModel.canRun() }
     val aiCanHear = remember(withAi) { aiViewModel.canHear() }
     val openPhotos = rememberPhotoPicker { aiViewModel.addFiles(it) }
@@ -131,9 +142,9 @@ fun AddTransactionSheet(
                 .fillMaxWidth()
                 // Swipe sideways to switch between Manual and With AI.
                 .swipeToSwitch(
-                    enabled = !(withAi && aiState.reviewing),
-                    onPrevious = { withAi = false },
-                    onNext = { withAi = true }
+                    enabled = aiEnabled && !(withAi && aiState.reviewing),
+                    onPrevious = { aiTab = false },
+                    onNext = { aiTab = true }
                 )
                 .imePadding()
                 .verticalScroll(rememberScrollState())
@@ -150,7 +161,7 @@ fun AddTransactionSheet(
                 text = when {
                     !withAi -> "Log a manual expense or income"
                     aiState.reviewing -> "Edit anything that looks off, then save"
-                    else -> "Describe it, or attach receipts, bills and PDFs"
+                    else -> "Describe it, or attach receipts, bills, PDFs and spreadsheets"
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -158,11 +169,11 @@ fun AddTransactionSheet(
 
             Spacer(Modifier.height(MaterialTheme.spacing.medium))
 
-            if (!(withAi && aiState.reviewing)) {
+            if (aiEnabled && !(withAi && aiState.reviewing)) {
                 PillTabs(
                     options = listOf("Manual" to false, "With AI" to true),
                     selected = withAi,
-                    onSelect = { withAi = it }
+                    onSelect = { aiTab = it }
                 )
                 Spacer(Modifier.height(MaterialTheme.spacing.medium))
             }

@@ -59,9 +59,12 @@ fun MoreImportSection(
     scan: SmsScanProgress,
     unrecognizedCount: Int,
     ai: AiSummary,
+    aiEnabled: Boolean,
     onOpenSmsSetup: () -> Unit,
     onOpenStatementImport: () -> Unit
 ) {
+    // Statement import only works through an AI model.
+    val count = if (aiEnabled) 2 else 1
     SettingsSectionLabel("Import")
     SettingsGroup {
         SettingsItem(
@@ -73,24 +76,26 @@ fun MoreImportSection(
                 else -> "Import bank transactions from SMS"
             },
             icon = Icons.Rounded.Sms,
-            position = groupPositionOf(0, 2),
+            position = groupPositionOf(0, count),
             iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
             iconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             onClick = onOpenSmsSetup
         )
-        SettingsItem(
-            title = "Import statement",
-            subtitle = if (ai.ready) {
-                "PDF/CSV via ${ai.providerName}"
-            } else {
-                "Upload bank statement with your AI key"
-            },
-            icon = Icons.Rounded.UploadFile,
-            position = groupPositionOf(1, 2),
-            iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-            iconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            onClick = onOpenStatementImport
-        )
+        if (aiEnabled) {
+            SettingsItem(
+                title = "Import statement",
+                subtitle = if (ai.ready) {
+                    "PDF/CSV via ${ai.providerName}"
+                } else {
+                    "Upload bank statement with your AI key"
+                },
+                icon = Icons.Rounded.UploadFile,
+                position = groupPositionOf(1, count),
+                iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                iconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                onClick = onOpenStatementImport
+            )
+        }
     }
 }
 
@@ -132,6 +137,7 @@ fun MoreDataSection(
 @Composable
 fun MoreIntelligenceSection(
     ai: AiSummary,
+    aiEnabled: Boolean,
     merchantRuleCount: Int,
     onOpenAiSettings: () -> Unit,
     onOpenMerchantMappings: () -> Unit
@@ -140,10 +146,10 @@ fun MoreIntelligenceSection(
     SettingsGroup {
         SettingsItem(
             title = "AI",
-            subtitle = if (ai.ready) {
-                "${ai.modelName} · ${ai.providerName}"
-            } else {
-                "Providers, models and fallbacks"
+            subtitle = when {
+                !aiEnabled -> "Off"
+                ai.ready -> "${ai.modelName} · ${ai.providerName}"
+                else -> "Providers, models and fallbacks"
             },
             icon = Icons.Rounded.AutoAwesome,
             position = groupPositionOf(0, 2),
