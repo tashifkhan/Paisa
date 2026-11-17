@@ -58,7 +58,14 @@ fun AddTransactionSheet(
 ) {
     val aiState by aiViewModel.state.collectAsState()
     // Come back to the AI side when a draft is running or waiting for review.
-    var withAi by rememberSaveable { mutableStateOf(aiState.inProgress) }
+    var withAi by rememberSaveable { mutableStateOf(aiState.inProgress || aiState.shareArrived) }
+    // A share from another app lands on the AI side, even with the sheet already open.
+    LaunchedEffect(aiState.shareArrived) {
+        if (aiState.shareArrived) {
+            withAi = true
+            aiViewModel.consumeShareArrived()
+        }
+    }
     val aiReady = remember(withAi) { aiViewModel.canRun() }
     val aiCanHear = remember(withAi) { aiViewModel.canHear() }
     val openPhotos = rememberPhotoPicker { aiViewModel.addFiles(it) }
@@ -150,7 +157,7 @@ fun AddTransactionSheet(
                 text = when {
                     !withAi -> "Log a manual expense or income"
                     aiState.reviewing -> "Edit anything that looks off, then save"
-                    else -> "Describe it, or attach receipts, bills and PDFs"
+                    else -> "Describe it, or attach receipts, bills, PDFs and spreadsheets"
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant

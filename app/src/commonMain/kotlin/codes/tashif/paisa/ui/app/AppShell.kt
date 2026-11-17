@@ -60,6 +60,7 @@ import codes.tashif.paisa.ui.platform.isWebPlatform
 import codes.tashif.paisa.ui.platform.setWindowTitle
 import codes.tashif.paisa.ui.settings.MoreScreen
 import codes.tashif.paisa.ui.sms.SmsViewModel
+import codes.tashif.paisa.ui.quickadd.AiAddViewModel
 import codes.tashif.paisa.ui.transaction.TransactionDetailScreen
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -80,7 +81,8 @@ import androidx.compose.runtime.key
 fun AppShell(
     viewModel: AppViewModel,
     smsViewModel: SmsViewModel = koinViewModel(),
-    debtsViewModel: DebtsViewModel = koinViewModel()
+    debtsViewModel: DebtsViewModel = koinViewModel(),
+    aiAddViewModel: AiAddViewModel = koinViewModel()
 ) {
     val currentTab by viewModel.currentTab.collectAsState()
     val selectedTxId by viewModel.selectedTransactionId.collectAsState()
@@ -112,6 +114,19 @@ fun AppShell(
             AppDestinations.HOME -> viewModel.selectTab(AppTab.HOME)
         }
         if (widgetDestination != null) viewModel.consumeWidgetDestination()
+    }
+
+    // Files or text shared from another app go to "Add with AI", which
+    // starts reading them as soon as the sheet opens.
+    val pendingShare by viewModel.pendingShare.collectAsState()
+    LaunchedEffect(pendingShare) {
+        val share = pendingShare ?: return@LaunchedEffect
+        aiAddViewModel.receiveShared(share.files, share.text)
+        // On a phone an open transaction or setting covers the tabs and the sheet with them.
+        viewModel.closeTransaction()
+        FullScreen.entries.forEach(state::close)
+        state.open(AddSheet.TRANSACTION)
+        viewModel.consumeShare()
     }
 
     val width = windowWidth()

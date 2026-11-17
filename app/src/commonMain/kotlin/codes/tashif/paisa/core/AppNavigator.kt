@@ -3,6 +3,12 @@ package codes.tashif.paisa.core
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import codes.tashif.paisa.statement.StatementSource
+
+/** Files and text another app shared to Paisa, for "Add with AI". */
+data class SharedInput(val files: List<StatementSource>, val text: String?) {
+    val isEmpty: Boolean get() = files.isEmpty() && text.isNullOrBlank()
+}
 
 /** App-wide navigation state: the visible tab, the open transaction, and widget deep links. */
 class AppNavigator() {
@@ -46,6 +52,32 @@ class AppNavigator() {
     }
 
     /**
+     * What another app shared, held until the unlocked shell hands it to the
+     * AI add sheet. Lives here for the same reason as the widget destination.
+     */
+    private val _pendingShare = MutableStateFlow<SharedInput?>(null)
+    val pendingShare: StateFlow<SharedInput?> = _pendingShare.asStateFlow()
+
+    /** A second share before the first is shown adds to it. */
+    fun requestShare(input: SharedInput) {
+        if (input.isEmpty) return
+        val current = _pendingShare.value
+        _pendingShare.value = if (current == null) {
+            input
+        } else {
+            SharedInput(
+                files = current.files + input.files,
+                text = listOfNotNull(current.text, input.text).filter { it.isNotBlank() }
+                    .joinToString("\n").ifEmpty { null }
+            )
+        }
+    }
+
+    fun consumeShare() {
+        _pendingShare.value = null
+    }
+
+    /**
      * Back to the launch state. This state used to live in the activity's
      * ViewModel and reset whenever a new MainActivity started, so the
      * activity-scoped ViewModel calls this from its init.
@@ -54,5 +86,6 @@ class AppNavigator() {
         _currentTab.value = AppTab.HOME
         _selectedTransactionId.value = null
         _pendingWidgetDestination.value = null
+        _pendingShare.value = null
     }
 }

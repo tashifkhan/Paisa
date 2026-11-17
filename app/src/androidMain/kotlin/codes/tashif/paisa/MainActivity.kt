@@ -15,6 +15,8 @@ import codes.tashif.paisa.ui.app.AppViewModel
 import codes.tashif.paisa.ui.app.PaisaApp
 import codes.tashif.paisa.ui.sms.SmsViewModel
 import codes.tashif.paisa.widget.WidgetDeepLink
+import codes.tashif.paisa.core.SharedInput
+import codes.tashif.paisa.share.SharedFiles
 
 class MainActivity : FragmentActivity() {
 
@@ -27,6 +29,8 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge()
         seedDemoDataIfAsked()
         handleWidgetIntent(intent)
+        // A recreated activity still holds the share intent it already handed over.
+        if (savedInstanceState == null) handleShareIntent(intent)
         setContent { PaisaApp() }
     }
 
@@ -48,6 +52,13 @@ class MainActivity : FragmentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleWidgetIntent(intent)
+        handleShareIntent(intent)
+    }
+
+    /** Files and text from [codes.tashif.paisa.share.ShareActivity], for "Add with AI". */
+    private fun handleShareIntent(intent: Intent?) {
+        val (files, text) = SharedFiles.read(this, intent) ?: return
+        appViewModel.requestShare(SharedInput(files, text))
     }
 
     private fun handleWidgetIntent(intent: Intent?) {
