@@ -2,6 +2,23 @@
 
 Every Paisa release, newest first. Each version's APK is on the [releases page](https://github.com/tashifkhan/Paisa/releases) and in the F-Droid repo at `https://tashif.codes/fdroid/repo`.
 
+## 1.7.6
+
+Share files to Paisa, read Excel statements, and switch AI off entirely.
+
+### Add with AI
+
+- Share images, PDFs, CSVs, Excel files or text from another app to "Add with AI". The add sheet opens with the files attached and starts drafting. With the app lock on, it waits until you unlock.
+- Long statements are read in parts instead of being cut off after the first 24k characters, so every row makes it in.
+
+### Statement import
+
+- Excel .xlsx workbooks work in statement import and Add with AI. Each sheet is read like a CSV, and date cells keep their dates. Old .xls files ask for .xlsx or CSV instead.
+
+### AI switch
+
+- Use AI, at the top of the AI page, turns off every AI feature. Off, Paisa hides Add with AI, statement import, bill scan, the statement tile on the quick actions widget and the AI cards in setup, and drops out of the share sheet. Your keys and models stay saved for when you turn it back on.
+
 ## 1.7.5
 
 The split sheet is rebuilt on stock Material 3 components.
