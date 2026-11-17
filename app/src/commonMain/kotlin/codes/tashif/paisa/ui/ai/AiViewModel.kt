@@ -9,6 +9,7 @@ import codes.tashif.paisa.ai.ladder.LadderState
 import codes.tashif.paisa.ai.provider.AiProviderInfo
 import codes.tashif.paisa.ai.provider.ApiStyle
 import codes.tashif.paisa.core.SnackbarManager
+import codes.tashif.paisa.data.repository.SettingsRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -17,7 +18,13 @@ import kotlinx.coroutines.launch
 class AiViewModel(
     private val repository: AiRepository,
     private val snackbarManager: SnackbarManager,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
+
+    /** Off hides every AI feature in the app. */
+    fun setAiEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.update { it.copy(aiEnabled = enabled) } }
+    }
 
     val providers: StateFlow<List<ProviderStatus>> = repository.providers
     val catalog: StateFlow<CatalogState> = repository.catalog

@@ -19,7 +19,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -130,6 +132,12 @@ class AppViewModel(
             accountRepository.allAccounts.collect {
                 platform.refreshWidgets()
             }
+        }
+        viewModelScope.launch {
+            settingsRepository.settings
+                .mapNotNull { it?.aiEnabled }
+                .distinctUntilChanged()
+                .collect { platform.applyAiEnabled(it) }
         }
     }
 }

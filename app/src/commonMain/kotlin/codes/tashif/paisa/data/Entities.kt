@@ -217,6 +217,8 @@ data class Settings(
     /** Tab ids shown in the bottom bar, in order. See [Settings.DEFAULT_NAV_TABS]. */
     @ColumnInfo(defaultValue = "'home,analytics,budgets,accounts,more'")
     val navTabs: String = DEFAULT_NAV_TABS,
+    /** Off hides every AI feature: Add with AI, statement import, bill scan and Share to Paisa. */
+    @ColumnInfo(defaultValue = "1") val aiEnabled: Boolean = true,
     /** Sync covers only [currency]; see SyncSchema. Set by the sync triggers. */
     val syncId: String? = null,
     @ColumnInfo(defaultValue = "0") val syncStamp: Long = 0

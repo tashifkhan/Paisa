@@ -59,6 +59,7 @@ import codes.tashif.paisa.ui.platform.PageKeys
 import codes.tashif.paisa.ui.platform.isWebPlatform
 import codes.tashif.paisa.ui.platform.setWindowTitle
 import codes.tashif.paisa.ui.settings.MoreScreen
+import codes.tashif.paisa.ui.ai.LocalAiEnabled
 import codes.tashif.paisa.ui.sms.SmsViewModel
 import codes.tashif.paisa.ui.quickadd.AiAddViewModel
 import codes.tashif.paisa.ui.transaction.TransactionDetailScreen
@@ -102,11 +103,12 @@ fun AppShell(
 
     // Widget deep links open the matching destination once, then clear so a
     // config change or back press doesn't reopen it.
+    val aiEnabled = LocalAiEnabled.current
     val widgetDestination by viewModel.pendingWidgetDestination.collectAsState()
     LaunchedEffect(widgetDestination) {
         when (widgetDestination) {
             AppDestinations.ADD_TRANSACTION -> state.open(AddSheet.TRANSACTION)
-            AppDestinations.STATEMENT_IMPORT -> state.open(FullScreen.STATEMENT_IMPORT)
+            AppDestinations.STATEMENT_IMPORT -> if (aiEnabled) state.open(FullScreen.STATEMENT_IMPORT)
             AppDestinations.SMS_SETUP -> state.open(FullScreen.SMS_SETUP)
             AppDestinations.AI_SETTINGS -> state.open(FullScreen.AI)
             AppDestinations.BACKUP -> state.open(FullScreen.BACKUP)
@@ -121,12 +123,24 @@ fun AppShell(
     val pendingShare by viewModel.pendingShare.collectAsState()
     LaunchedEffect(pendingShare) {
         val share = pendingShare ?: return@LaunchedEffect
+        // Share to Paisa is switched off with AI, but a share can still be
+        // in flight when the switch flips.
+        if (!aiEnabled) {
+            viewModel.consumeShare()
+            return@LaunchedEffect
+        }
         aiAddViewModel.receiveShared(share.files, share.text)
         // On a phone an open transaction or setting covers the tabs and the sheet with them.
         viewModel.closeTransaction()
         FullScreen.entries.forEach(state::close)
         state.open(AddSheet.TRANSACTION)
         viewModel.consumeShare()
+    }
+
+    // Turning AI off closes statement import, even in a side pane. The AI
+    // page stays, since its switch is how AI comes back on.
+    LaunchedEffect(aiEnabled) {
+        if (!aiEnabled) state.close(FullScreen.STATEMENT_IMPORT)
     }
 
     val width = windowWidth()
