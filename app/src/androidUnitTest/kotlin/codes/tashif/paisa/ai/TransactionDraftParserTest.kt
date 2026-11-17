@@ -83,3 +83,22 @@ class TransactionDraftParserTest {
         assertEquals("1234.57", AiAddViewModel.formatAmount(1234.567))
     }
 }
+
+class QuickAddChunkMergeTest {
+    private fun d(title: String, amount: Double, date: String = "2026-07-04") =
+        TransactionDraft(amount = amount, type = "expense", title = title, date = date)
+
+    @Test
+    fun a_row_seen_at_the_seam_of_two_parts_is_kept_once() {
+        val first = listOf(d("Swiggy", 240.0), d("Uber", 180.0))
+        val second = listOf(d("uber", 180.0), d("Rent", 18000.0))
+        val merged = QuickAddService.mergeChunks(listOf(first, second))
+        org.junit.Assert.assertEquals(listOf("Swiggy", "Uber", "Rent"), merged.map { it.title })
+    }
+
+    @Test
+    fun two_real_payments_that_match_inside_one_part_both_stay() {
+        val part = listOf(d("Chai", 20.0), d("Chai", 20.0))
+        org.junit.Assert.assertEquals(2, QuickAddService.mergeChunks(listOf(part, emptyList())).size)
+    }
+}
