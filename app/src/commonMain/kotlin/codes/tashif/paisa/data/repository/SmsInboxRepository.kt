@@ -15,6 +15,13 @@ class SmsInboxRepository(db: AppDatabase) {
     suspend fun insertUnrecognizedSms(sms: UnrecognizedSms): Long =
         unrecognizedSmsDao.insert(sms)
 
+    /** Rows waiting for the on-device model, oldest first. */
+    suspend fun pendingForAi(limit: Int = Int.MAX_VALUE): List<UnrecognizedSms> = unrecognizedSmsDao.getPendingAi(limit)
+
+    suspend fun countPendingAi(): Int = unrecognizedSmsDao.countPendingAi()
+
+    suspend fun markAiAttempted(id: Int) = unrecognizedSmsDao.markAiAttempted(id)
+
     suspend fun markUnrecognizedReviewed(id: Int) = unrecognizedSmsDao.markReviewed(id)
 
     suspend fun markAllUnrecognizedReviewed(): Int = unrecognizedSmsDao.markAllReviewed()

@@ -3,6 +3,7 @@ package codes.tashif.paisa.ui.settings
 import codes.tashif.paisa.backup.BackupNames
 import codes.tashif.paisa.platform.formatDate
 import codes.tashif.paisa.platform.nowMillis
+import codes.tashif.paisa.ui.notifications.NotificationImportViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -45,6 +46,7 @@ import codes.tashif.paisa.export.ExportSink
 @Composable
 fun MoreScreen(
     onOpenSmsSetup: () -> Unit = {},
+    onOpenNotificationImport: () -> Unit = {},
     onOpenAppearance: () -> Unit = {},
     onOpenAiSettings: () -> Unit = {},
     onOpenStatementImport: () -> Unit = {},
@@ -59,9 +61,11 @@ fun MoreScreen(
     onExternalActivityLaunched: () -> Unit = {},
     /** Title of the setting open beside this list on wide windows. */
     selected: String? = null,
-    viewModel: SettingsViewModel = koinViewModel()
+    viewModel: SettingsViewModel = koinViewModel(),
+    notificationViewModel: NotificationImportViewModel = koinViewModel()
 ) {
     val settings by viewModel.settings.collectAsState()
+    val notificationState by notificationViewModel.state.collectAsState()
     val categoryCount by viewModel.categoryCount.collectAsState()
     val scan by viewModel.smsScanProgress.collectAsState()
     val unrecognizedCount by viewModel.unrecognizedSmsCount.collectAsState()
@@ -140,6 +144,8 @@ fun MoreScreen(
                 ai = ai,
                 aiEnabled = aiEnabled,
                 onOpenSmsSetup = onOpenSmsSetup,
+                notifications = notificationState,
+                onOpenNotificationImport = onOpenNotificationImport,
                 onOpenStatementImport = onOpenStatementImport
             )
 

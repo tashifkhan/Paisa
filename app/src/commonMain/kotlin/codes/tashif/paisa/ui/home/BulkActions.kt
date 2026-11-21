@@ -411,8 +411,8 @@ internal fun BulkDeleteDialog(count: Int, fromSms: Int, onConfirm: () -> Unit, o
                     append("Account balances update to match. This can't be undone.")
                     if (fromSms > 0) {
                         append(
-                            if (fromSms == count) " They came from SMS, so a rescan won't bring them back."
-                            else " The $fromSms from SMS won't come back on a rescan."
+                            if (fromSms == count) " They came from SMS or notifications, so they won't come back."
+                            else " The $fromSms from SMS or notifications won't come back."
                         )
                     }
                 }

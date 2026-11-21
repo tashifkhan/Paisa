@@ -54,6 +54,7 @@ fun UnrecognizedSmsCard(
 ) {
     val haptics = rememberHaptics()
     var expanded by rememberSaveable(sms.id) { mutableStateOf(false) }
+    val senderLabel = sms.senderName?.takeIf { it.isNotBlank() } ?: sms.sender
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = groupShape(position),
@@ -73,7 +74,7 @@ fun UnrecognizedSmsCard(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            senderInitial(sms.sender),
+                            senderInitial(senderLabel),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
@@ -83,7 +84,7 @@ fun UnrecognizedSmsCard(
                 Spacer(Modifier.width(MaterialTheme.spacing.small))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        sms.sender,
+                        senderLabel,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,

@@ -46,7 +46,7 @@ class MigrationTest {
         // from its own CREATE statement minus the version 10 columns.
         val added = Regex(""",\s*`(syncId|syncStamp|balanceAnchor|balanceAnchorAt|floatingNavBar|navBarLabels|navTabs|floatingNavLabels|floatingNavFrosted|aiEnabled)`(?:[^,)']|'[^']*')*""")
         // Tables added after 9 didn't exist yet.
-        val laterTables = setOf("debt_people", "debt_entries")
+        val laterTables = setOf("debt_people", "debt_entries", "merchant_renames")
         laterTables.forEach { raw.execSQL("DROP TABLE `$it`") }
         for (table in SyncSchema.TABLE_NAMES.filterNot { it in laterTables }) {
             val create = raw.rawQuery("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", arrayOf(table))
@@ -59,6 +59,19 @@ class MigrationTest {
             raw.execSQL(create.replace(added, ""))
             indexes.forEach { raw.execSQL(it) }
         }
+        // The review queue isn't a sync table, so put back its version 9 shape
+        // without the source/name/aiAttempted columns the new migration adds.
+        raw.execSQL("DROP TABLE IF EXISTS `unrecognized_sms`")
+        raw.execSQL(
+            "CREATE TABLE `unrecognized_sms` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`sender` TEXT NOT NULL, `body` TEXT NOT NULL, `bodyHash` TEXT NOT NULL, " +
+                "`timestamp` INTEGER NOT NULL, `reviewed` INTEGER NOT NULL, `createdAt` TEXT NOT NULL)"
+        )
+        raw.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_unrecognized_sms_sender_timestamp_bodyHash` " +
+                "ON `unrecognized_sms` (`sender`, `timestamp`, `bodyHash`)"
+        )
         raw.execSQL("DELETE FROM room_master_table")
         raw.version = 9
 

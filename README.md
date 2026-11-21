@@ -14,12 +14,14 @@ android first. the same app also runs in the browser, built from the same kotlin
 ## what it does
 
 - **sms import.** a bulk scan of your inbox, plus a live receiver that catches new bank alerts as they land. every message is hashed, so rescans don't double count, and a deleted transaction stays deleted
+- **payment notifications.** on android, a switch per bank or upi app (google pay, phonepe, hdfc, canara ai1 and more) turns the alerts those apps post into transactions. an add button picks any other installed app. a payment that also arrives as a bank sms is saved once, and the bank's account and balance fill in the row the upi app created
 - **categories that learn.** your own merchant rules go first, then a keyword map, then "Others". fix a merchant once and it sticks
 - **records, analytics and budgets.** search, filters, charts by date range, and monthly caps per category
 - **accounts.** wallets and bank accounts you can reorder, merge, set a default on, or correct the balance of by hand when the bank and the app disagree
 - **backups** to google drive, nextcloud or a `.paisa` file. set a password and the file is AES-256-GCM encrypted before it goes anywhere
 - **ai statement import, if you want it.** bring your own key (openai compatible, gemini or anthropic), then feed it pdf, csv or image statements, several at once. duplicates across files get dropped
 - **add with ai.** in the add sheet, switch to "With AI" and type something like "lunch 240 yesterday, uber 180 today", attach receipts, bills, screenshots or pdfs, or both. you get a list of drafts to edit, ask the ai to change ("the uber one was cash"), then save the ones you want. it uses the same models as statement import, and has its own ladder under More → AI
+- **local ai, when your phone has it.** flip on **Use local AI** under More → AI and Gemini Nano runs the text and photo jobs on the device. no key, no per-call bill, no prompt leaving the phone. Pixel 9 and newer support it, as do several recent Samsung, OnePlus, Xiaomi, OPPO and vivo flagships. PDFs and voice notes still need a cloud model ([details](docs/local-ai.md))
 - **app lock** with biometrics or your screen lock
 - **export** to csv or pdf
 - **home screen widgets** for your balance and quick actions
@@ -27,7 +29,7 @@ android first. the same app also runs in the browser, built from the same kotlin
 
 ## the privacy bit
 
-sms never leave the phone. the database is plain room/sqlite on the device. the only things that go anywhere are the ones you send yourself: a statement to an ai endpoint you configured, or a backup to the place you chose. ai keys live in EncryptedSharedPreferences.
+sms and notification text never leave the phone. the database is plain room/sqlite on the device. the only things that go anywhere are the ones you send yourself: a statement to an ai endpoint you configured, or a backup to the place you chose. with local ai, those prompts stay on the phone too. ai keys live in EncryptedSharedPreferences.
 
 ## how sms become transactions
 
@@ -35,6 +37,18 @@ sms never leave the phone. the database is plain room/sqlite on the device. the 
 2. the bulk scan walks the inbox through `BankParserFactory` and dedups by hash
 3. the live receiver handles new alerts, and the app does a quick incremental rescan whenever you open it, in case android delivered something late
 4. messages that look financial but that no parser claims go to `unrecognized_sms` instead of vanishing
+
+## how notifications become transactions
+
+1. **More → Payment notifications**, turn it on, then allow Paisa in the system notification access screen
+2. only the apps switched on there are read; every other notification is dropped before its text is touched. **Add a bank or UPI app** opens the phone's app list and adds anything missing from the built-in 21
+3. a bank app's alert goes through that bank's sms parser first. upi apps (google pay, phonepe and friends), and user-added apps, go through `notification-core`, which reads plus/minus signs, debit/credit words and offers, reminders and payment requests are ignored
+4. one payment often arrives three ways: as a upi app notification, a bank sms and a bank app alert. `CrossChannelDedup` compares amount, direction, time, account and upi reference, keeps one row, and lets the bank's message add the account and balance to the row the upi app created
+5. **unclear messages.** when the rules can't read an sms or alert, payment notifications → unclear messages picks who tries: off, **on-device** (Gemini Nano, nothing leaves the phone) or **cloud** (the "sms and alerts" model under ai, with a warning that the text goes to that provider, is slower and may cost money). cloud works on every phone and skips gemini nano rungs. Gemini Nano only runs while paisa is open, so on-device reads of background messages wait, and paisa posts **payment waiting for ai**. phones without aicore show on-device greyed out
+6. **which account paid.** a upi app can pay from several bank accounts, so paisa picks the account in this order: a link you made for the account digits in the alert, your only account with those digits, the app's default account, then your only account at that bank (bank apps) or your only bank account (upi apps). if none fits, the payment waits under the app's name and paisa asks **which account was this?** pick one from the alert, the transaction, or the payment notifications screen. "always use" makes it the rule and moves the other waiting payments. each app's row in settings shows and changes its default account
+7. **merchant renames.** rename an imported transaction ("SWIGGY LTD" to "Swiggy") and turn on **always rename**. past rows are renamed, and future sms, notifications and statements use the new name before the category rules run. renames sync and back up like category rules, and show under more → merchant rules
+8. deleting a transaction keeps it deleted: the same notification or sms won't bring it back
+9. android 15 and later hide a notification's text from listeners when the system thinks it holds an otp. some bank alerts with an account number trip that check and are skipped; the bank sms still imports the same payment
 
 ## run it
 
@@ -59,6 +73,7 @@ when it breaks:
 - gradle hates your jdk: set the gradle jdk to 17 in studio
 - signature clash on install: `adb uninstall codes.tashif.paisa`
 - sms import does nothing: check Permissions → SMS, and use a phone with actual bank messages
+- payment notifications do nothing: More → Payment notifications, turn the master switch on, then allow Paisa under Settings → Notifications → Notification access. the app list shows which supported apps are installed; if android calls the access restricted, allow restricted settings from Paisa's App info menu
 
 ## the web version
 

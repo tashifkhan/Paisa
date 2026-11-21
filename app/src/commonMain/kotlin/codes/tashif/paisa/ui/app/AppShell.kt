@@ -517,6 +517,7 @@ private fun TabContent(
             hiddenTabs = AppTab.entries.filter { it !in navTabs },
             onOpenTab = viewModel::selectTab,
             onOpenSmsSetup = { open(FullScreen.SMS_SETUP) },
+            onOpenNotificationImport = { open(FullScreen.NOTIFICATION_IMPORT) },
             onOpenAppearance = { open(FullScreen.APPEARANCE) },
             onOpenAiSettings = { open(FullScreen.AI) },
             onOpenStatementImport = { open(FullScreen.STATEMENT_IMPORT) },

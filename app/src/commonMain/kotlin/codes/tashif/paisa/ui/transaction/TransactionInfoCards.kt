@@ -55,9 +55,11 @@ internal fun transactionDetailRows(
         add(DetailRowSpec(Icons.Rounded.Info, "Source", sourceLabel))
         add(DetailRowSpec(Icons.Rounded.Category, "Category", tx.categoryName))
         if (!isManual) {
-            tx.bankName?.takeIf { it.isNotBlank() }?.let {
-                add(DetailRowSpec(Icons.Rounded.AccountBalance, "Bank", it))
-            }
+            tx.bankName
+                ?.takeIf { it.isNotBlank() && !(tx.source == "notification" && it.equals(tx.accountName, ignoreCase = true)) }
+                ?.let {
+                    add(DetailRowSpec(Icons.Rounded.AccountBalance, if (tx.source == "notification") "App" else "Bank", it))
+                }
         }
         val accountLabel = listOfNotNull(
             tx.accountName.takeIf { it.isNotBlank() },
@@ -105,13 +107,14 @@ Card(
 }
 }
 
-/** The original SMS, collapsed until tapped. */
+/** The original SMS or app notification, collapsed until tapped. */
 @Composable
 internal fun SmsMessageCard(
     body: String,
     sender: String?,
     expanded: Boolean,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    isNotification: Boolean = false
 ) {
     val haptics = rememberHaptics()
 Card(
@@ -139,7 +142,12 @@ Card(
             )
             Spacer(Modifier.width(MaterialTheme.spacing.small))
             Text(
-                text = if (expanded) "Hide SMS" else "Show SMS",
+                text = when {
+                    isNotification && expanded -> "Hide notification"
+                    isNotification -> "Show notification"
+                    expanded -> "Hide SMS"
+                    else -> "Show SMS"
+                },
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)

@@ -99,7 +99,7 @@ data class Transaction(
     val accountNumber: String? = null,
     val balanceAfter: Double? = null,
     val transactionHash: String? = null,
-    val source: String = "manual", // manual | sms
+    val source: String = "manual", // manual | sms | notification | statement
     val currency: String = "INR",
     val reference: String? = null,
     val isDeleted: Boolean = false,
@@ -242,7 +242,30 @@ data class UnrecognizedSms(
     val bodyHash: String,
     val timestamp: Long,
     val reviewed: Boolean = false,
-    val createdAt: String
+    val createdAt: String,
+    /** "sms" or "notification". Older rows are SMS. */
+    @ColumnInfo(defaultValue = "'sms'") val source: String = "sms",
+    /** The app name to show when [sender] is a notification package. */
+    val senderName: String? = null,
+    /** The on-device model has already tried this row once. */
+    @ColumnInfo(defaultValue = "0") val aiAttempted: Boolean = false
+)
+
+/**
+ * A learned merchant rename: SMS, notifications and statements that name
+ * [rawName] ("SWIGGY LTD") are saved as [displayName] ("Swiggy"). Matched
+ * case-insensitively, before the category rules look the merchant up.
+ */
+@Entity(tableName = "merchant_renames", indices = [Index(value = ["syncId"], unique = true)])
+data class MerchantRename(
+    @PrimaryKey val rawName: String,
+    val displayName: String,
+    val createdAt: String,
+    val updatedAt: String,
+    /** Stable id shared by every device that syncs this row. Set by the sync triggers. */
+    val syncId: String? = null,
+    /** Last-write-wins clock for sync. Set by the sync triggers; don't write it from app code. */
+    @ColumnInfo(defaultValue = "0") val syncStamp: Long = 0
 )
 
 /**

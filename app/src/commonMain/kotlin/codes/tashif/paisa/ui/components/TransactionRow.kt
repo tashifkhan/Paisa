@@ -78,6 +78,7 @@ fun TransactionRow(
     val sign = if (isIncome) "+" else "−"
     val sourceLabel = when (tx.source) {
         "sms" -> "SMS"
+        "notification" -> "Notification"
         "statement" -> "Statement"
         else -> null
     }
@@ -157,7 +158,7 @@ fun TransactionRow(
                     text = listOfNotNull(
                         tx.categoryName,
                         tx.accountName,
-                        tx.bankName?.takeIf { tx.source != "manual" },
+                        tx.bankName?.takeIf { tx.source != "manual" && !it.equals(tx.accountName, ignoreCase = true) },
                         sourceLabel
                     ).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,

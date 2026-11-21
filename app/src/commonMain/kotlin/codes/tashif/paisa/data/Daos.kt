@@ -68,6 +68,12 @@ interface AccountDao {
     )
     suspend fun getAccountByBankWithoutLast4(bankName: String): Account?
 
+    @Query("SELECT * FROM accounts WHERE accountLast4 = :accountLast4")
+    suspend fun getAccountsByLast4(accountLast4: String): List<Account>
+
+    @Query("SELECT * FROM accounts ORDER BY orderIndex ASC, name ASC")
+    suspend fun getAllAccountsList(): List<Account>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAccount(account: Account): Long
 
@@ -205,6 +211,47 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE transactionHash = :hash LIMIT 1")
     suspend fun getTransactionByHash(hash: String): Transaction?
 
+    /** Imported payments waiting on an app's holding account for the user to pick the real one. */
+    @Query(
+        """
+        SELECT t.* FROM transactions t JOIN accounts a ON a.id = t.accountId
+        WHERE a.type = 'Unassigned' AND t.isDeleted = 0
+        ORDER BY t.transactionDate DESC
+        """
+    )
+    fun getAwaitingAccount(): Flow<List<Transaction>>
+
+    @Query(
+        """
+        SELECT t.* FROM transactions t JOIN accounts a ON a.id = t.accountId
+        WHERE a.type = 'Unassigned' AND t.isDeleted = 0
+        ORDER BY t.transactionDate DESC
+        """
+    )
+    suspend fun getAwaitingAccountList(): List<Transaction>
+
+    /**
+     * Rows that could be the same charge as an incoming SMS or notification:
+     * same type and amount, dated between [fromIso] and [toIso]. Deleted rows
+     * are included so a charge the user deleted doesn't come back by another channel.
+     */
+    @Query(
+        """
+        SELECT * FROM transactions
+        WHERE type = :type
+          AND amount BETWEEN :amountLow AND :amountHigh
+          AND transactionDate BETWEEN :fromIso AND :toIso
+        ORDER BY transactionDate DESC
+        """
+    )
+    suspend fun findChargeCandidates(
+        type: String,
+        amountLow: Double,
+        amountHigh: Double,
+        fromIso: String,
+        toIso: String
+    ): List<Transaction>
+
     @Query(
         """
         SELECT * FROM transactions
@@ -333,6 +380,16 @@ interface UnrecognizedSmsDao {
     @Query("SELECT * FROM unrecognized_sms WHERE reviewed = 0 ORDER BY timestamp DESC")
     fun getPending(): Flow<List<UnrecognizedSms>>
 
+    /** Rows waiting for the on-device model, oldest first, one attempt each. */
+    @Query("SELECT * FROM unrecognized_sms WHERE reviewed = 0 AND aiAttempted = 0 ORDER BY timestamp ASC LIMIT :limit")
+    suspend fun getPendingAi(limit: Int): List<UnrecognizedSms>
+
+    @Query("SELECT COUNT(*) FROM unrecognized_sms WHERE reviewed = 0 AND aiAttempted = 0")
+    suspend fun countPendingAi(): Int
+
+    @Query("UPDATE unrecognized_sms SET aiAttempted = 1 WHERE id = :id")
+    suspend fun markAiAttempted(id: Int)
+
     @Query("SELECT COUNT(*) FROM unrecognized_sms WHERE reviewed = 0")
     fun getPendingCount(): Flow<Int>
 
@@ -388,4 +445,29 @@ interface MerchantMappingDao {
         categoryId: Int,
         updatedAt: String
     ): Int
+}
+
+@Dao
+interface MerchantRenameDao {
+    @Query("SELECT * FROM merchant_renames ORDER BY rawName ASC")
+    fun getAll(): Flow<List<MerchantRename>>
+
+    @Query("SELECT * FROM merchant_renames WHERE lower(rawName) = lower(:rawName) LIMIT 1")
+    suspend fun find(rawName: String): MerchantRename?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(rename: MerchantRename)
+
+    @Query("DELETE FROM merchant_renames WHERE rawName = :rawName")
+    suspend fun delete(rawName: String)
+
+    /** Renames past transactions too. Returns how many changed. */
+    @Query(
+        """
+        UPDATE transactions SET merchantName = :displayName, updatedAt = :updatedAt
+        WHERE isDeleted = 0 AND merchantName IS NOT NULL
+          AND lower(merchantName) = lower(:rawName)
+        """
+    )
+    suspend fun renameTransactions(rawName: String, displayName: String, updatedAt: String): Int
 }

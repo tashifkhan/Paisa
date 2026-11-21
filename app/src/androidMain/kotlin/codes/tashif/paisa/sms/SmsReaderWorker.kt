@@ -21,19 +21,22 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import codes.tashif.paisa.R
 import codes.tashif.paisa.data.repository.SettingsRepository
-import com.pennywiseai.parser.core.bank.BankParserFactory
+import codes.tashif.paisa.ingest.IngestResult
+import codes.tashif.paisa.ingest.PendingAiProcessor
+import codes.tashif.paisa.ingest.TransactionIngestor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
  * Bulk inbox scan: reads SMS via ContentProvider, parses with BankParserFactory,
- * and stores transactions through [SmsTransactionProcessor].
+ * and stores transactions through [TransactionIngestor].
  */
 class SmsReaderWorker(
     appContext: Context,
     params: WorkerParameters,
-    private val processor: SmsTransactionProcessor,
-    private val settingsRepository: SettingsRepository
+    private val ingestor: TransactionIngestor,
+    private val settingsRepository: SettingsRepository,
+    private val pendingAi: PendingAiProcessor
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -78,6 +81,16 @@ class SmsReaderWorker(
         }
     }
 
+    /** Counts for the scan's progress notification. */
+    private data class ScanStats(
+        val total: Int,
+        var parsed: Int = 0,
+        var saved: Int = 0,
+        var duplicates: Int = 0,
+        var unrecognized: Int = 0,
+        var skipped: Int = 0
+    )
+
     private data class SmsMessage(
         val id: Long,
         val sender: String,
@@ -107,7 +120,7 @@ class SmsReaderWorker(
         )
 
         val messages = readSmsMessages(since)
-        val stats = SmsTransactionProcessor.ScanStats(total = messages.size)
+        val stats = ScanStats(total = messages.size)
 
         Log.d(TAG, "Scanning ${messages.size} SMS messages (since=$since forceFull=$forceFull)")
 
@@ -118,21 +131,17 @@ class SmsReaderWorker(
         messages.forEachIndexed { index, sms ->
             if (sms.timestamp > newestTimestamp) newestTimestamp = sms.timestamp
 
-            val knownSender = BankParserFactory.isKnownBankSender(sms.sender)
-            val result = processor.processAndSaveTransaction(sms.sender, sms.body, sms.timestamp)
-            when {
-                result.success -> {
+            // The model is not asked inline: a full scan can hold hundreds of
+            // messages. What the rules miss is queued for PendingAiProcessor.
+            val result = ingestor.processSms(sms.sender, sms.body, sms.timestamp, askModelNow = false)
+            when (result.outcome) {
+                IngestResult.Outcome.SAVED -> {
                     stats.parsed++
                     stats.saved++
                 }
-                result.reason?.contains("Duplicate", ignoreCase = true) == true ||
-                    result.reason?.contains("Previously deleted", ignoreCase = true) == true -> {
+                IngestResult.Outcome.DUPLICATE, IngestResult.Outcome.DELETED, IngestResult.Outcome.MERGED ->
                     stats.duplicates++
-                }
-                result.reason?.contains("Unrecognized", ignoreCase = true) == true -> {
-                    stats.unrecognized++
-                }
-                !knownSender -> stats.skipped++
+                IngestResult.Outcome.NEEDS_REVIEW, IngestResult.Outcome.QUEUED_FOR_AI -> stats.unrecognized++
                 else -> stats.skipped++
             }
             if (index % 25 == 0 || index == messages.lastIndex) {
@@ -159,11 +168,18 @@ class SmsReaderWorker(
         // refresh the home screen widgets from here once new rows are in.
         codes.tashif.paisa.widget.PaisaWidgets.refresh(applicationContext)
 
+        // Most scans start from the open app, where Gemini Nano can run. Read
+        // what was queued now; whatever is left gets the "waiting" prompt.
+        runCatching {
+            pendingAi.process()
+            pendingAi.promptForQueued(from = "your bank")
+        }
+
         Result.success(progressData(stats, messages.size))
     }
 
     private fun progressData(
-        stats: SmsTransactionProcessor.ScanStats,
+        stats: ScanStats,
         processed: Int = 0
     ): Data {
         return workDataOf(
@@ -228,7 +244,7 @@ class SmsReaderWorker(
 
     private fun createForegroundInfo(processed: Int, total: Int): ForegroundInfo {
         val nm = applicationContext.getSystemService(NotificationManager::class.java)
-        if (nm.getNotificationChannel(CHANNEL_ID) == null) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && nm.getNotificationChannel(CHANNEL_ID) == null) {
             nm.createNotificationChannel(
                 NotificationChannel(
                     CHANNEL_ID,

@@ -20,6 +20,7 @@ import codes.tashif.paisa.sync.SyncSchema
         Settings::class,
         UnrecognizedSms::class,
         MerchantMapping::class,
+        MerchantRename::class,
         DebtPerson::class,
         DebtEntry::class
     ],
@@ -37,11 +38,12 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun settingsDao(): SettingsDao
     abstract fun unrecognizedSmsDao(): UnrecognizedSmsDao
     abstract fun merchantMappingDao(): MerchantMappingDao
+    abstract fun merchantRenameDao(): MerchantRenameDao
     abstract fun debtDao(): DebtDao
 
     companion object {
         /** Bump with every migration. Backups made on a newer schema are refused. */
-        const val SCHEMA_VERSION = 15
+        const val SCHEMA_VERSION = 17
 
         private val MIGRATION_2_3 = object : Migration(2, 3) {
             override suspend fun migrate(connection: SQLiteConnection) {
@@ -219,6 +221,32 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** Queued notification/SMS text for the on-device parser, with its source and app name. */
+        private val MIGRATION_15_16 = object : Migration(15, 16) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                val db = Sql.of(connection)
+                db.exec("ALTER TABLE unrecognized_sms ADD COLUMN source TEXT NOT NULL DEFAULT 'sms'")
+                db.exec("ALTER TABLE unrecognized_sms ADD COLUMN senderName TEXT")
+                db.exec("ALTER TABLE unrecognized_sms ADD COLUMN aiAttempted INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** Learned merchant renames ("SWIGGY LTD" → "Swiggy"), synced like merchant_mappings. */
+        private val MIGRATION_16_17 = object : Migration(16, 17) {
+            override suspend fun migrate(connection: SQLiteConnection) {
+                val db = Sql.of(connection)
+                db.exec(
+                    "CREATE TABLE IF NOT EXISTS `merchant_renames` (" +
+                        "`rawName` TEXT NOT NULL, `displayName` TEXT NOT NULL, " +
+                        "`createdAt` TEXT NOT NULL, `updatedAt` TEXT NOT NULL, " +
+                        "`syncId` TEXT, `syncStamp` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`rawName`))"
+                )
+                db.exec(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_merchant_renames_syncId` ON `merchant_renames` (`syncId`)"
+                )
+            }
+        }
+
         internal val MIGRATIONS: Array<Migration>
             get() = arrayOf(
                 MIGRATION_2_3,
@@ -233,7 +261,9 @@ abstract class AppDatabase : RoomDatabase() {
                 MIGRATION_11_12,
                 MIGRATION_12_13,
                 MIGRATION_13_14,
-                MIGRATION_14_15
+                MIGRATION_14_15,
+                MIGRATION_15_16,
+                MIGRATION_16_17
             )
 
         /** Seeds a new database and keeps the sync triggers installed. Tests add it too. */

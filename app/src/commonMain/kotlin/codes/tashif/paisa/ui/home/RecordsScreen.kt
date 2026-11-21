@@ -291,7 +291,7 @@ fun RecordsScreen(viewModel: HomeViewModel = koinViewModel()) {
         )
         BulkSheet.DELETE -> BulkDeleteDialog(
             count = ids.size,
-            fromSms = selectedTxs.count { it.source == "sms" },
+            fromSms = selectedTxs.count { it.source == "sms" || it.source == "notification" },
             onConfirm = {
                 transactionViewModel.deleteTransactions(ids)
                 done()

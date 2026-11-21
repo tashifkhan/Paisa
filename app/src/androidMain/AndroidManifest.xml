@@ -2,6 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- ML Kit's GenAI AAR declares minSdk 26. Paisa keeps 24 and only
+         loads the engine on 26+, so phones on 24-25 keep every other feature. -->
+    <uses-sdk tools:overrideLibrary="com.google.mlkit.genai.prompt,com.google.mlkit.genai.common" />
+
     <!-- SMS: read inbox + real-time bank alerts -->
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
@@ -30,6 +34,39 @@
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />
+
+    <!-- So the notification settings can show which of these bank and UPI apps are installed.
+         Keep in step with NotificationApps in :notification-core. -->
+    <queries>
+        <!-- So the "Add app" picker can list installed bank and UPI apps. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <!-- Gemini Nano lives in AICore; without it, local AI is hidden. -->
+        <package android:name="com.google.android.aicore" />
+        <package android:name="com.avanza.ambitwizfbl" />
+        <package android:name="finansbank.enpara" />
+        <package android:name="com.enparabank.retail" />
+        <package android:name="indwin.c3.shareapp" />
+        <package android:name="com.chase.intl" />
+        <package android:name="com.avuscapital.trading212" />
+        <package android:name="com.huntington.m" />
+        <package android:name="com.bankfab.pbg.ae.dubaifirst" />
+        <package android:name="com.snapwork.hdfc" />
+        <package android:name="com.sbi.lotusintouch" />
+        <package android:name="com.csam.icici.bank.imobile" />
+        <package android:name="com.axis.mobile" />
+        <package android:name="com.msf.kbank.mobile" />
+        <package android:name="com.canarabank.mobility" />
+        <package android:name="com.google.android.apps.nbu.paisa.user" />
+        <package android:name="com.phonepe.app" />
+        <package android:name="net.one97.paytm" />
+        <package android:name="in.org.npci.upiapp" />
+        <package android:name="com.dreamplug.androidapp" />
+        <package android:name="com.fampay.in" />
+        <package android:name="com.mobikwik_new" />
+    </queries>
 
     <application
         android:name=".PaisaApplication"
@@ -96,6 +133,22 @@
                 <action android:name="android.provider.Telephony.SMS_RECEIVED" />
             </intent-filter>
         </receiver>
+
+        <!-- Reads payment notifications from bank and UPI apps (Google Pay, PhonePe...), only once
+             the user turns it on in settings and grants notification access. Other apps'
+             notifications are dropped unread; see NotificationApps in :notification-core. -->
+        <service
+            android:name=".notifications.PaymentNotificationListener"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.notification.default_filter_types"
+                android:value="alerting|silent" />
+        </service>
 
         <!-- Home screen widgets (Glance) -->
         <receiver

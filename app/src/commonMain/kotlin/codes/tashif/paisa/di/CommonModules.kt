@@ -16,6 +16,7 @@ import codes.tashif.paisa.ui.accounts.AccountsViewModel
 import codes.tashif.paisa.ui.ai.AiLadderViewModel
 import codes.tashif.paisa.ui.ai.AiProviderViewModel
 import codes.tashif.paisa.ui.ai.AiViewModel
+import codes.tashif.paisa.ui.ai.LocalAiViewModel
 import codes.tashif.paisa.ui.analytics.AnalyticsViewModel
 import codes.tashif.paisa.ui.app.AppViewModel
 import codes.tashif.paisa.ui.backup.BackupViewModel
@@ -26,6 +27,9 @@ import codes.tashif.paisa.ui.onboarding.OnboardingViewModel
 import codes.tashif.paisa.ui.categories.CategoriesViewModel
 import codes.tashif.paisa.ui.settings.SettingsViewModel
 import codes.tashif.paisa.ui.sms.SmsViewModel
+import codes.tashif.paisa.ui.notifications.NotificationImportViewModel
+import codes.tashif.paisa.ui.notifications.AccountApprovalViewModel
+import codes.tashif.paisa.notifications.AccountApproval
 import codes.tashif.paisa.ui.statement.StatementImportViewModel
 import codes.tashif.paisa.ui.quickadd.AiAddViewModel
 import codes.tashif.paisa.ai.BillScanService
@@ -55,6 +59,7 @@ val daoModule = module {
     single { get<AppDatabase>().settingsDao() }
     single { get<AppDatabase>().unrecognizedSmsDao() }
     single { get<AppDatabase>().merchantMappingDao() }
+    single { get<AppDatabase>().merchantRenameDao() }
     single { get<AppDatabase>().debtDao() }
 }
 
@@ -72,6 +77,8 @@ val coreModule = module {
     singleOf(::SettingsRepository)
     singleOf(::SmsInboxRepository)
     singleOf(::TransactionRepository)
+    // Needs NotificationImportService, which each platform binds.
+    singleOf(::AccountApproval)
 }
 
 /** The AI services. Each platform binds the stores, the cache and the notifier. */
@@ -103,11 +110,14 @@ val viewModelModule = module {
     viewModelOf(::SettingsViewModel)
     viewModelOf(::CategoriesViewModel)
     viewModelOf(::SmsViewModel)
+    viewModelOf(::NotificationImportViewModel)
+    viewModelOf(::AccountApprovalViewModel)
     viewModelOf(::StatementImportViewModel)
     viewModelOf(::BackupViewModel)
     viewModelOf(::AiViewModel)
     viewModelOf(::AiProviderViewModel)
     viewModelOf(::AiLadderViewModel)
+    viewModelOf(::LocalAiViewModel)
 }
 
 /** Backup and sync. Each platform binds BackupPrefs, CloudPlatform and BackupServiceHooks. */
