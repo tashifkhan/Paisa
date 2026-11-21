@@ -2,6 +2,14 @@
 
 Every Paisa release, newest first. Each version's APK is on the [releases page](https://github.com/tashifkhan/Paisa/releases) and in the F-Droid repo at `https://tashif.codes/fdroid/repo`.
 
+## 1.7.7
+
+A fix for the review step in Add with AI.
+
+### Add with AI
+
+- After the AI drafts transactions, each row's note is the Markdown description field from the add sheet, not a one-line text box. Lists, bold and headings now show while you edit, and longer notes have room.
+
 ## 1.7.6
 
 Share files to Paisa, read Excel statements, and switch AI off entirely.
