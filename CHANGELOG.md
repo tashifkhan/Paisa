@@ -2,6 +2,49 @@
 
 Every Paisa release, newest first. Each version's APK is on the [releases page](https://github.com/tashifkhan/Paisa/releases) and in the F-Droid repo at `https://tashif.codes/fdroid/repo`.
 
+## 1.8.0
+
+Payment app notifications, Gemini Nano on the phone, AI for messages the rules can't read, account links for UPI apps, and merchant renames.
+
+### Payment notifications
+
+- More → Payment notifications reads payment alerts from bank and UPI apps. It ships with 14 bank apps, including HDFC, SBI YONO, ICICI iMobile, Axis, Kotak and Canara ai1, and 7 UPI apps: Google Pay, PhonePe, Paytm, BHIM, CRED, FamApp and MobiKwik. "Add a bank or UPI app" adds any other installed app.
+- Only the apps switched on are read. Other apps' notifications are dropped before their text is touched, and turning the feature off disconnects Paisa from notifications.
+- Alerts like "₹250 paid to Swiggy", "+₹500", "Arjun sent you ₹500" and "Rs 500 debited" are read. Offers, cashback, reminders, payment requests, failures, OTPs and balance alerts are skipped.
+- A payment that arrives as a UPI app alert, a bank SMS and a bank app alert is saved once. When the bank's message comes second, its account and balance are added to the row the app created.
+- Notification rows show as Notification in history, filters and details.
+- Android 15 hides the text of some alerts from apps like Paisa. Those are skipped, and the bank SMS still brings the payment in.
+
+### Which account paid
+
+- Paisa picks the account for an app's payment by the account digits in the alert, then the app's default account, then your only matching account.
+- When it can't tell, it asks "Which account was this?". Pick from the alert, from the transaction, or from the list on the Payment notifications screen. "Always use" remembers the account for that app and moves its other waiting payments.
+- Each app's row shows its account. Tap it to change the default or remove account links.
+- You can change the account of a transaction that came from a notification.
+
+### Unclear messages
+
+- When the rules can't read an SMS or alert, Payment notifications → Unclear messages chooses who tries: Off, On-device or Cloud.
+- On-device uses Gemini Nano and nothing leaves the phone. It only runs while Paisa is open, so a message that arrives in the background waits and Paisa posts "Payment waiting for AI". Tap it, or open Paisa, to read it.
+- Cloud uses the new "SMS and alerts" service under AI, works on every phone and in the background, and shows a warning that the message text goes to your provider, is slower and may cost money.
+- The model can't invent an amount: it has to appear in the message. Messages it says aren't payments stay out of your history.
+
+### Local AI
+
+- AI → Use local AI runs Gemini Nano on the phone with no key and no network. It reads notes, receipts and statement text, one image at a time. PDFs and voice notes still go to cloud models in the ladder.
+- The Local AI screen shows whether the phone supports it, downloads the model, and has a test button.
+- Works on Pixel 9 and newer, Galaxy S25 and newer, and recent OnePlus, Xiaomi, OPPO and vivo flagships. On other phones the option is greyed out and explains why.
+
+### Merchant rules
+
+- Rename an imported transaction and turn on "Always rename". Past rows are renamed, and future SMS, notifications and statements use the new name.
+- More → Merchant rules lists renames and category rules. Renames sync and back up with the rest of your data.
+
+### Fixes
+
+- Tapping a "New transaction" notification opens that transaction. Before, it only opened the app.
+- Android 7 no longer crashes when a scan, import or Excel statement posts a notification or reads a date.
+
 ## 1.7.7
 
 A fix for the review step in Add with AI.
