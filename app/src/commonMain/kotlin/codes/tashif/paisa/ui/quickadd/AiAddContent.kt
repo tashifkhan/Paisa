@@ -3,6 +3,7 @@ package codes.tashif.paisa.ui.quickadd
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TextField
+import codes.tashif.paisa.ui.components.markdown.MarkdownField
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
@@ -657,12 +658,13 @@ private fun DraftCard(
                         modifier = Modifier.weight(0.58f)
                     )
                 }
-                OutlinedTextField(
+                MarkdownField(
                     value = row.note,
                     onValueChange = { onUpdate(row.copy(note = it)) },
-                    label = { Text("Note") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    label = "Description",
+                    placeholder = "Optional",
+                    alwaysOpen = true,
+                    minHeight = 48.dp
                 )
                 AddDateTimeRow(
                     dateLabel = dateLabel(row.date),
