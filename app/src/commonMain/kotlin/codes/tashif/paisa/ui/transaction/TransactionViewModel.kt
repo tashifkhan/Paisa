@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ui.transaction
 
+import codes.tashif.paisa.notifications.UNASSIGNED_ACCOUNT_TYPE
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import codes.tashif.paisa.core.AppNavigator
@@ -29,7 +30,7 @@ import kotlinx.coroutines.launch
 
 /** Adding, editing, deleting and linking transactions, for the add sheet and the detail screen. */
 class TransactionViewModel(
-    accountRepository: AccountRepository,
+    private val accountRepository: AccountRepository,
     private val categoryRepository: CategoryRepository,
     private val transactionRepository: TransactionRepository,
     private val debtRepository: DebtRepository,
@@ -256,7 +257,8 @@ class TransactionViewModel(
         rememberMerchant: Boolean,
         amount: Double? = null,
         transactionDate: String? = null,
-        accountId: Int? = null
+        accountId: Int? = null,
+        rememberRename: Boolean = false
     ) {
         viewModelScope.launch {
             val raw = transactionRepository.getRawTransactionById(transactionId) ?: return@launch
@@ -277,7 +279,17 @@ class TransactionViewModel(
                     updatedAt = nowIso()
                 )
             )
+            // Moved off an app's holding account: drop it once nothing waits there.
+            if (newAccountId != raw.accountId) {
+                accountRepository.getAccountById(raw.accountId)
+                    ?.takeIf { it.type == UNASSIGNED_ACCOUNT_TYPE }
+                    ?.let { accountRepository.deleteAccount(it) }
+            }
             val merchant = newTitle.orEmpty()
+            val oldName = raw.merchantName?.trim().orEmpty()
+            val renamed = rememberRename && merchant.isNotEmpty() && oldName.isNotEmpty() && oldName != merchant
+            // The rename first, so past rows carry the new name before the category rule matches it.
+            if (renamed) categoryRepository.saveMerchantRename(oldName, merchant, applyToPast = true)
             if (rememberMerchant && merchant.isNotEmpty() && cat != null) {
                 categoryRepository.saveMerchantMapping(
                     merchantName = merchant,
@@ -285,10 +297,17 @@ class TransactionViewModel(
                     categoryType = cat.type,
                     applyToPast = true
                 )
-                showSnackbar("Saved · always use ${cat.name} for $merchant")
-            } else {
-                showSnackbar("Transaction updated")
             }
+            showSnackbar(
+                when {
+                    renamed && rememberMerchant && cat != null ->
+                        "Saved · $oldName is now always $merchant, in ${cat.name}"
+                    renamed -> "Saved · $oldName is now always $merchant"
+                    rememberMerchant && merchant.isNotEmpty() && cat != null ->
+                        "Saved · always use ${cat.name} for $merchant"
+                    else -> "Transaction updated"
+                }
+            )
         }
     }
 }

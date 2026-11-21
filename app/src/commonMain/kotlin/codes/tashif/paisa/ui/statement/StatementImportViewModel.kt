@@ -97,7 +97,8 @@ class StatementImportViewModel(
                 !ladderRunner.canRun(AiService.STATEMENT_PHOTOS)
             ) {
                 _statementUiState.value = StatementUiState.Error(
-                    "Add a model and save its key in AI settings first."
+                    "Add a model in AI settings first. Cloud models need a key; local AI needs " +
+                        "Gemini Nano downloaded on this phone."
                 )
                 return@launch
             }
@@ -161,7 +162,9 @@ class StatementImportViewModel(
      * captured earlier from SMS).
      */
     private suspend fun enrich(rows: List<ExtractedTransaction>): List<ExtractedTransaction> =
-        rows.map { row ->
+        rows.map { extracted ->
+            // The user's merchant renames first, so the preview shows the name that gets saved.
+            val row = extracted.copy(merchant = categoriesRepository.displayNameFor(extracted.merchant))
             val withCategory = if (row.categoryName.isNullOrBlank()) {
                 val name = categoriesRepository.resolveCategoryName(row.merchant, row.type)
                 row.copy(categoryName = name)
@@ -181,6 +184,7 @@ class StatementImportViewModel(
             if (existing != null) {
                 val sourceLabel = when (existing.source) {
                     "sms" -> "SMS entry"
+                    "notification" -> "notification entry"
                     "statement" -> "earlier import"
                     else -> "manual entry"
                 }

@@ -80,6 +80,11 @@ object SyncSchema {
             pk = "merchantName",
             natural = { r -> "'mm:' || lower(${r}merchantName)" }
         ),
+        Table(
+            "merchant_renames",
+            pk = "rawName",
+            natural = { r -> "'mr:' || lower(${r}rawName)" }
+        ),
         // Two devices that add the same name get one person, not two.
         Table("debt_people", natural = { r -> "'person:' || lower(${r}name)" }),
         Table("debt_entries", fks = mapOf("personId" to "debt_people"))
