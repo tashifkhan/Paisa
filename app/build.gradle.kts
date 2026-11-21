@@ -164,8 +164,8 @@ android {
         applicationId = "codes.tashif.paisa"
         minSdk = 24
         targetSdk = 35
-        versionCode = 18
-        versionName = "1.7.7"
+        versionCode = 19
+        versionName = "1.8.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
