@@ -1,8 +1,6 @@
 package codes.tashif.paisa.statement
 
 import java.io.InputStream
-import java.time.LocalDate
-import java.time.LocalDateTime
 import java.util.zip.ZipInputStream
 import javax.xml.parsers.SAXParserFactory
 import org.xml.sax.Attributes
@@ -215,10 +213,23 @@ object XlsxText {
         if (serial < 1 || serial > 2_958_465) return null
         val days = serial.toLong()
         val minutes = Math.round((serial - days) * 24 * 60).toInt()
-        val date = LocalDate.of(1899, 12, 30).plusDays(days)
-        if (minutes == 0) return date.toString()
-        val time = LocalDateTime.of(date, java.time.LocalTime.MIDNIGHT).plusMinutes(minutes.toLong())
-        return "%s %02d:%02d".format(time.toLocalDate(), time.hour, time.minute)
+        // Calendar in UTC rather than java.time, which needs Android 8 without desugaring.
+        val at = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+            clear()
+            set(1899, java.util.Calendar.DECEMBER, 30)
+            add(java.util.Calendar.DAY_OF_MONTH, days.toInt())
+            add(java.util.Calendar.MINUTE, minutes)
+        }
+        val date = "%04d-%02d-%02d".format(
+            java.util.Locale.US,
+            at.get(java.util.Calendar.YEAR),
+            at.get(java.util.Calendar.MONTH) + 1,
+            at.get(java.util.Calendar.DAY_OF_MONTH)
+        )
+        if (minutes == 0) return date
+        return "%s %02d:%02d".format(
+            java.util.Locale.US, date, at.get(java.util.Calendar.HOUR_OF_DAY), at.get(java.util.Calendar.MINUTE)
+        )
     }
 
     private fun plainNumber(number: Double): String =
