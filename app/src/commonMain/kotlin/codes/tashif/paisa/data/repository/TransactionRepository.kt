@@ -40,6 +40,25 @@ class TransactionRepository(
     suspend fun getTransactionByHash(hash: String): Transaction? =
         transactionDao.getTransactionByHash(hash)
 
+    /** Imported payments waiting on an app's holding account for the user to pick the real one. */
+    val awaitingAccount: Flow<List<Transaction>> = transactionDao.getAwaitingAccount()
+
+    suspend fun awaitingAccountList(): List<Transaction> = transactionDao.getAwaitingAccountList()
+
+    /** Same type and amount (±0.01), dated between [fromIso] and [toIso], deleted rows included. */
+    suspend fun findChargeCandidates(
+        amount: Double,
+        type: String,
+        fromIso: String,
+        toIso: String
+    ): List<Transaction> = transactionDao.findChargeCandidates(
+        type = type,
+        amountLow = amount - 0.01,
+        amountHigh = amount + 0.01,
+        fromIso = fromIso,
+        toIso = toIso
+    )
+
     /**
      * Fuzzy match against already-logged transactions (SMS/manual/statement):
      * same type, same amount (±0.01), date within ±[windowDays] days — bank posting

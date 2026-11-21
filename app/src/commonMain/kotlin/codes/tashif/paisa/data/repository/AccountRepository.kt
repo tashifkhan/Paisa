@@ -20,6 +20,11 @@ class AccountRepository(private val db: AppDatabase) {
     suspend fun getAccountByBankAndLast4(bankName: String, accountLast4: String): Account? =
         accountDao.getAccountByBankAndLast4(bankName, accountLast4)
 
+    suspend fun getAccountsByLast4(accountLast4: String): List<Account> =
+        accountDao.getAccountsByLast4(accountLast4)
+
+    suspend fun getAllAccountsList(): List<Account> = accountDao.getAllAccountsList()
+
     suspend fun getAccountByBankName(bankName: String): Account? =
         accountDao.getAccountByBankName(bankName)
 
