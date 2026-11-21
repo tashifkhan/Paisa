@@ -90,6 +90,7 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(project(":parser-core"))
+            implementation(project(":notification-core"))
             implementation(libs.koin.android)
             implementation(libs.koin.androidx.workmanager)
             implementation(libs.koin.compose.viewmodel)
@@ -126,6 +127,8 @@ kotlin {
             implementation(libs.guava)
             // Google Drive backup sign-in (AuthorizationClient)
             implementation(libs.play.services.auth)
+            // On-device Gemini Nano through AICore. Guarded to Android 8+ at runtime.
+            implementation(libs.mlkit.genai.prompt)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
@@ -168,6 +171,15 @@ android {
     }
 
     buildTypes {
+        // -PpaisaSideBySide builds a debug copy that installs beside the real app
+        // (codes.tashif.paisa.audit, "Paisa Audit") with its own data, for testing on
+        // a phone that already has Paisa with real transactions.
+        debug {
+            if (providers.gradleProperty("paisaSideBySide").isPresent) {
+                applicationIdSuffix = ".audit"
+                versionNameSuffix = "-audit"
+            }
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -175,6 +187,9 @@ android {
                 "proguard-rules.pro"
             )
         }
+    }
+    if (providers.gradleProperty("paisaSideBySide").isPresent) {
+        sourceSets["debug"].res.srcDir("src/androidSideBySide/res")
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
