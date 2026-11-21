@@ -259,7 +259,10 @@ class QuickAddService(private val ladderRunner: AiLadderRunner) {
         if (text.isNotBlank()) {
             // A statement or spreadsheet can run to hundreds of rows. Long text
             // goes in parts, one call each, so nothing past the first part is lost.
-            val parts = StatementTextExtractor.chunkText(text, maxChars = MAX_TEXT_CHARS)
+            val parts = StatementTextExtractor.chunkText(
+                text,
+                maxChars = ladderRunner.textBudget(AiService.QUICK_ADD, MAX_TEXT_CHARS),
+            )
                 .take(MAX_TEXT_PARTS)
             return parts.mapIndexed { i, part ->
                 val where = if (parts.size > 1) " (part ${i + 1} of ${parts.size})" else ""

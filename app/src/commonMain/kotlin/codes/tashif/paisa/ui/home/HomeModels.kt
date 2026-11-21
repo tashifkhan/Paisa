@@ -28,6 +28,7 @@ enum class DatePreset(val label: String) {
 /** Where a transaction came from, as stored in `transactions.source`. */
 enum class TxSource(val id: String, val label: String) {
     SMS("sms", "SMS"),
+    NOTIFICATION("notification", "Notification"),
     MANUAL("manual", "Manual"),
     STATEMENT("statement", "Statement")
 }

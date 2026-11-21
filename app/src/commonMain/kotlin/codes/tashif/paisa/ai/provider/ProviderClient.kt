@@ -4,6 +4,8 @@ import codes.tashif.paisa.ai.LlmException
 import codes.tashif.paisa.ai.LlmFailure
 import codes.tashif.paisa.ai.json.JSONException
 import codes.tashif.paisa.ai.json.JSONObject
+import codes.tashif.paisa.ai.local.LocalAiEngine
+import codes.tashif.paisa.ai.local.UnsupportedLocalAiEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.network.sockets.ConnectTimeoutException
@@ -36,22 +38,30 @@ fun interface ModelCaller {
  * Sends one call to one model over Ktor. A 429 or 5xx gets at most one
  * retry on the same model, so a ladder moves on quickly.
  */
-class ProviderClient() : ModelCaller {
+class ProviderClient(
+    /** The on-device model, when this platform has one. */
+    private val localAi: LocalAiEngine = UnsupportedLocalAiEngine("On-device AI isn't available in this build."),
+) : ModelCaller {
 
     /** Tests swap this for a client built by [client] on a stub engine. */
     internal var http: HttpClient = client(aiHttpEngine())
 
     override suspend fun complete(call: LlmCall, request: LlmRequest): String {
-        BaseUrlSafety.check(call.baseUrl)
-        if (call.apiKey.isBlank()) throw LlmException("No key saved for ${call.provider.name}")
+        if (call.style != ApiStyle.LOCAL) {
+            BaseUrlSafety.check(call.baseUrl)
+            if (call.apiKey.isBlank()) throw LlmException("No key saved for ${call.provider.name}")
+        }
         var attempt = 0
         while (true) {
             try {
                 return completeOnce(call, request)
             } catch (e: LlmException) {
-                if (!e.retryable || attempt >= MAX_RETRIES) throw e
-                attempt++
-                delay(RETRY_DELAY_MS)
+                if (e.retryable && call.style != ApiStyle.LOCAL && attempt < MAX_RETRIES) {
+                    attempt++
+                    delay(RETRY_DELAY_MS)
+                    continue
+                }
+                throw e
             }
         }
     }
@@ -72,6 +82,7 @@ class ProviderClient() : ModelCaller {
             ApiStyle.ANTHROPIC -> AnthropicStyle.parse(execute(AnthropicStyle.build(call, request)).orThrow(call))
             ApiStyle.GEMINI -> GeminiStyle.parse(execute(GeminiStyle.build(call, request)).orThrow(call))
             ApiStyle.RELAYROOM -> RelayRoomStyle.parse(execute(RelayRoomStyle.build(call, request)).orThrow(call))
+            ApiStyle.LOCAL -> localAi.complete(request)
         }
 
     /** A GET with the provider's auth headers, for model listing. Returns the body. */

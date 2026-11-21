@@ -5,6 +5,7 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.CloudUpload
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.Rule
@@ -15,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import codes.tashif.paisa.core.AppTab
 import codes.tashif.paisa.data.Settings
+import codes.tashif.paisa.notifications.NotificationImportState
 import codes.tashif.paisa.ui.ai.AiSummary
 import codes.tashif.paisa.ui.app.icon
 import codes.tashif.paisa.ui.components.SettingsGroup
@@ -61,10 +63,13 @@ fun MoreImportSection(
     ai: AiSummary,
     aiEnabled: Boolean,
     onOpenSmsSetup: () -> Unit,
+    notifications: NotificationImportState,
+    onOpenNotificationImport: () -> Unit,
     onOpenStatementImport: () -> Unit
 ) {
     // Statement import only works through an AI model.
-    val count = if (aiEnabled) 2 else 1
+    val showNotifications = notifications.supported
+    val count = 1 + (if (showNotifications) 1 else 0) + (if (aiEnabled) 1 else 0)
     SettingsSectionLabel("Import")
     SettingsGroup {
         SettingsItem(
@@ -81,16 +86,31 @@ fun MoreImportSection(
             iconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             onClick = onOpenSmsSetup
         )
+        if (showNotifications) {
+            SettingsItem(
+                title = "Payment notifications",
+                subtitle = when {
+                    !notifications.enabled -> "Read Google Pay, PhonePe and bank app alerts"
+                    !notifications.hasAccess -> "On · notification access needed"
+                    else -> notifications.apps.count { it.enabled }.let { n -> "On · $n app${if (n == 1) "" else "s"}" }
+                },
+                icon = Icons.Rounded.NotificationsActive,
+                position = groupPositionOf(1, count),
+                iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                iconContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                onClick = onOpenNotificationImport
+            )
+        }
         if (aiEnabled) {
             SettingsItem(
                 title = "Import statement",
                 subtitle = if (ai.ready) {
                     "PDF/CSV via ${ai.providerName}"
                 } else {
-                    "Upload bank statement with your AI key"
+                    "Upload a statement with a model you set up"
                 },
                 icon = Icons.Rounded.UploadFile,
-                position = groupPositionOf(1, count),
+                position = groupPositionOf(count - 1, count),
                 iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
                 iconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 onClick = onOpenStatementImport
@@ -149,7 +169,7 @@ fun MoreIntelligenceSection(
             subtitle = when {
                 !aiEnabled -> "Off"
                 ai.ready -> "${ai.modelName} · ${ai.providerName}"
-                else -> "Providers, models and fallbacks"
+                else -> "Models, keys and fallbacks"
             },
             icon = Icons.Rounded.AutoAwesome,
             position = groupPositionOf(0, 2),
@@ -160,7 +180,7 @@ fun MoreIntelligenceSection(
         SettingsItem(
             title = "Merchant rules",
             subtitle = if (merchantRuleCount == 0) {
-                "Learned merchant → category mappings"
+                "Renames and categories you set"
             } else {
                 "$merchantRuleCount saved rule${if (merchantRuleCount == 1) "" else "s"}"
             },

@@ -44,7 +44,7 @@ data class PickerGroup(val providerId: String, val providerName: String, val mod
  * to read images are left out; unknown ones stay, since the runner tries them.
  */
 fun pickerGroups(providers: List<ProviderStatus>, catalog: CatalogState, needsImage: Boolean): List<PickerGroup> =
-    providers.filter { it.hasKey }.map { status ->
+    providers.filter { it.ready }.map { status ->
         val models = catalog.models[status.info.id].orEmpty()
         PickerGroup(
             status.info.id,

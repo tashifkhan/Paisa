@@ -42,7 +42,7 @@ class StatementImportUseCase(
             }
 
             val type = if (row.type.equals("income", ignoreCase = true)) "income" else "expense"
-            val merchant = row.merchant.ifBlank { "Unknown Merchant" }
+            val merchant = categoryRepository.displayNameFor(row.merchant).ifBlank { "Unknown Merchant" }
             val categoryName = row.categoryName?.takeIf { it.isNotBlank() }
                 ?: categoryRepository.resolveCategoryName(merchant, type)
             val categoryId = categoryRepository.findOrCreateCategory(categoryName, type)

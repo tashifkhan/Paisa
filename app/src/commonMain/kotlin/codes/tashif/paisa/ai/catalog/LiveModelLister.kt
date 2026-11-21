@@ -32,6 +32,7 @@ class LiveModelLister(
                 LiveModelParsers.gemini(get(url, GeminiStyle.headers(apiKey)))
             }
             ApiStyle.RELAYROOM -> relayRoom(base, apiKey)
+            ApiStyle.LOCAL -> throw IllegalStateException("On-device models aren't listed from a server")
         }
     }
 

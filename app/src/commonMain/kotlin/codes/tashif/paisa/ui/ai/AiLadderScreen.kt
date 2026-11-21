@@ -76,7 +76,7 @@ fun AiLadderScreen(
             )
             if (usesDefault) {
                 Spacer(Modifier.height(MaterialTheme.spacing.small))
-                NoteCard("Uses the default ladder. Any change here gives ${service?.label} its own ladder.")
+                NoteCard("Uses the default ladder. Any change here gives ${service.label} its own ladder.")
             }
             SettingsSectionLabel(if (rows.isEmpty()) "Models" else "Models · ${rows.size}")
             if (rows.isEmpty()) {
@@ -152,7 +152,9 @@ private fun rungRow(
     }
     val warning = when {
         status == null -> "Its provider was removed. This step is skipped."
-        !status.hasKey -> "No key saved for ${status.info.name}. This step is skipped."
+        status.info.local && status.local?.ready != true ->
+            "${status.local?.skipReason ?: "On-device AI isn't ready"}. This step is skipped."
+        !status.info.local && !status.hasKey -> "No key saved for ${status.info.name}. This step is skipped."
         service?.needsImage == true && model?.acceptsImage == false -> "Doesn't read images. Skipped for photos."
         else -> null
     }

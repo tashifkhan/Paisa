@@ -100,8 +100,8 @@ internal fun FilterChipRow(
             }
         }
         if (filters.sources.isEmpty()) {
-            QuickChip("From SMS", Icons.Rounded.Sms) {
-                onFiltersChange(filters.copy(sources = setOf(TxSource.SMS.id)))
+            QuickChip("From SMS or apps", Icons.Rounded.Sms) {
+                onFiltersChange(filters.copy(sources = setOf(TxSource.SMS.id, TxSource.NOTIFICATION.id)))
             }
         }
 

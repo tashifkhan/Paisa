@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import codes.tashif.paisa.core.SnackbarManager
 import codes.tashif.paisa.data.Category
 import codes.tashif.paisa.data.MerchantMapping
+import codes.tashif.paisa.data.MerchantRename
 import codes.tashif.paisa.data.repository.CategoryRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -21,6 +22,9 @@ class CategoriesViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val merchantMappings: StateFlow<List<MerchantMapping>> = categoriesRepository.allMerchantMappings
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val merchantRenames: StateFlow<List<MerchantRename>> = categoriesRepository.allMerchantRenames
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** [onAdded] gets the new category's id, so a picker can select it. */
@@ -70,6 +74,14 @@ class CategoriesViewModel(
         viewModelScope.launch {
             categoriesRepository.deleteMerchantMapping(merchantName)
             snackbarManager.show("Removed mapping")
+        }
+    }
+
+    /** Stops renaming future rows. Rows already renamed keep their new name. */
+    fun deleteMerchantRename(rawName: String) {
+        viewModelScope.launch {
+            categoriesRepository.deleteMerchantRename(rawName)
+            snackbarManager.show("Removed rename")
         }
     }
 }

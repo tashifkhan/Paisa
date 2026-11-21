@@ -37,6 +37,7 @@ exifinterface = "1.4.1"
 camerax = "1.6.0"
 guava = "33.3.1-android"
 playServicesAuth = "21.3.0"
+mlkitGenaiPrompt = "1.0.0-beta4"
 koin = "4.2.2"
 kotlinxIo = "0.9.2"
 cmpMaterial3 = "1.11.0-alpha07"
@@ -98,6 +99,7 @@ androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycl
 androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
 guava = { group = "com.google.guava", name = "guava", version.ref = "guava" }
 play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }
+mlkit-genai-prompt = { group = "com.google.mlkit", name = "genai-prompt", version.ref = "mlkitGenaiPrompt" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 kotlinx-io-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-io-core", version.ref = "kotlinxIo" }
 cmp-material3 = { group = "org.jetbrains.compose.material3", name = "material3", version.ref = "cmpMaterial3" }

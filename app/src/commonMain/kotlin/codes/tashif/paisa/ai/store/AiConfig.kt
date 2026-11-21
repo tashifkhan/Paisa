@@ -22,7 +22,24 @@ data class AiConfig(
     val manualModels: Map<String, List<String>> = emptyMap(),
     /** The old single-provider settings were moved over. */
     val legacyMigrated: Boolean = false,
+    /** Which model, if any, reads SMS and app notifications the rules can't. */
+    val messageReader: MessageReaderMode = MessageReaderMode.OFF,
 )
+
+/** Who reads a bank SMS or payment alert that the rules couldn't. */
+enum class MessageReaderMode(val id: String) {
+    OFF("off"),
+
+    /** Gemini Nano on this phone. Nothing leaves the device. */
+    ON_DEVICE("on_device"),
+
+    /** The "SMS and alerts" ladder, without on-device rungs. The message text goes to the provider. */
+    CLOUD("cloud");
+
+    companion object {
+        fun fromId(id: String?): MessageReaderMode? = entries.firstOrNull { it.id == id }
+    }
+}
 
 object AiConfigCodec {
     private const val VERSION = 1
@@ -51,6 +68,7 @@ object AiConfigCodec {
             .put("ladders", ladders)
             .put("manualModels", manual)
             .put("legacyMigrated", config.legacyMigrated)
+            .put("messageReader", config.messageReader.id)
             .toString()
     }
 
@@ -84,6 +102,9 @@ object AiConfigCodec {
             serviceLadders = serviceLadders,
             manualModels = manual,
             legacyMigrated = root.optBoolean("legacyMigrated", false),
+            // Before the cloud option, this was an on-device on/off switch.
+            messageReader = MessageReaderMode.fromId(root.optString("messageReader").takeIf { it.isNotEmpty() })
+                ?: if (root.optBoolean("localParser", false)) MessageReaderMode.ON_DEVICE else MessageReaderMode.OFF,
         )
     }
 

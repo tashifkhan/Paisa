@@ -122,4 +122,12 @@ class XlsxTextTest {
         assertEquals("2026-11-05\tNEFT-ACME CORP SALARY\tN88\t\t85000\t110348", lines[3])
         assertEquals(6, lines.size)
     }
+
+    @Test
+    fun excelSerialsBecomeDates() {
+        org.junit.Assert.assertEquals("2023-03-15", XlsxText.serialToDate(45000.0))
+        org.junit.Assert.assertEquals("2023-03-15 12:00", XlsxText.serialToDate(45000.5))
+        org.junit.Assert.assertEquals("1900-03-01", XlsxText.serialToDate(61.0))
+        org.junit.Assert.assertNull(XlsxText.serialToDate(0.5))
+    }
 }

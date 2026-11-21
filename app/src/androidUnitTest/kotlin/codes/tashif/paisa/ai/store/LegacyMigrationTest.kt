@@ -1,5 +1,6 @@
 package codes.tashif.paisa.ai.store
 
+import codes.tashif.paisa.ai.store.MessageReaderMode
 import codes.tashif.paisa.ai.AiCredentials
 import codes.tashif.paisa.ai.AiProvider
 import codes.tashif.paisa.ai.ladder.AiService
@@ -115,8 +116,12 @@ class LegacyMigrationTest {
             serviceLadders = mapOf(AiService.STATEMENT_PHOTOS to listOf(Rung("google", "gemini-3.6-flash", ThinkingLevel.MINIMAL))),
             manualModels = mapOf("custom-x" to listOf("m1", "m2")),
             legacyMigrated = true,
+            messageReader = MessageReaderMode.CLOUD,
         )
         assertEquals(config, AiConfigCodec.decode(AiConfigCodec.encode(config)))
+        // The old on/off switch for on-device parsing carries over.
+        assertEquals(MessageReaderMode.ON_DEVICE, AiConfigCodec.decode("""{"version":1,"localParser":true}""").messageReader)
+        assertEquals(MessageReaderMode.OFF, AiConfigCodec.decode("""{"version":1}""").messageReader)
         assertEquals(AiConfig(), AiConfigCodec.decode("{broken"))
         assertEquals(AiConfig(), AiConfigCodec.decode(null))
     }

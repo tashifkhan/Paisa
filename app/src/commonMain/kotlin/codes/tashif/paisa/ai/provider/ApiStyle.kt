@@ -5,13 +5,16 @@ enum class ApiStyle(val id: String, val label: String) {
     OPENAI("openai", "OpenAI-compatible"),
     ANTHROPIC("anthropic", "Anthropic-compatible"),
     GEMINI("gemini", "Gemini-compatible"),
-    RELAYROOM("relayroom", "RelayRoom");
+    RELAYROOM("relayroom", "RelayRoom"),
+
+    /** A model that runs on this device. No URL, no key, no network. */
+    LOCAL("local", "On-device");
 
     /** Whether this style can carry a PDF attachment as a file. */
-    val carriesPdf: Boolean get() = this != OPENAI
+    val carriesPdf: Boolean get() = this == GEMINI || this == ANTHROPIC || this == RELAYROOM
 
     /** Whether this style can carry a voice recording. Anthropic's API takes no audio. */
-    val carriesAudio: Boolean get() = this != ANTHROPIC
+    val carriesAudio: Boolean get() = this == OPENAI || this == GEMINI || this == RELAYROOM
 
     companion object {
         fun fromId(id: String?): ApiStyle? = entries.firstOrNull { it.id == id }

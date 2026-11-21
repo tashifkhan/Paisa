@@ -19,3 +19,9 @@ Third-party notice
 The :parser-core module (bank SMS parsers) is derived from PennyWise AI Tracker
 https://github.com/sarim2000/pennywiseai-tracker
 and remains licensed under AGPL-3.0. See parser-core/NOTICE and parser-core/LICENSE.
+
+The :notification-core module (bank and UPI app notification parsing, cross-channel
+deduplication) is derived from PennyWise AI Tracker and Leftovers
+https://github.com/saisaharsh3/Leftovers, and remains licensed under AGPL-3.0,
+with the MIT-licensed parts noted in notification-core/NOTICE.
+See notification-core/LICENSE.

@@ -3,6 +3,7 @@ package codes.tashif.paisa.data.repository
 import codes.tashif.paisa.data.AppDatabase
 import codes.tashif.paisa.data.Category
 import codes.tashif.paisa.data.MerchantMapping
+import codes.tashif.paisa.data.MerchantRename
 import codes.tashif.paisa.sms.CategoryMapping
 import kotlinx.coroutines.flow.Flow
 
@@ -12,6 +13,7 @@ class CategoryRepository(db: AppDatabase) {
     private val categoryDao = db.categoryDao()
     private val transactionDao = db.transactionDao()
     private val merchantMappingDao = db.merchantMappingDao()
+    private val merchantRenameDao = db.merchantRenameDao()
 
     // --- CATEGORIES ---
     val allCategories: Flow<List<Category>> = categoryDao.getAllCategories()
@@ -102,6 +104,46 @@ class CategoryRepository(db: AppDatabase) {
 
     suspend fun deleteMerchantMapping(merchantName: String) {
         merchantMappingDao.deleteByMerchant(merchantName)
+    }
+
+    // --- MERCHANT RENAMES ---
+    val allMerchantRenames: Flow<List<MerchantRename>> = merchantRenameDao.getAll()
+
+    /** The name to save for [merchantName]: the user's rename, or the name as it is. */
+    suspend fun displayNameFor(merchantName: String): String {
+        val name = merchantName.trim()
+        if (name.isEmpty()) return merchantName
+        return merchantRenameDao.find(name)?.displayName ?: name
+    }
+
+    /**
+     * Always save [rawName] as [displayName]. With [applyToPast], transactions
+     * already saved under [rawName] are renamed too. A rename back to the same
+     * name deletes the rule instead.
+     */
+    suspend fun saveMerchantRename(rawName: String, displayName: String, applyToPast: Boolean = true) {
+        val raw = rawName.trim()
+        val display = displayName.trim()
+        if (raw.isEmpty() || display.isEmpty()) return
+        if (raw.equals(display, ignoreCase = false)) {
+            merchantRenameDao.find(raw)?.let { merchantRenameDao.delete(it.rawName) }
+            return
+        }
+        val now = nowIso()
+        val existing = merchantRenameDao.find(raw)
+        merchantRenameDao.upsert(
+            MerchantRename(
+                rawName = existing?.rawName ?: raw,
+                displayName = display,
+                createdAt = existing?.createdAt ?: now,
+                updatedAt = now
+            )
+        )
+        if (applyToPast) merchantRenameDao.renameTransactions(raw, display, now)
+    }
+
+    suspend fun deleteMerchantRename(rawName: String) {
+        merchantRenameDao.delete(rawName)
     }
 
     /**

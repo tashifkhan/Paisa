@@ -16,6 +16,8 @@ data class AiProviderInfo(
     val custom: Boolean = false,
     /** Whether the settings screen shows a base URL field. */
     val baseUrlEditable: Boolean = true,
+    /** True for the model AICore runs on this device. It needs no key or URL. */
+    val local: Boolean = false,
     /**
      * Whether a compatible preset follows the API URL models.dev lists. Off
      * when that URL is wrong for keys made in the provider's own console.
@@ -33,6 +35,7 @@ object BuiltInProviders {
     const val GROQ = "groq"
     const val NVIDIA = "nvidia"
     const val OPENCODE = "opencode"
+    const val LOCAL = "local"
 
     /** The emulator's address for the host computer. A phone needs the computer's LAN address. */
     const val RELAYROOM_DEFAULT_URL = "http://10.0.2.2:8317/v1"
@@ -74,6 +77,10 @@ object BuiltInProviders {
         AiProviderInfo(
             OPENCODE, "OpenCode Zen", ApiStyle.OPENAI, OPENCODE_URL,
             modelsDevId = "opencode", followsModelsDevUrl = false
+        ),
+        AiProviderInfo(
+            LOCAL, "On-device", ApiStyle.LOCAL, "",
+            baseUrlEditable = false, local = true
         ),
     )
 

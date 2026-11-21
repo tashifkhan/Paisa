@@ -6,12 +6,16 @@ import codes.tashif.paisa.ai.AiRepository
 import codes.tashif.paisa.ai.CatalogState
 import codes.tashif.paisa.ai.ProviderStatus
 import codes.tashif.paisa.ai.ladder.LadderState
+import codes.tashif.paisa.ai.local.LocalAiStatus
 import codes.tashif.paisa.ai.provider.AiProviderInfo
 import codes.tashif.paisa.ai.provider.ApiStyle
 import codes.tashif.paisa.core.SnackbarManager
 import codes.tashif.paisa.data.repository.SettingsRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /** The AI overview: catalogue, services, the Default ladder, providers, and adding a custom provider. */
@@ -29,10 +33,27 @@ class AiViewModel(
     val providers: StateFlow<List<ProviderStatus>> = repository.providers
     val catalog: StateFlow<CatalogState> = repository.catalog
     val ladders: StateFlow<LadderState> = repository.ladders
+    val localStatus: StateFlow<LocalAiStatus> = repository.localStatus
+
+    /** True when the local model is in the Default ladder or a service's own ladder. */
+    val useLocalAi: StateFlow<Boolean> = repository.config
+        .map { codes.tashif.paisa.ai.local.LocalAiLadders.uses(it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, repository.usesLocalAi())
 
     /** Call when the AI screen opens. Refreshes only a stale catalogue. */
     fun onOpen() {
-        viewModelScope.launch { repository.refreshIfStale() }
+        viewModelScope.launch {
+            repository.refreshIfStale()
+            repository.refreshLocalAi()
+        }
+    }
+
+    fun setUseLocalAi(enabled: Boolean) {
+        viewModelScope.launch { repository.setUseLocalAi(enabled) }
+    }
+
+    fun refreshLocalAi() {
+        viewModelScope.launch { repository.refreshLocalAi() }
     }
 
     fun refreshCatalog() {

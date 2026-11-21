@@ -15,6 +15,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bookmark
+import androidx.compose.material.icons.rounded.DriveFileRenameOutline
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Schedule
@@ -132,7 +133,7 @@ internal fun DeleteTransactionDialog(
                     "This removes it from history and reverts its effect on the account balance."
                 } else {
                     "This removes it from history and reverts its effect on the account balance. " +
-                        "SMS rescans won’t re-import it."
+                        "Rescans and reposts won’t re-import it."
                 }
             )
         },
@@ -209,15 +210,28 @@ internal fun DetailToggles(
     merchantForMapping: String,
     fromSmsOrImport: Boolean,
     rememberMerchant: Boolean,
-    onRememberMerchantChange: (Boolean) -> Unit
+    onRememberMerchantChange: (Boolean) -> Unit,
+    renameFrom: String? = null,
+    rememberRename: Boolean = false,
+    onRememberRenameChange: (Boolean) -> Unit = {}
 ) {
+    if (renameFrom != null && merchantForMapping.isNotEmpty()) {
+        Spacer(Modifier.height(MaterialTheme.spacing.small))
+        SheetToggleCard(
+            icon = Icons.Rounded.DriveFileRenameOutline,
+            title = "Always rename “$renameFrom” to “$merchantForMapping”",
+            subtitle = "Past and future imports",
+            checked = rememberRename,
+            onCheckedChange = onRememberRenameChange
+        )
+    }
     if (merchantForMapping.isNotEmpty()) {
         Spacer(Modifier.height(MaterialTheme.spacing.small))
         SheetToggleCard(
             icon = Icons.Rounded.Bookmark,
             title = "Always use for “$merchantForMapping”",
             subtitle = if (fromSmsOrImport) {
-                "Future SMS and imports with this merchant get this category"
+                "Future SMS, notifications and imports with this merchant get this category"
             } else {
                 "Future transactions with this title get this category"
             },

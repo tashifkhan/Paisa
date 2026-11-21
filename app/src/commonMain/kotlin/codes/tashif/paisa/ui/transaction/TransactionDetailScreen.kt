@@ -5,6 +5,10 @@ import codes.tashif.paisa.platform.PaisaCalendar
 import codes.tashif.paisa.ui.platform.PlatformBackHandler
 import codes.tashif.paisa.platform.formatFixed
 import org.koin.compose.viewmodel.koinViewModel
+import codes.tashif.paisa.notifications.UNASSIGNED_ACCOUNT_TYPE
+import codes.tashif.paisa.ui.notifications.AccountApprovalViewModel
+import codes.tashif.paisa.ui.notifications.AwaitingAccountCard
+import codes.tashif.paisa.ui.notifications.ChooseAccountSheet
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -61,7 +65,8 @@ import codes.tashif.paisa.ui.theme.spacing
 fun TransactionDetailScreen(
     onBack: () -> Unit,
     viewModel: TransactionViewModel = koinViewModel(),
-    debtsViewModel: DebtsViewModel = koinViewModel()
+    debtsViewModel: DebtsViewModel = koinViewModel(),
+    approvalViewModel: AccountApprovalViewModel = koinViewModel()
 ) {
     val transactions by viewModel.transactions.collectAsState()
     val selectedId by viewModel.selectedTransactionId.collectAsState()
@@ -72,6 +77,9 @@ fun TransactionDetailScreen(
     val settings by viewModel.settings.collectAsState()
     val currency = settings?.currency ?: "₹"
     val haptics = rememberHaptics()
+    val awaiting by approvalViewModel.awaiting.collectAsState()
+    val accountChoices by approvalViewModel.choices.collectAsState()
+    var choosingAccount by remember { mutableStateOf(false) }
 
 
     val current = transactions.firstOrNull { it.id == selectedId }
@@ -85,8 +93,11 @@ fun TransactionDetailScreen(
     }
 
     val isManual = current.source == "manual"
-    val isSms = current.source == "sms"
+    // A notification keeps its text in smsBody too, so it shows and behaves like an SMS.
+    val isSms = current.source == "sms" || current.source == "notification"
     val isStatement = current.source == "statement"
+    // A UPI or bank app may not name the account, so its rows can move to another one.
+    val accountEditable = isManual || current.source == "notification"
 
     var selectedCategoryId by remember(current.id, current.categoryId) {
         mutableIntStateOf(current.categoryId)
@@ -95,6 +106,7 @@ fun TransactionDetailScreen(
         mutableIntStateOf(current.accountId)
     }
     var rememberMerchant by remember(current.id) { mutableStateOf(false) }
+    var rememberRename by remember(current.id) { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var editing by remember(current.id) { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -140,6 +152,7 @@ fun TransactionDetailScreen(
 
     val sourceLabel = when (current.source) {
         "sms" -> "SMS"
+        "notification" -> "Notification"
         "statement" -> "Statement"
         else -> "Manual"
     }
@@ -165,9 +178,12 @@ fun TransactionDetailScreen(
         note.trim() != current.note ||
         (isManual && parsedAmount != null && kotlin.math.abs(parsedAmount - current.amount) > 0.0001) ||
         (isManual && editedDateKey != storedDateKey) ||
-        (isManual && selectedAccountId != current.accountId)
+        (accountEditable && selectedAccountId != current.accountId)
     val categoryChanged = selectedCategoryId != current.categoryId
     val merchantForMapping = title.trim().ifBlank { current.merchantName?.trim().orEmpty() }
+    // An imported name the user corrected ("SWIGGY LTD" → "Swiggy") can become a rule.
+    val renameFrom = current.merchantName?.trim()
+        ?.takeIf { (isSms || isStatement) && it.isNotEmpty() && title.trim().isNotEmpty() && it != title.trim() }
     val canSave = detailsChanged || categoryChanged ||
         (rememberMerchant && merchantForMapping.isNotEmpty())
 
@@ -178,6 +194,7 @@ fun TransactionDetailScreen(
         selectedCategoryId = current.categoryId
         selectedAccountId = current.accountId
         rememberMerchant = false
+        rememberRename = false
         year = initialCal.get(PaisaCalendar.YEAR)
         month = initialCal.get(PaisaCalendar.MONTH)
         day = initialCal.get(PaisaCalendar.DAY_OF_MONTH)
@@ -238,6 +255,22 @@ fun TransactionDetailScreen(
                         amount = current.amount
                     )
 
+                    awaiting.firstOrNull { it.transaction.id == current.id }?.let { item ->
+                        AwaitingAccountCard(item = item, onChoose = { choosingAccount = true })
+                        if (choosingAccount) {
+                            ChooseAccountSheet(
+                                item = item,
+                                accounts = accountChoices,
+                                currency = currency,
+                                onChoose = { account, always ->
+                                    approvalViewModel.assign(item, account, always)
+                                    choosingAccount = false
+                                },
+                                onDismiss = { choosingAccount = false }
+                            )
+                        }
+                    }
+
                     DescriptionCard(note = current.note, onClick = startEditing)
 
                     TransactionDetailsCard(rows = detailRows, onClick = startEditing)
@@ -245,7 +278,8 @@ fun TransactionDetailScreen(
                     if (isSms && !current.smsBody.isNullOrBlank()) {
                         SmsMessageCard(
                             body = current.smsBody,
-                            sender = current.smsSender,
+                            sender = if (current.source == "notification") current.bankName else current.smsSender,
+                            isNotification = current.source == "notification",
                             expanded = smsExpanded,
                             onToggle = { smsExpanded = !smsExpanded }
                         )
@@ -333,8 +367,10 @@ fun TransactionDetailScreen(
                             onPickDate = { showDatePicker = true },
                             onPickTime = { showTimePicker = true }
                         )
+                    }
+                    if (accountEditable) {
                         AccountPicker(
-                            accounts = accounts,
+                            accounts = accounts.filter { it.type != UNASSIGNED_ACCOUNT_TYPE || it.id == current.accountId },
                             selectedId = selectedAccountId,
                             onSelect = { selectedAccountId = it }
                         )
@@ -344,7 +380,10 @@ fun TransactionDetailScreen(
                         merchantForMapping = merchantForMapping,
                         fromSmsOrImport = isSms || isStatement,
                         rememberMerchant = rememberMerchant,
-                        onRememberMerchantChange = { rememberMerchant = it }
+                        onRememberMerchantChange = { rememberMerchant = it },
+                        renameFrom = renameFrom,
+                        rememberRename = rememberRename,
+                        onRememberRenameChange = { rememberRename = it }
                     )
                 }
 
@@ -383,7 +422,8 @@ fun TransactionDetailScreen(
                                     rememberMerchant = rememberMerchant && merchantForMapping.isNotEmpty(),
                                     amount = if (isManual) parsedAmount else null,
                                     transactionDate = if (isManual) originalIso else null,
-                                    accountId = if (isManual) selectedAccountId else null
+                                    accountId = if (accountEditable) selectedAccountId else null,
+                                    rememberRename = rememberRename && renameFrom != null
                                 )
                                 // Back to the transaction, which now shows what was saved.
                                 editing = false

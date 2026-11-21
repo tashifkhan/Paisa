@@ -28,10 +28,12 @@ fun AiScreen(onBack: () -> Unit) {
             service = AiService.fromId(route.removePrefix(AiRoute.LADDER)),
             onBack = toOverview
         )
+        route == AiRoute.LOCAL -> LocalAiScreen(onBack = toOverview)
         else -> AiOverviewScreen(
             onBack = onBack,
             onOpenProvider = { route = AiRoute.PROVIDER + it },
-            onOpenLadder = { route = AiRoute.LADDER + (it?.id ?: AiRoute.DEFAULT) }
+            onOpenLadder = { route = AiRoute.LADDER + (it?.id ?: AiRoute.DEFAULT) },
+            onOpenLocalAi = { route = AiRoute.LOCAL }
         )
     }
 }
@@ -40,5 +42,6 @@ private object AiRoute {
     const val OVERVIEW = "overview"
     const val PROVIDER = "provider:"
     const val LADDER = "ladder:"
+    const val LOCAL = "local"
     const val DEFAULT = "default"
 }

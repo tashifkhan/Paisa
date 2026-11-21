@@ -10,6 +10,7 @@ import codes.tashif.paisa.ui.settings.AppearanceScreen
 import codes.tashif.paisa.ui.categories.CategoriesScreen
 import codes.tashif.paisa.ui.settings.CurrencyScreen
 import codes.tashif.paisa.ui.categories.MerchantMappingsScreen
+import codes.tashif.paisa.ui.notifications.NotificationImportScreen
 import codes.tashif.paisa.ui.sms.SmsSetupScreen
 import codes.tashif.paisa.ui.statement.StatementImportScreen
 
@@ -23,6 +24,10 @@ fun FullScreenHost(
     val close = { state.close(screen) }
     when (screen) {
         FullScreen.SMS_SETUP -> SmsSetupScreen(
+            onBack = close,
+            onExternalActivityLaunched = onExternalActivityLaunched
+        )
+        FullScreen.NOTIFICATION_IMPORT -> NotificationImportScreen(
             onBack = close,
             onExternalActivityLaunched = onExternalActivityLaunched
         )

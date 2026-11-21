@@ -11,6 +11,8 @@ import codes.tashif.paisa.ai.catalog.LiveModelLister
 import codes.tashif.paisa.ai.catalog.LocalStorageAiCacheStore
 import codes.tashif.paisa.ai.catalog.ModelCatalog
 import codes.tashif.paisa.ai.ladder.AiLadderRunner
+import codes.tashif.paisa.ai.local.LocalAiEngine
+import codes.tashif.paisa.ai.local.UnsupportedLocalAiEngine
 import codes.tashif.paisa.ai.provider.ProviderClient
 import codes.tashif.paisa.ai.store.AiConfigStore
 import codes.tashif.paisa.ai.store.AiKeyStore
@@ -35,6 +37,11 @@ val aiWebModule = module {
     single { AiConfigStore(LocalStorageAiStore(AiConfigStore.PREFS_NAME)) }
     single { AiCredentialsStore(LocalStorageAiStore(AiCredentialsStore.PREFS_NAME)) }
     single<AiCacheStore> { LocalStorageAiCacheStore() }
+    single<LocalAiEngine> {
+        UnsupportedLocalAiEngine(
+            "Local AI runs in the Android app. This web build has no on-device model yet."
+        )
+    }
     single<StatementNotifier> { WebStatementNotifier() }
 
 }

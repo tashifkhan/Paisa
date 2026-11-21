@@ -31,6 +31,12 @@ enum class AiService(
         label = "Add with AI",
         description = "Notes, receipts and bills from the add sheet. Photos need a model that reads images",
         needsImage = false,
+    ),
+    MESSAGE_PARSE(
+        id = "message_parse",
+        label = "SMS and alerts",
+        description = "Bank SMS and payment alerts the rules can't read",
+        needsImage = false,
     );
 
     companion object {

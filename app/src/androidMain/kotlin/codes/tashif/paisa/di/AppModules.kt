@@ -29,7 +29,8 @@ import codes.tashif.paisa.data.repository.SettingsRepository
 import codes.tashif.paisa.data.repository.SmsInboxRepository
 import codes.tashif.paisa.data.repository.TransactionRepository
 import codes.tashif.paisa.sms.SmsReaderWorker
-import codes.tashif.paisa.sms.SmsTransactionProcessor
+import codes.tashif.paisa.ingest.TransactionIngestor
+import codes.tashif.paisa.ingest.TransactionWriter
 import codes.tashif.paisa.sync.SyncManager
 import codes.tashif.paisa.sync.SyncWorker
 import codes.tashif.paisa.ui.accounts.AccountsViewModel
@@ -70,7 +71,8 @@ val databaseModule = module {
 /** Android-only singletons: SMS, the AI stores on SharedPreferences, backup and sync. */
 val appModule = module {
 
-    singleOf(::SmsTransactionProcessor)
+    single { TransactionWriter(get(), get(), get(), get()) }
+    single { TransactionIngestor(get(), get(), get()) }
 
     single { AiConfigStore(codes.tashif.paisa.ai.store.SharedPrefsAiStore.aiConfig(androidContext())) }
     single { AiCredentialsStore(codes.tashif.paisa.ai.store.SharedPrefsAiStore.aiCredentials(androidContext())) }

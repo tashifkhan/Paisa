@@ -48,8 +48,11 @@ class SettingsViewModel(
         .map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
-    val merchantRuleCount: StateFlow<Int> = categoryRepository.allMerchantMappings
-        .map { it.size }
+    /** Category rules plus renames: both live on the Merchant rules screen. */
+    val merchantRuleCount: StateFlow<Int> = combine(
+        categoryRepository.allMerchantMappings,
+        categoryRepository.allMerchantRenames
+    ) { mappings, renames -> mappings.size + renames.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     val transactionCount: StateFlow<Int> = transactionRepository.allTransactions
