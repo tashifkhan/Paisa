@@ -1,0 +1,13 @@
+notification-core reads transaction notifications from bank and payment apps.
+
+Parts are derived from PennyWise AI Tracker
+https://github.com/sarim2000/pennywiseai-tracker
+(BankNotificationConfig, BankNotificationListenerService, TransactionDeduplication)
+Licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
+
+The payment app list and the offer/reminder filter in PaymentNotificationParser
+are adapted from Leftovers
+https://github.com/saisaharsh3/Leftovers
+Copyright (c) 2026 Leftovers contributors, MIT License.
+
+See LICENSE in this directory for the full AGPL-3.0 text.
