@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Api
 import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.Router
+import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -56,6 +57,7 @@ internal fun ProviderAvatar(
             Icon(
                 imageVector = when {
                     custom -> Icons.Rounded.Dns
+                    providerId == BuiltInProviders.LOCAL -> Icons.Rounded.Smartphone
                     providerId == BuiltInProviders.RELAYROOM -> Icons.Rounded.Router
                     else -> Icons.Rounded.Api
                 },

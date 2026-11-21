@@ -19,6 +19,8 @@ import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Layers
 import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Smartphone
+import androidx.compose.material.icons.rounded.Sms
 import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -38,6 +40,9 @@ import codes.tashif.paisa.ai.CatalogState
 import codes.tashif.paisa.ai.ProviderStatus
 import codes.tashif.paisa.ai.ladder.AiService
 import codes.tashif.paisa.ai.ladder.LadderState
+import codes.tashif.paisa.ai.local.LocalAiCompatibility
+import codes.tashif.paisa.ai.local.LocalAiState
+import codes.tashif.paisa.ai.local.LocalAiStatus
 import codes.tashif.paisa.ui.components.DetailHeader
 import codes.tashif.paisa.ui.components.SettingsGroup
 import codes.tashif.paisa.ui.components.SettingsItem
@@ -52,11 +57,14 @@ fun AiOverviewScreen(
     onBack: () -> Unit,
     onOpenProvider: (String) -> Unit,
     onOpenLadder: (AiService?) -> Unit,
+    onOpenLocalAi: () -> Unit,
     viewModel: AiViewModel = koinViewModel()
 ) {
     val providers by viewModel.providers.collectAsState()
     val catalog by viewModel.catalog.collectAsState()
     val ladders by viewModel.ladders.collectAsState()
+    val localStatus by viewModel.localStatus.collectAsState()
+    val useLocal by viewModel.useLocalAi.collectAsState()
     var addingProvider by remember { mutableStateOf(false) }
     val aiEnabled = LocalAiEnabled.current
     val haptics = rememberHaptics()
@@ -102,11 +110,46 @@ fun AiOverviewScreen(
             }
             // Turned off, the page is just the switch. Keys and models stay saved.
             if (!aiEnabled) return@Column
+            // On a phone without Gemini Nano the row stays, greyed out; tapping it explains why.
+            Spacer(Modifier.height(MaterialTheme.spacing.small))
+            SettingsGroup {
+                SettingsItem(
+                    title = "Use local AI",
+                    subtitle = localRowSubtitle(localStatus, useLocal),
+                    icon = Icons.Rounded.Smartphone,
+                    position = groupPositionOf(0, 1),
+                    iconContainerColor = if (localStatus.ready) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainerHigh
+                    },
+                    iconContentColor = if (localStatus.ready) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    onClick = onOpenLocalAi,
+                    trailing = {
+                        Switch(
+                            checked = useLocal,
+                            enabled = localStatus.ready,
+                            onCheckedChange = {
+                                haptics.toggle(on = it)
+                                viewModel.setUseLocalAi(it)
+                            }
+                        )
+                    }
+                )
+            }
             Spacer(Modifier.height(MaterialTheme.spacing.medium))
             NoteCard(
-                text = "Bring your own key for Add with AI and statement import. SMS stays on " +
-                    "this device. Only the notes and files you send go out, and only to the " +
-                    "providers you pick.",
+                text = if (localStatus.supported) {
+                    "Use your own cloud key, or Gemini Nano on this phone. Only what you send to AI " +
+                        "leaves the phone, and only to the providers you pick."
+                } else {
+                    "Use your own cloud key. Only what you send to AI leaves the phone, and only to " +
+                        "the providers you pick."
+                },
                 icon = Icons.Rounded.AutoAwesome,
                 container = MaterialTheme.colorScheme.primaryContainer,
                 content = MaterialTheme.colorScheme.onPrimaryContainer
@@ -188,6 +231,7 @@ private fun ServicesSection(
                     AiService.STATEMENT_IMPORT -> Icons.Rounded.UploadFile
                     AiService.STATEMENT_PHOTOS -> Icons.Rounded.Image
                     AiService.QUICK_ADD -> Icons.Rounded.AutoAwesome
+                    AiService.MESSAGE_PARSE -> Icons.Rounded.Sms
                 },
                 position = groupPositionOf(index, ladders.services.size),
                 iconContainerColor = rowTone(index).container,
@@ -214,22 +258,23 @@ private fun ProvidersSection(
     onOpenProvider: (String) -> Unit,
     onAddCustom: () -> Unit
 ) {
-    val withKeys = providers.count { it.hasKey }
+    val cloud = providers.filterNot { it.info.local }
+    val withKeys = cloud.count { it.ready }
     SettingsSectionLabel(if (withKeys > 0) "Providers · $withKeys with keys" else "Providers")
-    val count = providers.size + 1
+    val count = cloud.size + 1
     SettingsGroup {
-        providers.forEachIndexed { index, status ->
+        cloud.forEachIndexed { index, status ->
             SettingsItem(
                 title = status.info.name,
                 subtitle = providerSubtitle(status),
                 icon = Icons.Rounded.Dns,
                 position = groupPositionOf(index, count),
-                iconContainerColor = if (status.hasKey) {
+                iconContainerColor = if (status.ready) {
                     MaterialTheme.colorScheme.primaryContainer
                 } else {
                     MaterialTheme.colorScheme.surfaceContainerHigh
                 },
-                iconContentColor = if (status.hasKey) {
+                iconContentColor = if (status.ready) {
                     MaterialTheme.colorScheme.onPrimaryContainer
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
@@ -239,10 +284,10 @@ private fun ProvidersSection(
                     ProviderAvatar(
                         providerId = status.info.id,
                         custom = status.info.custom,
-                        configured = status.hasKey
+                        configured = status.ready
                     )
                 },
-                trailing = if (status.hasKey) {
+                trailing = if (status.ready) {
                     {
                         Icon(
                             Icons.Rounded.CheckCircle,
@@ -265,4 +310,15 @@ private fun ProvidersSection(
             onClick = onAddCustom
         )
     }
+}
+
+private fun localRowSubtitle(status: LocalAiStatus, useLocal: Boolean): String = when (status.state) {
+    LocalAiState.AVAILABLE -> if (useLocal) "On · first in the Default ladder" else "Ready on this phone"
+    LocalAiState.DOWNLOADABLE -> "Ready to download"
+    LocalAiState.DOWNLOADING -> "Downloading…"
+    LocalAiState.CHECKING -> "Checking…"
+    LocalAiState.UNSUPPORTED ->
+        if (status.detail == LocalAiCompatibility.EMULATOR) "Not available on the emulator"
+        else "Not available on this phone"
+    LocalAiState.ERROR -> "Couldn't start · tap for details"
 }

@@ -100,6 +100,7 @@ object LegacyMigration {
             ApiStyle.ANTHROPIC -> AiProvider.ANTHROPIC
             ApiStyle.GEMINI -> AiProvider.GEMINI
             ApiStyle.OPENAI, ApiStyle.RELAYROOM -> AiProvider.OPENAI_COMPATIBLE
+            ApiStyle.LOCAL -> AiProvider.OPENAI_COMPATIBLE
         }
         return AiCredentials(
             provider = old,

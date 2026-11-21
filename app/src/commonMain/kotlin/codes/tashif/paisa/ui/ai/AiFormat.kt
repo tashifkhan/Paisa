@@ -21,14 +21,14 @@ data class AiSummary(
 
     companion object {
         fun of(ladders: LadderState, providers: List<ProviderStatus>, catalog: CatalogState): AiSummary {
-            val withKeys = providers.filter { it.hasKey }.associateBy { it.info.id }
+            val ready = providers.filter { it.ready }.associateBy { it.info.id }
             val rung = AiService.entries.asSequence()
                 .flatMap { ladders.forService(it).asSequence() }
-                .firstOrNull { it.providerId in withKeys }
+                .firstOrNull { it.providerId in ready }
                 ?: return AiSummary()
             return AiSummary(
                 modelName = modelName(rung, catalog),
-                providerName = withKeys.getValue(rung.providerId).info.name,
+                providerName = ready.getValue(rung.providerId).info.name,
             )
         }
     }
@@ -80,6 +80,16 @@ fun ageLabel(epochMillis: Long, now: Long = nowMillis()): String {
 }
 
 fun providerSubtitle(status: ProviderStatus): String {
+    if (status.info.local) {
+        val local = status.local
+        return when {
+            local == null -> "On-device · checking"
+            local.ready -> "On-device · ${local.modelName ?: "ready"}"
+            local.downloadable -> "On-device · needs a download"
+            local.state == codes.tashif.paisa.ai.local.LocalAiState.DOWNLOADING -> "On-device · downloading"
+            else -> "On-device · not available here"
+        }
+    }
     val key = if (status.hasKey) "Key saved" else "No key"
     val models = when (status.modelCount) {
         0 -> "no models listed"

@@ -86,6 +86,40 @@ class AiScreensLogicTest {
     }
 
     @Test
+    fun readyLocalProviderCountsWithoutAKey() {
+        val local = ProviderStatus(
+            info = BuiltInProviders.byId(BuiltInProviders.LOCAL)!!,
+            hasKey = false,
+            baseUrl = "",
+            modelCount = 1,
+            liveFetchedAt = null,
+            liveError = null,
+            local = codes.tashif.paisa.ai.local.LocalAiStatus(
+                state = codes.tashif.paisa.ai.local.LocalAiState.AVAILABLE,
+                modelName = "nano-v4",
+                features = setOf(codes.tashif.paisa.ai.local.LocalAiFeature.TEXT),
+            ),
+        )
+        val rung = Rung(BuiltInProviders.LOCAL, codes.tashif.paisa.ai.local.LOCAL_AI_MODEL_ID)
+        val ladders = LadderState(
+            default = listOf(rung),
+            services = AiService.entries.map { ServiceLadder(it, null, listOf(rung)) },
+        )
+        val catalog = CatalogState(
+            models = mapOf(
+                BuiltInProviders.LOCAL to listOf(
+                    codes.tashif.paisa.ai.local.LocalAiModels.info(local.local!!)
+                )
+            )
+        )
+        val summary = AiSummary.of(ladders, listOf(local), catalog)
+        assertTrue(summary.ready)
+        assertEquals("On-device", summary.providerName)
+        assertEquals(listOf(BuiltInProviders.LOCAL), pickerGroups(listOf(local), catalog, needsImage = true).map { it.providerId })
+        assertFalse(pickerGroups(listOf(local.copy(local = null)), catalog, needsImage = false).isNotEmpty())
+    }
+
+    @Test
     fun ageLabels() {
         val now = 10L * 24 * 60 * 60_000
         assertEquals("just now", ageLabel(now - 10_000, now))

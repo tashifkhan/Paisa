@@ -81,7 +81,10 @@ class StatementExtractionService(
         text: String,
         onProgress: ((completed: Int, total: Int) -> Unit)? = null
     ): StatementExtractionResult {
-        val chunks = StatementTextExtractor.chunkText(text)
+        val chunks = StatementTextExtractor.chunkText(
+            text,
+            maxChars = ladderRunner.textBudget(AiService.STATEMENT_IMPORT, STATEMENT_CHUNK_CHARS),
+        )
         onProgress?.invoke(0, chunks.size)
 
         // Chunks are independent: run them in parallel (bounded so we don't
@@ -158,6 +161,9 @@ class StatementExtractionService(
             ).joinToString("|")
 
         private const val MAX_PARALLEL_CHUNKS = 3
+
+        /** Cloud models get this much text per call. Local AI asks for less. */
+        private const val STATEMENT_CHUNK_CHARS = 12_000
 
         private const val IMAGE_PROMPT =
             "Read this bank or UPI statement image and extract every visible transaction. " +

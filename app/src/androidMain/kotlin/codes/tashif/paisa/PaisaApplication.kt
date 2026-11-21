@@ -34,5 +34,6 @@ class PaisaApplication : Application(), Configuration.Provider {
         // Local edits from anywhere in the process (UI, SMS receiver, workers)
         // schedule an upload when sync is on.
         SyncScheduling.watchLocalChanges(this)
+        codes.tashif.paisa.ai.local.DebugLocalAi.install(this)
     }
 }

@@ -11,6 +11,11 @@ import codes.tashif.paisa.ai.ladder.LadderConfig
 import codes.tashif.paisa.ai.ladder.LadderState
 import codes.tashif.paisa.ai.ladder.Rung
 import codes.tashif.paisa.ai.ladder.ServiceLadder
+import codes.tashif.paisa.ai.local.LocalAiEngine
+import codes.tashif.paisa.ai.local.LocalAiLadders
+import codes.tashif.paisa.ai.local.LocalAiModels
+import codes.tashif.paisa.ai.local.LocalAiStatus
+import codes.tashif.paisa.ai.local.UnsupportedLocalAiEngine
 import codes.tashif.paisa.ai.provider.AiProviderInfo
 import codes.tashif.paisa.ai.provider.ApiStyle
 import codes.tashif.paisa.ai.provider.BaseUrlSafety
@@ -46,7 +51,12 @@ data class ProviderStatus(
     /** When this provider's live list was fetched, if ever. */
     val liveFetchedAt: Long?,
     val liveError: String?,
-)
+    /** Availability of the on-device model, for the local provider only. */
+    val local: LocalAiStatus? = null,
+) {
+    /** A cloud provider is ready with a key; the local one is ready when AICore is. */
+    val ready: Boolean get() = if (info.local) local?.ready == true else hasKey
+}
 
 /** The merged catalogue, keyed by provider id. */
 data class CatalogState(
@@ -73,6 +83,7 @@ class AiRepository(
     private val configStore: AiConfigStore,
     private val catalogSource: ModelCatalog,
     private val legacyMigrator: LegacyMigrator,
+    private val localAi: LocalAiEngine = UnsupportedLocalAiEngine("On-device AI isn't available in this build."),
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val ready = CompletableDeferred<Unit>()
@@ -83,22 +94,27 @@ class AiRepository(
     val keyIds: StateFlow<Set<String>> = keys.withKeys
 
     val catalog: StateFlow<CatalogState> = combine(
-        configStore.config, catalogSource.modelsDev, catalogSource.live, catalogSource.relayOptions
-    ) { config, dev, live, relayOptions ->
+        configStore.config, catalogSource.modelsDev, catalogSource.live, catalogSource.relayOptions,
+        localAi.status
+    ) { config, dev, live, relayOptions, localStatus ->
         val models = ProviderResolution.all(config).associate { provider ->
-            val merged = CatalogMerge.modelsFor(
-                provider, dev.snapshot, live[provider.id], config.manualModels[provider.id].orEmpty()
-            )
-            provider.id to if (provider.id == BuiltInProviders.RELAYROOM) {
-                RelayOptions.overlay(merged, baseUrlFor(provider, config), relayOptions)
+            if (provider.local) {
+                provider.id to listOf(LocalAiModels.info(localStatus))
             } else {
-                merged
+                val merged = CatalogMerge.modelsFor(
+                    provider, dev.snapshot, live[provider.id], config.manualModels[provider.id].orEmpty()
+                )
+                provider.id to if (provider.id == BuiltInProviders.RELAYROOM) {
+                    RelayOptions.overlay(merged, baseUrlFor(provider, config), relayOptions)
+                } else {
+                    merged
+                }
             }
         }
         CatalogState(models, dev.source, dev.fetchedAt, dev.error, dev.refreshing)
     }.stateIn(scope, SharingStarted.Eagerly, CatalogState())
 
-    val providers: StateFlow<List<ProviderStatus>> = combine(
+    private val cloudProviders: StateFlow<List<ProviderStatus>> = combine(
         configStore.config, keys.withKeys, catalog, catalogSource.live, catalogSource.liveErrors
     ) { config, withKeys, catalog, live, errors ->
         ProviderResolution.all(config).map { info ->
@@ -113,6 +129,10 @@ class AiRepository(
         }
     }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
+    val providers: StateFlow<List<ProviderStatus>> = combine(cloudProviders, localAi.status) { list, local ->
+        list.map { status -> if (status.info.local) status.copy(local = local) else status }
+    }.stateIn(scope, SharingStarted.Eagerly, emptyList())
+
     val ladders: StateFlow<LadderState> = configStore.config.map(::ladderState)
         .stateIn(scope, SharingStarted.Eagerly, ladderState(configStore.config.value))
 
@@ -125,6 +145,9 @@ class AiRepository(
                 ready.complete(Unit)
             }
         }
+        // One local check per process, off the main thread. It never downloads.
+        // A failure is kept in the status and shown on the Local AI screen.
+        scope.launch { runCatching { localAi.refresh() } }
     }
 
     /** Waits for migration and the disk cache. Cheap once done. */
@@ -276,6 +299,24 @@ class AiRepository(
         awaitReady()
         if (keys.withKeys.value.isNotEmpty() && catalogSource.isStale()) refreshCatalog()
     }
+
+    // On-device model
+
+    /** AICore availability, download progress and capabilities. */
+    val localStatus: StateFlow<LocalAiStatus> get() = localAi.status
+
+    suspend fun refreshLocalAi(): LocalAiStatus = localAi.refresh()
+
+    suspend fun downloadLocalAi(): LocalAiStatus = localAi.download()
+
+    /** Puts the local model first on the Default ladder, or removes it from every ladder. */
+    suspend fun setUseLocalAi(enabled: Boolean) {
+        configStore.update { config ->
+            if (enabled) LocalAiLadders.enable(config) else LocalAiLadders.disable(config)
+        }
+    }
+
+    fun usesLocalAi(): Boolean = LocalAiLadders.uses(config.value)
 
     suspend fun refreshProviderModels(providerId: String): Result<Int> {
         val info = provider(providerId) ?: return Result.failure(IllegalArgumentException("Unknown provider"))

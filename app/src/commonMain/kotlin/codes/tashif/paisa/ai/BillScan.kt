@@ -30,7 +30,10 @@ class BillScanService(private val ladderRunner: AiLadderRunner) {
             else -> {
                 val text = StatementTextExtractor.extract(file)
                 when {
-                    text.isNotBlank() -> complete("The bill's text:\n\n${text.take(MAX_TEXT_CHARS)}")
+                    text.isNotBlank() -> complete(
+                        "The bill's text:\n\n" +
+                            text.take(ladderRunner.textBudget(AiService.QUICK_ADD, MAX_TEXT_CHARS))
+                    )
                     StatementTextExtractor.isPdf(file) -> complete(
                         "Read the attached bill.",
                         pdf = StatementTextExtractor.readPdf(file) ?: throw LlmException("Couldn't open this PDF")
