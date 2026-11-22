@@ -1,6 +1,6 @@
 # On-device AI
 
-Paisa can run some AI work on the phone itself. Android uses Gemini Nano through
+Billi can run some AI work on the phone itself. Android uses Gemini Nano through
 AICore and ML Kit's Prompt API. There is no API key, no request body leaving the
 device, and no per-call bill. The tradeoff is a small model with a short context
 window, and Android only allows it while the app is in front.
@@ -17,21 +17,21 @@ iQOO, OnePlus, OPPO, vivo and Xiaomi flagships. Pixel 9, 9 Pro, 9 Pro XL and
 
 For an app, the useful pieces are:
 
-| Capability | API | Paisa uses it |
+| Capability | API | Billi uses it |
 | --- | --- | --- |
 | Custom text prompts, JSON-ish output | Prompt API (`GenerativeModel`) | Yes |
 | Image plus text input, up to 10 images | Prompt API | Yes, one image per call |
-| Multi-turn chat | Prompt API contents/session | No, each Paisa job is one call |
-| Structured output with a schema | Prompt API typed output | No, Paisa validates JSON itself |
+| Multi-turn chat | Prompt API contents/session | No, each Billi job is one call |
+| Structured output with a schema | Prompt API typed output | No, Billi validates JSON itself |
 | Tool calling | Prompt API | No |
 | Thinking mode | Prompt API on Nano 4 | Not exposed yet |
 | Summarize, proofread, rewrite | Task APIs | No, not needed for ledgers |
 | Image description | Task API | No, the Prompt API reads receipts |
-| Speech recognition, translation, TTS | Task APIs | No, Paisa records audio and sends it to cloud models |
+| Speech recognition, translation, TTS | Task APIs | No, Billi records audio and sends it to cloud models |
 | Embeddings | Embeddings API | No |
 
-AICore shares one model across apps, so Paisa does not add a 2 to 4 GB download
-to its APK. The model lives in the phone's AICore install. Paisa only asks
+AICore shares one model across apps, so Billi does not add a 2 to 4 GB download
+to its APK. The model lives in the phone's AICore install. Billi only asks
 whether it is available and, when it is not, asks AICore to download it.
 
 ### Limits that matter
@@ -39,7 +39,7 @@ whether it is available and, when it is not, asks AICore to download it.
 - Input is capped around 4,000 tokens, about 3,000 English words.
 - Output is capped around 4,000 tokens.
 - AICore enforces a per-app inference quota and a longer battery quota.
-- Inference is blocked when Paisa is not the top foreground app.
+- Inference is blocked when Billi is not the top foreground app.
 - PDFs and audio are not Prompt API inputs on Android. Text and images are.
 - Unlocked bootloaders are not supported.
 - The Android emulator has no AICore and no Gemini Nano. Local AI cannot run
@@ -57,26 +57,26 @@ source of truth. The short version as of November 2026:
 | Nano 2 | OnePlus 13, Xiaomi 15/17, Galaxy Z Fold7/Z TriFold, Honor Magic 7/V5, realme GT 7 Pro, POCO F7/F8/X7/X8, vivo X200 FE/T4 Ultra |
 
 The task-specific APIs (summarize, proofread, rewrite, image description) have a
-slightly wider list than the Prompt API. Since Paisa needs free-form prompts and
+slightly wider list than the Prompt API. Since Billi needs free-form prompts and
 JSON, the Prompt API list is the one that applies.
 
 Apple Intelligence is a separate stack. It has no bearing on the Android build.
 The Foundation Models framework is available on iOS, iPadOS, macOS and visionOS
 26 and newer, on Apple Intelligence capable hardware, with the model enabled and
-ready. It gained direct image input in iOS 27. Paisa has no iOS target today, so
+ready. It gained direct image input in iOS 27. Billi has no iOS target today, so
 there is nothing to wire up. If one is added, it can implement the same
 `LocalAiEngine` interface with `SystemLanguageModel.availability` and a
 `LanguageModelSession`.
 
 Chrome has its own local model. The Prompt API is on by default in desktop Chrome
 148 and later, with text, image and audio input and a text reply. It is not
-available in Chrome on Android or iOS. Paisa's web build has no local engine yet,
+available in Chrome on Android or iOS. Billi's web build has no local engine yet,
 so the Local AI screen explains that Android is where it runs. A later web
 engine could use `LanguageModel.availability()` and `LanguageModel.create()`.
 
-## What Paisa sends to the local model
+## What Billi sends to the local model
 
-| Paisa feature | Local support | Notes |
+| Billi feature | Local support | Notes |
 | --- | --- | --- |
 | Add with AI, typed note | Yes | Same system prompt and JSON parser as cloud |
 | Add with AI, receipt or screenshot | Yes | One image per call, scaled to 1568 px |
@@ -108,7 +108,7 @@ the next rung runs. That is the same failure path as a cloud model.
 - `Local AI` screen shows availability, download progress, the active Nano
   version, what it can and cannot read, and a live test prompt.
 
-The ML Kit AAR declares `minSdk 26`. Paisa keeps `minSdk 24` and uses
+The ML Kit AAR declares `minSdk 26`. Billi keeps `minSdk 24` and uses
 `tools:overrideLibrary`, then only loads the AICore engine on API 26 and newer.
 The unit test manifest has the same override so Robolectric can run the graph.
 No ML Kit class is touched on API 24 or 25.
@@ -135,11 +135,11 @@ On an emulator with the debug APK:
 ```bash
 # Real AICore path: shows "Not available on the emulator"
 adb install -r app/build/outputs/apk/debug/app-debug.apk
-adb shell am start -n codes.tashif.paisa/.MainActivity
+adb shell am start -n sh.taf.billi/.MainActivity
 
 # Demo local engine, for the full UI path without AICore
-adb shell am force-stop codes.tashif.paisa
-adb shell am start -n codes.tashif.paisa/.MainActivity --ez local_ai_demo true
+adb shell am force-stop sh.taf.billi
+adb shell am start -n sh.taf.billi/.MainActivity --ez local_ai_demo true
 ```
 
 The demo engine is only compiled into debug builds, only switches on when that

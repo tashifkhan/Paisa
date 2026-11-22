@@ -1,4 +1,8 @@
-# Paisa
+<p align="center"><img src="docs/brand/billi-logo.svg" width="120" alt="Billi, a ginger cat who is also a wallet"></p>
+
+# Billi
+
+**Billi: Budgeting and Expense Manager.** local first, local ai, sms parsing.
 
 an expense manager that lives on your phone and stays there. no account, no cloud you didn't pick, no "upgrade to premium" popup every third tap.
 
@@ -8,8 +12,21 @@ android first. the same app also runs in the browser, built from the same kotlin
 
 ## get it
 
-- **f-droid:** add `https://tashif.codes/fdroid/repo?fingerprint=568557c435bdf555725de95de596a90d6fa964d4bf0b71874f254cd0be7e94c9` in Settings → Repositories, refresh, install Paisa. the fingerprint lets f-droid check the repo is really mine
-- **apk:** grab it from the [latest release](https://github.com/tashifkhan/Paisa/releases/latest). each apk ships with a `.sha256` next to it if you like checking things
+- **f-droid:** add `https://tashif.codes/fdroid/repo?fingerprint=568557c435bdf555725de95de596a90d6fa964d4bf0b71874f254cd0be7e94c9` in Settings → Repositories, refresh, install Billi. the fingerprint lets f-droid check the repo is really mine
+- **apk:** grab it from the [latest release](https://github.com/tashifkhan/Billi/releases/latest). each apk ships with a `.sha256` next to it if you like checking things
+
+## coming from paisa
+
+billi used to be called paisa. 2.0.0 is the first release under the new name and picks up where paisa 1.8.0 stopped. it has a new icon and a cat.
+
+the package changed from `codes.tashif.paisa` to `sh.taf.billi`, so android installs billi as a new app next to paisa instead of updating it. your data comes across through a backup:
+
+1. in paisa, More → Backup, then save a backup file (or back up to google drive or nextcloud)
+2. install billi and tap **I have a backup** on the first screen
+3. pick the `.paisa` file, or connect the same drive or nextcloud account. billi lists paisa's old backups next to its own
+4. once everything is there, uninstall paisa
+
+from now on billi writes `.billi` files, and on nextcloud it uses a `Billi` folder. it never deletes the old `.paisa` ones. grant sms and notification access again in billi, since android ties those to the app.
 
 ## what it does
 
@@ -18,10 +35,11 @@ android first. the same app also runs in the browser, built from the same kotlin
 - **categories that learn.** your own merchant rules go first, then a keyword map, then "Others". fix a merchant once and it sticks
 - **records, analytics and budgets.** search, filters, charts by date range, and monthly caps per category
 - **accounts.** wallets and bank accounts you can reorder, merge, set a default on, or correct the balance of by hand when the bank and the app disagree
-- **backups** to google drive, nextcloud or a `.paisa` file. set a password and the file is AES-256-GCM encrypted before it goes anywhere
+- **backups** to google drive, nextcloud or a `.billi` file. set a password and the file is AES-256-GCM encrypted before it goes anywhere
 - **ai statement import, if you want it.** bring your own key (openai compatible, gemini or anthropic), then feed it pdf, csv or image statements, several at once. duplicates across files get dropped
 - **add with ai.** in the add sheet, switch to "With AI" and type something like "lunch 240 yesterday, uber 180 today", attach receipts, bills, screenshots or pdfs, or both. you get a list of drafts to edit, ask the ai to change ("the uber one was cash"), then save the ones you want. it uses the same models as statement import, and has its own ladder under More → AI
 - **local ai, when your phone has it.** flip on **Use local AI** under More → AI and Gemini Nano runs the text and photo jobs on the device. no key, no per-call bill, no prompt leaving the phone. Pixel 9 and newer support it, as do several recent Samsung, OnePlus, Xiaomi, OPPO and vivo flagships. PDFs and voice notes still need a cloud model ([details](docs/local-ai.md))
+- **assistant actions and shortcuts.** on android 16 and later, Billi exposes actions to record a transaction and read spending, budgets and recent payments. Gemini requires the exact app package and build to be registered through [Google Connected Apps](https://developer.android.com/ai/appfunctions/create-manage-connected-apps). manage assistant access under More → Privacy & security. long-press the icon for add, add with ai, budgets and spending
 - **app lock** with biometrics or your screen lock
 - **export** to csv or pdf
 - **home screen widgets** for your balance and quick actions
@@ -40,12 +58,12 @@ sms and notification text never leave the phone. the database is plain room/sqli
 
 ## how notifications become transactions
 
-1. **More → Payment notifications**, turn it on, then allow Paisa in the system notification access screen
+1. **More → Payment notifications**, turn it on, then allow Billi in the system notification access screen
 2. only the apps switched on there are read; every other notification is dropped before its text is touched. **Add a bank or UPI app** opens the phone's app list and adds anything missing from the built-in 21
 3. a bank app's alert goes through that bank's sms parser first. upi apps (google pay, phonepe and friends), and user-added apps, go through `notification-core`, which reads plus/minus signs, debit/credit words and offers, reminders and payment requests are ignored
 4. one payment often arrives three ways: as a upi app notification, a bank sms and a bank app alert. `CrossChannelDedup` compares amount, direction, time, account and upi reference, keeps one row, and lets the bank's message add the account and balance to the row the upi app created
-5. **unclear messages.** when the rules can't read an sms or alert, payment notifications → unclear messages picks who tries: off, **on-device** (Gemini Nano, nothing leaves the phone) or **cloud** (the "sms and alerts" model under ai, with a warning that the text goes to that provider, is slower and may cost money). cloud works on every phone and skips gemini nano rungs. Gemini Nano only runs while paisa is open, so on-device reads of background messages wait, and paisa posts **payment waiting for ai**. phones without aicore show on-device greyed out
-6. **which account paid.** a upi app can pay from several bank accounts, so paisa picks the account in this order: a link you made for the account digits in the alert, your only account with those digits, the app's default account, then your only account at that bank (bank apps) or your only bank account (upi apps). if none fits, the payment waits under the app's name and paisa asks **which account was this?** pick one from the alert, the transaction, or the payment notifications screen. "always use" makes it the rule and moves the other waiting payments. each app's row in settings shows and changes its default account
+5. **unclear messages.** when the rules can't read an sms or alert, payment notifications → unclear messages picks who tries: off, **on-device** (Gemini Nano, nothing leaves the phone) or **cloud** (the "sms and alerts" model under ai, with a warning that the text goes to that provider, is slower and may cost money). cloud works on every phone and skips gemini nano rungs. Gemini Nano only runs while billi is open, so on-device reads of background messages wait, and billi posts **payment waiting for ai**. phones without aicore show on-device greyed out
+6. **which account paid.** a upi app can pay from several bank accounts, so billi picks the account in this order: a link you made for the account digits in the alert, your only account with those digits, the app's default account, then your only account at that bank (bank apps) or your only bank account (upi apps). if none fits, the payment waits under the app's name and billi asks **which account was this?** pick one from the alert, the transaction, or the payment notifications screen. "always use" makes it the rule and moves the other waiting payments. each app's row in settings shows and changes its default account
 7. **merchant renames.** rename an imported transaction ("SWIGGY LTD" to "Swiggy") and turn on **always rename**. past rows are renamed, and future sms, notifications and statements use the new name before the category rules run. renames sync and back up like category rules, and show under more → merchant rules
 8. deleting a transaction keeps it deleted: the same notification or sms won't bring it back
 9. android 15 and later hide a notification's text from listeners when the system thinks it holds an otp. some bank alerts with an account number trip that check and are skipped; the bank sms still imports the same payment
@@ -55,8 +73,8 @@ sms and notification text never leave the phone. the database is plain room/sqli
 you need jdk 17, the android sdk, and a real phone if you want to test sms (emulators have very boring inboxes).
 
 ```bash
-git clone https://github.com/tashifkhan/Paisa
-cd Paisa
+git clone https://github.com/tashifkhan/Billi
+cd Billi
 
 # android studio writes this for you when you open the project
 echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties   # macOS
@@ -71,9 +89,9 @@ when it breaks:
 
 - `SDK location not found`: you skipped the `local.properties` step
 - gradle hates your jdk: set the gradle jdk to 17 in studio
-- signature clash on install: `adb uninstall codes.tashif.paisa`
+- signature clash on install: `adb uninstall sh.taf.billi`
 - sms import does nothing: check Permissions → SMS, and use a phone with actual bank messages
-- payment notifications do nothing: More → Payment notifications, turn the master switch on, then allow Paisa under Settings → Notifications → Notification access. the app list shows which supported apps are installed; if android calls the access restricted, allow restricted settings from Paisa's App info menu
+- payment notifications do nothing: More → Payment notifications, turn the master switch on, then allow Billi under Settings → Notifications → Notification access. the app list shows which supported apps are installed; if android calls the access restricted, allow restricted settings from Billi's App info menu
 
 ## the web version
 
@@ -90,14 +108,14 @@ the database is sqlite in a web worker, stored in the browser's origin private f
 
 ### hosting it
 
-the build is a folder of static files, so any static host works. on vercel:
+the build is a folder of static files, so any static host works. the live copy at [billi.taf.sh](https://billi.taf.sh) is a cloudflare worker that serves those files:
 
 ```bash
 ./gradlew :app:wasmJsBrowserDistribution
-npx vercel deploy app/build/dist/wasmJs/productionExecutable --prod
+npx wrangler deploy -c web-deploy/wrangler.jsonc
 ```
 
-vercel's build machines have no jdk, so build on your machine or in ci and deploy the folder, rather than letting vercel run gradle. cloudflare pages, netlify and github pages work the same way. serve it over https, since the browser only gives origin private storage to secure pages.
+for vercel it's `npx vercel deploy app/build/dist/wasmJs/productionExecutable --prod`. vercel's build machines have no jdk, so build on your machine or in ci and deploy the folder, rather than letting vercel run gradle. netlify and github pages work the same way. serve it over https, since the browser only gives origin private storage to secure pages.
 
 ### big screens
 
@@ -117,7 +135,7 @@ with a keyboard: `n` adds, `/` or `ctrl k` searches, `1` to `6` switch tabs, `es
 backup and sync are the same code as on the phone, so a browser and a phone can share one nextcloud or google drive and stay in step. the browser syncs when the page opens, every 15 minutes, when it comes back online or into view, and 20 seconds after an edit. there's no background sync once the tab is closed. sync now covers the rest.
 
 - **nextcloud:** nextcloud sends no cors headers, so browsers need a small proxy. deploy [nextcloud-proxy](nextcloud-proxy) to your own cloudflare account (one command) and paste its address into the nextcloud sheet. it only forwards to your server and stores nothing. if you run the server and add cors headers yourself, leave the proxy empty
-- **google drive:** needs a "web application" oauth client id from google cloud. put it in the `paisa-google-client-id` meta tag in `app/src/wasmJsMain/resources/index.html`. browsers get no refresh token, so after about an hour you tap connect again
+- **google drive:** needs a "web application" oauth client id from google cloud. put it in the `billi-google-client-id` meta tag in `app/src/wasmJsMain/resources/index.html`. browsers get no refresh token, so after about an hour you tap connect again
 
 ### ai on the web
 
@@ -138,7 +156,7 @@ app/src/
 ├── commonMain/       everything both platforms share
 │   ├── data/         room 3 database, daos, repositories, demo data
 │   ├── sync/         change files and merge rules
-│   ├── backup/       the .paisa container, its crypto, drive and nextcloud
+│   ├── backup/       the .billi container, its crypto, drive and nextcloud
 │   ├── ai/           bring-your-own-key providers, model ladder, add with ai
 │   ├── statement/    statement import: read the file, extract rows, dedupe
 │   ├── sms/          merchant to category mapping, the scan service
@@ -177,4 +195,4 @@ still to do:
 
 AGPL-3.0, see [LICENSE](LICENSE) and [COPYRIGHT](COPYRIGHT).
 
-`parser-core/` comes from [PennyWise AI Tracker](https://github.com/sarim2000/pennywiseai-tracker), which is also AGPL, so the whole app is AGPL-3.0. if you modify paisa and run it as a network service, you have to give your users the source.
+`parser-core/` comes from [PennyWise AI Tracker](https://github.com/sarim2000/pennywiseai-tracker), which is also AGPL, so the whole app is AGPL-3.0. if you modify billi and run it as a network service, you have to give your users the source.
