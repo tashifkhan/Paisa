@@ -1,14 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Billi, the cat wallet. Drawn from the logo's 240 grid at 0.26. The widest points (whiskers, wallet corners) stay at least 2dp inside the adaptive icon's 66dp safe zone, so no launcher mask or parallax shift clips them. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Coin / rupee mark. Kept inside the adaptive icon's 66dp safe zone. -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,24c-16.5,0 -30,13.5 -30,30s13.5,30 30,30 30,-13.5 30,-30 -13.5,-30 -30,-30zM54,28c14.3,0 26,11.7 26,26s-11.7,26 -26,26 -26,-11.7 -26,-26 11.7,-26 26,-26z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M42,40h24v4h-9.2c0.9,1.5 1.5,3.2 1.7,5H66v4H58.6c-0.5,4.3 -3.5,7.9 -7.6,9.6l10,12h-5.8l-9.2,-11.2H42v-4h4.2c3.1,0 5.5,-2 6.1,-4.8H42v-4h10.3c-0.6,-2.8 -3,-4.8 -6.1,-4.8H42z" />
+    <group android:scaleX="0.26" android:scaleY="0.26" android:translateX="22.8" android:translateY="22.8">
+        <path android:fillColor="#E88C2E" android:pathData="M36,97C36,66 44,33 62,31C78,30 92,43 102,55Q120,49 138,55C148,43 162,30 178,31C196,33 204,66 204,97C204,101 192,103 190,98C190,72 183,49 172,48C162,47 151,58 142,70Q120,63 98,70C89,58 78,47 68,48C57,49 50,72 50,98C48,103 36,101 36,97Z" />
+        <path android:strokeColor="#5E2F0E" android:strokeWidth="7.5" android:strokeLineCap="round" android:pathData="M74,111C77,97 97,97 100,111" />
+        <path android:strokeColor="#5E2F0E" android:strokeWidth="7.5" android:strokeLineCap="round" android:pathData="M140,111C143,97 163,97 166,111" />
+        <path android:strokeColor="#5E2F0E" android:strokeWidth="6.5" android:strokeLineCap="round" android:pathData="M20,110Q33,111 46,115" />
+        <path android:strokeColor="#5E2F0E" android:strokeWidth="6.5" android:strokeLineCap="round" android:pathData="M20,131Q32.5,127.5 45,126" />
+        <path android:strokeColor="#5E2F0E" android:strokeWidth="6.5" android:strokeLineCap="round" android:pathData="M220,110Q207,111 194,115" />
+        <path android:strokeColor="#5E2F0E" android:strokeWidth="6.5" android:strokeLineCap="round" android:pathData="M220,131Q207.5,127.5 195,126" />
+        <path android:fillColor="#DC781B" android:pathData="M42,150Q42,137.2 56,136L170,126C184,125 194,135 194,150L155,150A22,22 0,0 0,155 194L193,194C190,204 183,210 174,210L70,210A28,28 0,0 1,42 182Z" />
+        <path android:fillColor="#DC781B" android:fillType="evenOdd" android:pathData="M155,158L194,158A4,4 0,0 1,198 162L198,182A4,4 0,0 1,194 186L155,186A14,14 0,0 1,155 158ZM155,165.5A6.5,6.5 0,1 0,155 178.5A6.5,6.5 0,1 0,155 165.5Z" />
+    </group>
 </vector>
