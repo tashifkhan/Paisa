@@ -1,6 +1,7 @@
 package sh.taf.billi.ui.app
 
 import sh.taf.billi.ui.platform.PlatformBackHandler
+import sh.taf.billi.ui.platform.PredictiveBackPage
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -184,20 +185,24 @@ fun AppShell(
     if (!wide) {
         if (selectedTxId != null) {
             key(selectedTxId) {
-                CenteredContent(Modifier.riseIn(fromScale = 0.985f, rise = 16.dp)) {
-                    TransactionDetailScreen(onBack = viewModel::closeTransaction)
+                PredictiveBackPage {
+                    CenteredContent(Modifier.riseIn(fromScale = 0.985f, rise = 16.dp)) {
+                        TransactionDetailScreen(onBack = viewModel::closeTransaction)
+                    }
                 }
             }
             return
         }
         if (topScreen != null) {
             key(topScreen) {
-                CenteredContent(Modifier.riseIn(fromScale = 0.985f, rise = 16.dp)) {
-                    FullScreenHost(
-                        screen = topScreen,
-                        state = state,
-                        onExternalActivityLaunched = viewModel::onExternalActivityLaunched
-                    )
+                PredictiveBackPage {
+                    CenteredContent(Modifier.riseIn(fromScale = 0.985f, rise = 16.dp)) {
+                        FullScreenHost(
+                            screen = topScreen,
+                            state = state,
+                            onExternalActivityLaunched = viewModel::onExternalActivityLaunched
+                        )
+                    }
                 }
             }
             return
