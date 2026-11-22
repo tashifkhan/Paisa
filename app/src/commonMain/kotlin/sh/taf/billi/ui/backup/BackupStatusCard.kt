@@ -75,7 +75,7 @@ internal fun BackupStatusCard(
                     "Backs up your Billi data to $providerLabel so you can restore it " +
                         "on a new phone or after reinstalling."
                 } else {
-                    "Pick Google Drive or Nextcloud below to start backing up."
+                    "Pick ${if (googleDriveSupported) "Google Drive or Nextcloud" else "Nextcloud"} below to start backing up."
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer

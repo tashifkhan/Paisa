@@ -2,6 +2,18 @@
 
 Every Billi release, newest first. Releases up to 1.8.0 shipped as Paisa. Each version's APK is on the [releases page](https://github.com/tashifkhan/Billi/releases) and in the F-Droid repo at `https://tashif.codes/fdroid/repo`.
 
+## 2.0.1
+
+### Android
+
+- Predictive back is back. Swiping back on a settings page or a transaction shrinks the page toward the edge you swiped from, so you can see where back goes before you let go. Let go early and the page stays.
+
+### Web
+
+- The web version only shows what works in a browser. SMS import, Rescan SMS, app lock, local AI, the "SMS and alerts" AI service and the automatic backup schedule are hidden there. Transactions synced from a phone still show their SMS and notification labels.
+- Google Drive backup is hidden on the web until the site has a Google sign-in client ID. Nextcloud and file backups work as before.
+- Text that said "this phone" says "this browser" on the web, and statement import asks you to keep the tab open instead of promising a notification.
+
 ## 2.0.0
 
 Paisa is now Billi: Budgeting and Expense Manager. It has a new name, a new icon, and a mascot. Billi is a ginger cat who is also a wallet. Everything Paisa did still works the same way: local-first, SMS parsing on the phone, and local AI when the phone has it.

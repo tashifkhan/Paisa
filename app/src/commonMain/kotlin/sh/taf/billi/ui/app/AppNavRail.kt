@@ -1,5 +1,7 @@
 package sh.taf.billi.ui.app
 
+import sh.taf.billi.ui.sms.smsImportSupported
+
 import sh.taf.billi.ui.components.BilliMood
 import sh.taf.billi.ui.components.BilliMascot
 import androidx.compose.foundation.layout.Arrangement
@@ -96,7 +98,7 @@ fun AppNavRail(
                         Icon(Icons.Rounded.Add, contentDescription = addLabelFor(currentTab))
                     }
                 }
-                if (currentTab == AppTab.HOME) RescanButton(actions)
+                if (currentTab == AppTab.HOME && smsImportSupported) RescanButton(actions)
             }
             }
         }
@@ -176,7 +178,7 @@ fun AppNavDrawer(
                         modifier = Modifier.semantics { contentDescription = addLabelFor(currentTab) }
                     )
                 }
-                if (currentTab == AppTab.HOME) RescanButton(actions)
+                if (currentTab == AppTab.HOME && smsImportSupported) RescanButton(actions)
             }
             AppTab.entries.forEachIndexed { index, tab ->
                 NavigationDrawerItem(

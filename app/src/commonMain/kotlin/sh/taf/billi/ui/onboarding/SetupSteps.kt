@@ -1,5 +1,7 @@
 package sh.taf.billi.ui.onboarding
 
+import sh.taf.billi.ui.backup.googleDriveSupported
+
 import androidx.compose.foundation.layout.offset
 import sh.taf.billi.ui.components.BilliMood
 import sh.taf.billi.ui.components.BilliMascot
@@ -120,7 +122,7 @@ internal fun WelcomeStep() {
             container = scheme.tertiaryContainer,
             content = scheme.onTertiaryContainer,
             title = "Backups where you choose",
-            body = "Google Drive, Nextcloud or a file, encrypted with your password if you set one."
+            body = "${if (googleDriveSupported) "Google Drive, Nextcloud" else "Nextcloud"} or a file, encrypted with your password if you set one."
         )
         WelcomePoint(
             icon = Icons.Rounded.AutoAwesome,
@@ -405,7 +407,7 @@ internal fun DoneStep(onOpen: (String) -> Unit) {
             container = scheme.secondaryContainer,
             content = scheme.onSecondaryContainer,
             title = "Back up or sync",
-            body = "Google Drive, Nextcloud, or a file",
+            body = if (googleDriveSupported) "Google Drive, Nextcloud, or a file" else "Nextcloud or a file",
             onClick = { onOpen(AppDestinations.BACKUP) }
         )
         if (aiEnabled) {

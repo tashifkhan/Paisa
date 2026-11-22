@@ -1,5 +1,7 @@
 package sh.taf.billi.ui.statement
 
+import sh.taf.billi.ui.platform.isWebPlatform
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -74,7 +76,11 @@ internal fun StatementExtractingContent(
         }
         Spacer(Modifier.height(MaterialTheme.spacing.small))
         Text(
-            text = "You can leave this screen. You'll get a notification when it's ready.",
+            text = if (isWebPlatform) {
+                "You can leave this screen. Keep this tab open until it's done."
+            } else {
+                "You can leave this screen. You'll get a notification when it's ready."
+            },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

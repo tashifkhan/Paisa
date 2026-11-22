@@ -13,6 +13,7 @@ import androidx.compose.material3.SheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
@@ -22,6 +23,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import sh.taf.billi.ui.app.WindowWidth
 import sh.taf.billi.ui.app.windowWidth
+import sh.taf.billi.ui.platform.LocalBackProgress
 import sh.taf.billi.ui.platform.PlatformBackHandler
 
 /** True when sheets open as centered dialogs, on tablets in landscape and desktop browsers. */
@@ -64,7 +66,10 @@ fun AdaptiveSheet(
         (LocalWindowInfo.current.containerSize.height * 0.96f).toDp()
     }
     // Esc and the browser's back button close the dialog, not the screen under it.
-    PlatformBackHandler(onBack = onDismissRequest)
+    // The page under the dialog stays put while the dialog closes.
+    CompositionLocalProvider(LocalBackProgress provides null) {
+        PlatformBackHandler(onBack = onDismissRequest)
+    }
     Dialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(usePlatformDefaultWidth = false)

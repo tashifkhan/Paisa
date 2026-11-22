@@ -1,5 +1,8 @@
 package sh.taf.billi.ui.backup
 
+import sh.taf.billi.ui.platform.isWebPlatform
+import sh.taf.billi.ui.platform.onThisDevice
+
 import sh.taf.billi.ui.platform.PlatformBackHandler
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.layout.Column
@@ -133,12 +136,15 @@ fun BackupScreen(
                     onSyncNow = { backup.syncNow() }
                 )
 
-                BackupScheduleSection(
-                    frequencyLabel = config.frequency.label,
-                    allowCellular = config.allowCellular,
-                    onOpenFrequency = { showFrequency = true },
-                    onAllowCellularChange = { backup.setAllowCellular(it) }
-                )
+                // The web has no background work, so it backs up only when you tap Back up.
+                if (!isWebPlatform) {
+                    BackupScheduleSection(
+                        frequencyLabel = config.frequency.label,
+                        allowCellular = config.allowCellular,
+                        onOpenFrequency = { showFrequency = true },
+                        onAllowCellularChange = { backup.setAllowCellular(it) }
+                    )
+                }
 
                 BackupEncryptionSection(
                     encrypted = config.encrypted,
@@ -177,7 +183,7 @@ fun BackupScreen(
                         "text it came from), budget, goal and merchant rule. AI keys and the " +
                         "Nextcloud password are never included. Billi keeps the newest " +
                         "${backup.keptBackups} backups and deletes older ones. Restoring " +
-                        "replaces everything on this phone.\n\nSync works offline: every " +
+                        "replaces everything $onThisDevice.\n\nSync works offline: every " +
                         "change is saved on this device first and sent the next time there's " +
                         "a connection. Sync files are encrypted with your sync password before " +
                         "they're uploaded. SMS are read on each phone that has them, and the " +

@@ -24,3 +24,9 @@ expect fun PlatformBackHandler(enabled: Boolean = true, onBack: () -> Unit)
 /** The system's Material You accent (system_accent1_400), or null where there is none. */
 @Composable
 expect fun dynamicAccentColor(): androidx.compose.ui.graphics.Color?
+
+/** How copy names where Billi's data lives: "this browser" on the web, "this phone" on Android. */
+val thisDevice: String get() = if (isWebPlatform) "this browser" else "this phone"
+
+/** The same place with its preposition: "in this browser", "on this phone". */
+val onThisDevice: String get() = if (isWebPlatform) "in this browser" else "on this phone"

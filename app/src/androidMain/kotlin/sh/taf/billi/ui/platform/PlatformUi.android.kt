@@ -1,7 +1,9 @@
 package sh.taf.billi.ui.platform
 
 import android.os.Build
+import androidx.activity.BackEventCompat
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.isImeVisible
@@ -28,7 +30,28 @@ actual fun dynamicColorScheme(darkTheme: Boolean): ColorScheme? {
 actual fun isImeVisible(): Boolean = WindowInsets.isImeVisible
 
 @Composable
-actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) = BackHandler(enabled, onBack)
+actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) {
+    val progress = LocalBackProgress.current
+    if (progress == null) {
+        BackHandler(enabled, onBack)
+        return
+    }
+    // Inside a page the gesture shrinks it as the finger moves. Lifting the
+    // finger runs onBack; letting go early springs the page back.
+    PredictiveBackHandler(enabled) { events ->
+        try {
+            events.collect { event ->
+                progress.dragging = true
+                progress.fromLeft = event.swipeEdge == BackEventCompat.EDGE_LEFT
+                progress.value = event.progress
+            }
+            onBack()
+        } finally {
+            // A back that stays on the page, like leaving edit mode, needs it full size again.
+            progress.reset()
+        }
+    }
+}
 
 @Composable
 actual fun dynamicAccentColor(): androidx.compose.ui.graphics.Color? =

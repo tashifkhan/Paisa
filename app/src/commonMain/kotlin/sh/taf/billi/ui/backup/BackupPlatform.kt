@@ -16,3 +16,6 @@ class BackupLaunchers(
 /** Results go back to [viewModel]. */
 @Composable
 expect fun rememberBackupLaunchers(viewModel: BackupViewModel): BackupLaunchers
+
+/** Whether Google Drive sign-in can work here. The web needs an OAuth client ID in index.html. */
+expect val googleDriveSupported: Boolean

@@ -1,5 +1,7 @@
 package sh.taf.billi.ui.backup
 
+import sh.taf.billi.ui.platform.onThisDevice
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -56,7 +58,7 @@ internal fun BackupFrequencyDialog(
                 }
                 if (!connected) {
                     Text(
-                        "Connect Google Drive or Nextcloud for this to take effect.",
+                        "Connect ${if (googleDriveSupported) "Google Drive or Nextcloud" else "Nextcloud"} for this to take effect.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = MaterialTheme.spacing.smaller)
@@ -133,7 +135,7 @@ internal fun ConfirmRestoreDialog(item: RemoteBackup, onDismiss: () -> Unit, onC
         title = { Text("Restore this backup?") },
         text = {
             Text(
-                "Everything in Billi on this phone is replaced with the backup from " +
+                "Everything in Billi $onThisDevice is replaced with the backup from " +
                     "${formatDate(item.createdAt)}. This can't be undone."
             )
         },
