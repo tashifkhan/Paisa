@@ -1,0 +1,15 @@
+// Serves the web build at https://billi.taf.sh as static Workers assets.
+// Build first: ./gradlew :app:wasmJsBrowserDistribution
+// Then deploy from the repo root: npx wrangler deploy -c web-deploy/wrangler.jsonc
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "billi-web",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "../app/build/dist/wasmJs/productionExecutable",
+    "not_found_handling": "single-page-application"
+  },
+  "routes": [{ "pattern": "billi.taf.sh", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false
+}

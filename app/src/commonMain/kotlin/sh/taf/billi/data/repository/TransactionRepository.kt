@@ -1,0 +1,234 @@
+package sh.taf.billi.data.repository
+
+import sh.taf.billi.platform.BilliCalendar
+import sh.taf.billi.platform.formatDate
+import sh.taf.billi.platform.parseDate
+import sh.taf.billi.platform.nowMillis
+import androidx.room3.withWriteTransaction
+import sh.taf.billi.data.AppDatabase
+import sh.taf.billi.data.RecurringTransaction
+import sh.taf.billi.data.Transaction
+import sh.taf.billi.data.TransactionWithDetails
+import kotlinx.coroutines.flow.Flow
+
+/**
+ * Transactions and recurring rules. Every write keeps the account balance in
+ * step, and edits and deletes keep the transaction's debt split in step too.
+ */
+class TransactionRepository(
+    private val db: AppDatabase,
+    private val accountRepository: AccountRepository,
+    private val debtRepository: DebtRepository
+) {
+
+    private val accountDao = db.accountDao()
+    private val transactionDao = db.transactionDao()
+    private val recurringTransactionDao = db.recurringTransactionDao()
+
+    // --- TRANSACTIONS ---
+    val allTransactions: Flow<List<TransactionWithDetails>> = transactionDao.getAllTransactions()
+
+    fun getTransactionsForAccount(accountId: Int): Flow<List<TransactionWithDetails>> =
+        transactionDao.getTransactionsForAccount(accountId)
+
+    suspend fun getTransactionById(id: Int): TransactionWithDetails? =
+        transactionDao.getTransactionById(id)
+
+    suspend fun getRawTransactionById(id: Int): Transaction? =
+        transactionDao.getRawTransactionById(id)
+
+    suspend fun getTransactionByHash(hash: String): Transaction? =
+        transactionDao.getTransactionByHash(hash)
+
+    /** Imported payments waiting on an app's holding account for the user to pick the real one. */
+    val awaitingAccount: Flow<List<Transaction>> = transactionDao.getAwaitingAccount()
+
+    suspend fun awaitingAccountList(): List<Transaction> = transactionDao.getAwaitingAccountList()
+
+    /** Same type and amount (±0.01), dated between [fromIso] and [toIso], deleted rows included. */
+    suspend fun findChargeCandidates(
+        amount: Double,
+        type: String,
+        fromIso: String,
+        toIso: String
+    ): List<Transaction> = transactionDao.findChargeCandidates(
+        type = type,
+        amountLow = amount - 0.01,
+        amountHigh = amount + 0.01,
+        fromIso = fromIso,
+        toIso = toIso
+    )
+
+    /**
+     * Fuzzy match against already-logged transactions (SMS/manual/statement):
+     * same type, same amount (±0.01), date within ±[windowDays] days — bank posting
+     * dates often lag the SMS by a day or two.
+     */
+    suspend fun findSimilarTransaction(
+        amount: Double,
+        type: String,
+        dateIso: String,
+        windowDays: Int = 2
+    ): Transaction? {
+        val day = dateIso.take(10)
+        if (day.length != 10) return null
+        val parsed = parseDate(day, "yyyy-MM-dd", machine = true) ?: return null
+        val cal = BilliCalendar.getInstance()
+        cal.timeInMillis = parsed
+        cal.add(BilliCalendar.DAY_OF_MONTH, -windowDays)
+        val from = formatDate(cal.timeInMillis, "yyyy-MM-dd", machine = true)
+        cal.add(BilliCalendar.DAY_OF_MONTH, 2 * windowDays)
+        val to = formatDate(cal.timeInMillis, "yyyy-MM-dd", machine = true)
+        return transactionDao.findSimilarTransactions(
+            type = type,
+            amountLow = amount - 0.01,
+            amountHigh = amount + 0.01,
+            fromDate = from,
+            toDate = to
+        ).minByOrNull {
+            // Prefer the entry closest to the statement row's date
+            parseDate(it.transactionDate.take(10), "yyyy-MM-dd", machine = true)
+                ?.let { t -> kotlin.math.abs(t - parsed) }
+                ?: Long.MAX_VALUE
+        }
+    }
+
+    suspend fun insertTransaction(transaction: Transaction): Long {
+        return db.withWriteTransaction {
+            val id = transactionDao.insertTransaction(transaction)
+            accountDao.recomputeBalance(transaction.accountId)
+            id
+        }
+    }
+
+    /**
+     * Insert SMS-sourced transaction. If the SMS carried an absolute balance,
+     * prefer that over delta adjustment for the account's currentBalance.
+     */
+    suspend fun insertSmsTransaction(
+        transaction: Transaction,
+        absoluteBalance: Double?
+    ): Long {
+        return db.withWriteTransaction {
+            val rowId = transactionDao.insertTransaction(transaction)
+            if (rowId == -1L) return@withWriteTransaction -1L
+
+            if (absoluteBalance != null) {
+                // The reported balance already includes this transaction.
+                accountRepository.applyReportedBalance(
+                    transaction.accountId,
+                    absoluteBalance,
+                    transaction.transactionDate
+                )
+            }
+            accountDao.recomputeBalance(transaction.accountId)
+            rowId
+        }
+    }
+
+    suspend fun updateTransaction(newTransaction: Transaction) {
+        db.withWriteTransaction { updateInTransaction(newTransaction) }
+    }
+
+    /** Saves many edits in one write, so balances and Debts never see half a batch. */
+    suspend fun updateTransactions(transactions: List<Transaction>) {
+        if (transactions.isEmpty()) return
+        db.withWriteTransaction { transactions.forEach { updateInTransaction(it) } }
+    }
+
+    private suspend fun updateInTransaction(newTransaction: Transaction) {
+        val oldTransaction = transactionDao.getRawTransactionById(newTransaction.id) ?: return
+        transactionDao.updateTransaction(newTransaction)
+        debtRepository.onTransactionChanged(oldTransaction, newTransaction)
+        accountDao.recomputeBalance(oldTransaction.accountId)
+        if (newTransaction.accountId != oldTransaction.accountId) {
+            accountDao.recomputeBalance(newTransaction.accountId)
+        }
+    }
+
+    suspend fun deleteTransaction(transactionId: Int) {
+        db.withWriteTransaction { deleteInTransaction(transactionId) }
+    }
+
+    /** Deletes many in one write. Returns how many existed and were removed. */
+    suspend fun deleteTransactions(transactionIds: Collection<Int>): Int {
+        var removed = 0
+        db.withWriteTransaction {
+            transactionIds.forEach { if (deleteInTransaction(it)) removed++ }
+        }
+        return removed
+    }
+
+    private suspend fun deleteInTransaction(transactionId: Int): Boolean {
+        val transaction = transactionDao.getRawTransactionById(transactionId) ?: return false
+        // Soft-delete so SMS re-scan won't re-import
+        if (transaction.transactionHash != null) {
+            transactionDao.softDeleteTransaction(transactionId, nowIso())
+        } else {
+            transactionDao.deleteTransaction(transaction)
+        }
+        debtRepository.onTransactionDeleted(transaction)
+        accountDao.recomputeBalance(transaction.accountId)
+        return true
+    }
+
+    // --- RECURRING ---
+    val allRecurringTransactions: Flow<List<RecurringTransaction>> =
+        recurringTransactionDao.getAllRecurringTransactions()
+
+    suspend fun insertRecurringTransaction(rule: RecurringTransaction): Long =
+        recurringTransactionDao.insertRecurringTransaction(rule)
+
+    suspend fun updateRecurringTransaction(rule: RecurringTransaction) =
+        recurringTransactionDao.updateRecurringTransaction(rule)
+
+    suspend fun deleteRecurringTransaction(rule: RecurringTransaction) =
+        recurringTransactionDao.deleteRecurringTransaction(rule)
+
+    suspend fun processRecurringTransactions() {
+        db.withWriteTransaction {
+            val nowStr = formatDate(nowMillis(), "yyyy-MM-dd")
+            val dueRules = recurringTransactionDao.getEnabledRecurringTransactions()
+            val touched = mutableSetOf<Int>()
+            for (rule in dueRules) {
+                if (rule.nextExecutionDate > nowStr) continue
+                var execDateStr = rule.nextExecutionDate
+                while (execDateStr <= nowStr) {
+                    val transaction = Transaction(
+                        amount = rule.amount,
+                        type = rule.type,
+                        categoryId = rule.categoryId,
+                        accountId = rule.accountId,
+                        note = "[Recurring] ${rule.note}",
+                        transactionDate = "${execDateStr}T09:00:00",
+                        createdAt = nowIso(),
+                        updatedAt = nowIso(),
+                        source = "manual",
+                        // Same id on every device, so two synced phones that both run
+                        // this rule for the same day produce one transaction, not two.
+                        syncId = rule.syncId?.let { "rec:$it:$execDateStr" }
+                    )
+                    transactionDao.insertTransaction(transaction)
+                    touched += rule.accountId
+                    execDateStr = advanceDate(execDateStr, rule.frequency)
+                }
+                recurringTransactionDao.updateRecurringTransaction(
+                    rule.copy(nextExecutionDate = execDateStr)
+                )
+            }
+            touched.forEach { accountDao.recomputeBalance(it) }
+        }
+    }
+
+    private fun advanceDate(dateStr: String, frequency: String): String {
+        val date = parseDate(dateStr, "yyyy-MM-dd") ?: return dateStr
+        val calendar = BilliCalendar.getInstance().apply { timeInMillis = date }
+        when (frequency.lowercase()) {
+            "daily" -> calendar.add(BilliCalendar.DAY_OF_YEAR, 1)
+            "weekly" -> calendar.add(BilliCalendar.WEEK_OF_YEAR, 1)
+            "yearly" -> calendar.add(BilliCalendar.YEAR, 1)
+            else -> calendar.add(BilliCalendar.MONTH, 1)
+        }
+        return formatDate(calendar.timeInMillis, "yyyy-MM-dd")
+    }
+}

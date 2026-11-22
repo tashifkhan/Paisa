@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The app description agents read before Billi's AppFunctions. It names the
+    domain, the tasks, the call order across functions and the rules that
+    apply to all of them. Each function's own details are in its KDoc in
+    BilliAppFunctions.kt.
+-->
+<AppFunctionAppMetadata xmlns:appfn="http://schemas.android.com/apk/androidx.appfunctions"
+    appfn:instructions="Billi is a personal budgeting and expense tracker that keeps the user's money records on the phone. Its functions record an expense or income, report account balances and spending for a period, report monthly budgets, and list recent transactions.
+
+Operational patterns:
+- getSpendingSummary returns the user's account names. Use one of those names as the account in addTransaction when the user names an account loosely.
+- To answer how much was spent at one merchant, call getRecentTransactions with that merchant as the query and add up the amounts.
+- getSpendingSummary with a category answers spending questions for one category in a single call.
+
+Constraints:
+- Amounts are in the user's currency, returned in each response as a symbol such as ₹.
+- Dates are calendar days in the phone's time zone.
+- Every function fails with a denied error while the user has turned off Gemini and assistants under More, Privacy and security."
+    appfn:displayDescription="@string/app_function_app_display_description" />

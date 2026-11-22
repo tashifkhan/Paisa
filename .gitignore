@@ -69,3 +69,6 @@ google-services.json
 # docs
 .docs/
 .agent-scratch/
+
+# Wrangler state
+.wrangler/

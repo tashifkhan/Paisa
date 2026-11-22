@@ -1,4 +1,4 @@
-// Runs worker.js locally with Node 18+, for trying Paisa web against a
+// Runs worker.js locally with Node 18+, for trying Billi web against a
 // Nextcloud on your own machine or network.
 //
 //   NEXTCLOUD_URL=http://127.0.0.1:8090 node nextcloud-proxy/serve.mjs
@@ -25,4 +25,4 @@ createServer(async (req, res) => {
   const response = await handle(request, env);
   res.writeHead(response.status, Object.fromEntries(response.headers));
   res.end(Buffer.from(await response.arrayBuffer()));
-}).listen(port, '127.0.0.1', () => console.log(`Paisa Nextcloud proxy on http://127.0.0.1:${port}`));
+}).listen(port, '127.0.0.1', () => console.log(`Billi Nextcloud proxy on http://127.0.0.1:${port}`));

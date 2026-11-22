@@ -1,6 +1,57 @@
 # Changelog
 
-Every Paisa release, newest first. Each version's APK is on the [releases page](https://github.com/tashifkhan/Paisa/releases) and in the F-Droid repo at `https://tashif.codes/fdroid/repo`.
+Every Billi release, newest first. Releases up to 1.8.0 shipped as Paisa. Each version's APK is on the [releases page](https://github.com/tashifkhan/Billi/releases) and in the F-Droid repo at `https://tashif.codes/fdroid/repo`.
+
+## 2.0.0
+
+Paisa is now Billi: Budgeting and Expense Manager. It has a new name, a new icon, and a mascot. Billi is a ginger cat who is also a wallet. Everything Paisa did still works the same way: local-first, SMS parsing on the phone, and local AI when the phone has it.
+
+### New name, new package
+
+- The source moved to [github.com/tashifkhan/Billi](https://github.com/tashifkhan/Billi). Old links to the Paisa repository redirect there.
+- The web version is at [billi.taf.sh](https://billi.taf.sh).
+- The app is called Billi and its package is `sh.taf.billi`. Android sees this as a different app, so Billi installs next to Paisa instead of replacing it.
+- To move your data, save a backup in Paisa, then tap "I have a backup" on Billi's first screen. Billi restores `.paisa` files, and lists Paisa's old backups on Google Drive and Nextcloud next to its own.
+- New backups are `.billi` files. On Nextcloud they go to a `Billi` folder. Billi never deletes the old `.paisa` backups when it trims old copies.
+- Grant SMS and notification access again in Billi. Android ties those permissions to the app.
+- Exports are named `billi_transactions_…`, and the web build loads `billi-web.js`.
+
+### Billi the cat
+
+- The launcher icon is Billi on cream, with a themed (monochrome) icon for Android 13 and later and a matching status bar icon.
+- Billi shows up in six moods. Happy on the welcome screen and in About. Curious on the SMS step. Winking when setup is done. Asleep or curious on empty lists. Thinking while AI reads a note or receipt, and on the Local AI screen. Guarding the wallet on the lock screen.
+- On a dark theme Billi's face turns cream, so it stays visible.
+- The big-screen drawer shows Billi next to the app name.
+
+### Assistant actions and shortcuts
+
+- On Android 16 and later, Billi exposes AppFunctions to add an expense or income and read balances, spending, monthly budgets, and recent transactions. Using these actions with Gemini requires registering the package and bundle version through [Google Connected Apps](https://developer.android.com/ai/appfunctions/create-manage-connected-apps).
+- An assistant only picks a category Billi already has. If it names one that doesn't exist, Billi uses its merchant rules and keyword map, the same as for an SMS. Wrong input, like a zero amount, an unknown account or a date in the wrong format, comes back to the assistant as an error it can explain.
+- Transactions an assistant adds are labelled Assistant in history and filters, and edit like manual ones.
+- Every argument except the amount is optional, dates are real dates rather than text, and type only accepts expense or income. Billi also tells the assistant how its functions fit together, and reports any failure as an error the assistant can explain.
+- More → Privacy & security → Gemini and assistants turns this off. While it's off, every call is refused. It is on by default and works even with app lock on.
+- Long-press the app icon for Add transaction, Add with AI, Budgets and Spending. Add with AI hides when AI is off, and a pinned copy of it greys out.
+
+### Filters
+
+- Under the search bar there's now a chip for each filter: Date, Type, Category, Account, Amount and Source, the way Gmail and Drive do search filters. Each chip opens just its own picker and shows what you picked, like "Last 7 days" or "Food & Dining +1".
+- The Filters chip opens every group at once, each in its own card that shows what it's set to and has a Clear button.
+- Type is a connected button group. Categories are a grid of their own colored icons, and Pick all selects every category in view. Accounts are a grouped list with checkboxes.
+- Amount has one-tap bands (up to ₹500, ₹500 to ₹2,000, ₹2,000 to ₹10,000, ₹10,000 or more) next to the min and max fields.
+- The sheet says how many transactions match as you go, and the button at the bottom always shows the count.
+- Analytics uses the same look. Month, Year and Custom are a button group. A custom range has Today, 7, 30 and 90 day buttons, and you can tap the start or end day to change the dates, or its time to change the time.
+- Analytics' Income, Expense and Saved cards show the change as a small pill, and the four quick stats (average a day, transactions, biggest expense, against the last period) are a grid of their own tiles. Spending and Income in By category is a button group too.
+
+### Under the hood
+
+- Gradle 9.9.2, Android Gradle plugin 9.5.2, Kotlin 2.4.21, KSP 2.3.14, Compose Multiplatform 1.12.2, compileSdk 37.2, and the latest Ktor (3.6, now on OkHttp 5), kotlinx-datetime, CameraX, Glance, WorkManager, haze and the rest.
+- Unit tests run on a Java 21 toolchain, which Robolectric needs to simulate Android 16. Gradle downloads it when it's missing.
+
+### Look
+
+- A new Billi palette, taken from the logo's orange and brown, is the default for new installs. Wallpaper colors are still in Appearance, and a restored backup keeps the palette it had.
+- The web build has a Billi favicon and orange theme color.
+- More → Appearance → Home sections hides the Credit cards or Debts card on Home. Hiding credit cards also drops them from the balance breakdown. Both stay on by default.
 
 ## 1.8.0
 

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only. billi://debug/seed-demo fills an empty database with
+     DemoData, so screenshots and films can be set up by opening a link
+     instead of passing an intent extra. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            tools:node="merge">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="billi" android:host="debug" android:path="/seed-demo" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

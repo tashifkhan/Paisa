@@ -168,7 +168,7 @@ jobs:
           fi
 
           {
-            echo "# Paisa $TAG"
+            echo "# Billi $TAG"
             echo ""
             if [ -n "$NOTES" ]; then
               echo "$NOTES"
@@ -185,7 +185,7 @@ jobs:
             else
               echo "## Initial release"
               echo ""
-              echo "First public release of Paisa — offline-first personal finance for Android."
+              echo "First public release of Billi, a local-first budgeting and expense manager for Android."
               echo ""
             fi
             echo "---"
@@ -193,9 +193,9 @@ jobs:
             echo "### Install"
             echo ""
             echo "- **GitHub**: download the \`.apk\` attached below"
-            echo "- **F-Droid**: add \`https://tashif.codes/fdroid/repo\` then install **Paisa**"
+            echo "- **F-Droid**: add \`https://tashif.codes/fdroid/repo\` then install **Billi**"
             echo ""
-            echo "Package: \`codes.tashif.paisa\` · versionCode \`${{ steps.next_version.outputs.code }}\`"
+            echo "Package: \`sh.taf.billi\` · versionCode \`${{ steps.next_version.outputs.code }}\`"
           } > RELEASE_NOTES.md
 
           cat RELEASE_NOTES.md
@@ -266,7 +266,7 @@ jobs:
             exit 1
           fi
 
-          APK_NAME="Paisa-v${VERSION}.apk"
+          APK_NAME="Billi-v${VERSION}.apk"
           cp "$SRC" "dist/$APK_NAME"
           (
             cd dist
@@ -303,7 +303,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.next_version.outputs.tag }}
-          name: Paisa ${{ steps.next_version.outputs.tag }}
+          name: Billi ${{ steps.next_version.outputs.tag }}
           body_path: RELEASE_NOTES.md
           files: |
             ${{ steps.package.outputs.apk_path }}
@@ -327,7 +327,7 @@ jobs:
             --repo tashifkhan/tashif.codes \
             --field source_repository="${{ github.repository }}" \
             --field release_tag="${{ steps.next_version.outputs.tag }}" \
-            --field apk_pattern='Paisa-v*.apk'
+            --field apk_pattern='Billi-v*.apk'
           echo "Triggered F-Droid publish for ${{ steps.next_version.outputs.tag }}"
 
       - name: Dry run summary

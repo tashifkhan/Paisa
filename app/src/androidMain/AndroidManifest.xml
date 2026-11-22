@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- ML Kit's GenAI AAR declares minSdk 26. Paisa keeps 24 and only
+    <!-- ML Kit's GenAI AAR declares minSdk 26. Billi keeps 24 and only
          loads the engine on 26+, so phones on 24-25 keep every other feature. -->
     <uses-sdk tools:overrideLibrary="com.google.mlkit.genai.prompt,com.google.mlkit.genai.common" />
 
@@ -69,7 +69,7 @@
     </queries>
 
     <application
-        android:name=".PaisaApplication"
+        android:name=".BilliApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -78,7 +78,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Paisa">
+        android:theme="@style/Theme.Billi">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -86,7 +86,7 @@
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboard|keyboardHidden|navigation|density"
             android:resizeableActivity="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Paisa"
+            android:theme="@style/Theme.Billi"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -94,7 +94,7 @@
             </intent-filter>
         </activity>
 
-        <!-- "Share to Paisa": receipts, bills, statements and spreadsheets go to Add with AI.
+        <!-- "Share to Billi": receipts, bills, statements and spreadsheets go to Add with AI.
              No UI of its own. It copies the files and hands them to MainActivity. -->
         <activity
             android:name=".share.ShareActivity"
@@ -150,6 +150,28 @@
                 android:value="alerting|silent" />
         </service>
 
+        <!-- Android indexes these AppFunctions for authorized callers. Gemini also requires
+             Connected Apps registration for this package and bundle version. -->
+        <service
+            android:name=".assistant.BilliAppFunctionService"
+            android:exported="true"
+            android:permission="android.permission.BIND_APP_FUNCTION_SERVICE"
+            tools:targetApi="36">
+            <property
+                android:name="android.app.appfunctions.schema"
+                android:value="app_functions_schema.xsd" />
+            <property
+                android:name="android.app.appfunctions.v2"
+                android:value="billi_app_functions.xml" />
+            <intent-filter>
+                <action android:name="android.app.appfunctions.AppFunctionService" />
+            </intent-filter>
+        </service>
+        <property
+            android:name="android.app.appfunctions.app_metadata"
+            android:resource="@xml/app_function_app_metadata"
+            tools:targetApi="36" />
+
         <!-- Home screen widgets (Glance) -->
         <receiver
             android:name=".widget.BalanceWidgetReceiver"
@@ -185,7 +207,7 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- WorkManager starts from PaisaApplication (Configuration.Provider) so
+        <!-- WorkManager starts from BilliApplication (Configuration.Provider) so
              workers get Hilt injection; drop the default initializer. -->
         <provider
             android:name="androidx.startup.InitializationProvider"

@@ -1,0 +1,179 @@
+package sh.taf.billi.ui.lock
+
+import sh.taf.billi.ui.components.BilliMascot
+import sh.taf.billi.ui.components.BilliMood
+import sh.taf.billi.ui.platform.PlatformBackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Fingerprint
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.flow.first
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import sh.taf.billi.ui.haptics.rememberHaptics
+import sh.taf.billi.ui.theme.spacing
+
+/**
+ * Full-screen Material 3 lock gate shown when biometric app lock is enabled.
+ */
+@Composable
+fun AppLockScreen(
+    errorMessage: String? = null,
+    biometricAvailable: Boolean = true,
+    onUnlockClick: () -> Unit,
+    autoPrompt: Boolean = true
+) {
+    val haptics = rememberHaptics()
+
+    PlatformBackHandler(enabled = true) {
+        // Block back while locked — user must authenticate.
+    }
+
+    // The lock engages in onStop, so this screen composes while the app is in
+    // the background. A prompt started then is dropped silently by the system
+    // (BiometricPrompt refuses to start after onSaveInstanceState), so wait
+    // until the app is back in front. One auto prompt per lock: if the user
+    // cancels it, the Unlock button is there, and we don't nag on every resume.
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(autoPrompt, biometricAvailable) {
+        if (autoPrompt && biometricAvailable) {
+            lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
+            onUnlockClick()
+        }
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(MaterialTheme.spacing.large),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                BilliMascot(mood = BilliMood.Guarding, size = 132.dp, animate = true)
+
+                Spacer(Modifier.height(MaterialTheme.spacing.large))
+
+                Text(
+                    text = "Billi is locked",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(Modifier.height(MaterialTheme.spacing.smaller))
+
+                Text(
+                    text = if (biometricAvailable) {
+                        "Use fingerprint, face, or device credentials to unlock your finances"
+                    } else {
+                        "Biometric authentication is unavailable. Set up biometrics in system settings, or disable app lock after unlocking."
+                    },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small)
+                )
+
+                if (!errorMessage.isNullOrBlank()) {
+                    Spacer(Modifier.height(MaterialTheme.spacing.medium))
+                    Surface(
+                        shape = MaterialTheme.shapes.large,
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = errorMessage,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(MaterialTheme.spacing.medium)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(MaterialTheme.spacing.larger))
+
+                if (biometricAvailable) {
+                    Button(
+                        onClick = {
+                            haptics.click()
+                            onUnlockClick()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.extraLarge,
+                        contentPadding = ButtonDefaults.ContentPadding
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Fingerprint,
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(Modifier.size(MaterialTheme.spacing.smaller))
+                        Text(
+                            text = "Unlock",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                } else {
+                    FilledTonalButton(
+                        onClick = {
+                            haptics.click()
+                            onUnlockClick()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.extraLarge
+                    ) {
+                        Text(
+                            text = "Try again",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(MaterialTheme.spacing.medium))
+
+                Text(
+                    text = "Your data stays on this device",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    }
+}
