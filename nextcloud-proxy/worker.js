@@ -1,6 +1,6 @@
-// A CORS proxy so Paisa in the browser can reach your Nextcloud.
+// A CORS proxy so Billi in the browser can reach your Nextcloud.
 //
-// Nextcloud sends no CORS headers, so a web page can't call it directly. Paisa
+// Nextcloud sends no CORS headers, so a web page can't call it directly. Billi
 // sends each request here with the real address in `?target=`; this forwards
 // it and adds the CORS headers. It stores nothing and logs nothing.
 //
@@ -8,7 +8,7 @@
 //   NEXTCLOUD_URL   your server, e.g. https://cloud.example.com. Requests to
 //                   anywhere else are refused, so this can't be used as an
 //                   open proxy.
-//   ALLOWED_ORIGIN  where Paisa web runs, e.g. https://paisa.example.com.
+//   ALLOWED_ORIGIN  where Billi web runs, e.g. https://billi.example.com.
 //                   "*" allows any site, which is fine for testing only.
 
 const METHODS = ['GET', 'PUT', 'DELETE', 'POST', 'PROPFIND', 'MKCOL'];

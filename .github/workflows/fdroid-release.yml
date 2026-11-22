@@ -13,7 +13,7 @@ on:
       apk_pattern:
         description: APK asset pattern on that release
         required: true
-        default: "Paisa-v*.apk"
+        default: "Billi-v*.apk"
         type: string
 
 permissions:

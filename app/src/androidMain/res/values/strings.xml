@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Paisa</string>
-    <!-- Shown under the Paisa icon in the system share sheet -->
+    <string name="app_name">Billi</string>
+    <string name="app_function_app_display_description">Record expenses and income in Billi, and check spending, budgets, and recent transactions.</string>
+    <!-- Shown under the Billi icon in the system share sheet -->
     <string name="share_target_label">Add with AI</string>
     <string name="tab_home">Home</string>
     <string name="tab_analytics">Analytics</string>
@@ -14,8 +15,18 @@
     <string name="total_balance">Total balance</string>
     <string name="income">Income</string>
     <string name="expense">Expense</string>
-    <string name="widget_balance">Paisa balance</string>
+    <string name="widget_balance">Billi balance</string>
     <string name="widget_balance_description">Total balance with this month’s income and expense</string>
-    <string name="widget_quick_actions">Paisa quick actions</string>
+    <string name="widget_quick_actions">Billi quick actions</string>
+    <!-- Launcher shortcuts (long-press the app icon) -->
+    <string name="shortcut_add_short">Add transaction</string>
+    <string name="shortcut_add_long">Add an expense or income</string>
+    <string name="shortcut_ai_short">Add with AI</string>
+    <string name="shortcut_ai_long">Describe a payment or attach a receipt</string>
+    <string name="shortcut_budgets_short">Budgets</string>
+    <string name="shortcut_budgets_long">See budgets for this month</string>
+    <string name="shortcut_analytics_short">Spending</string>
+    <string name="shortcut_analytics_long">See where your money went</string>
+    <string name="shortcut_ai_off">AI is off in Billi</string>
     <string name="widget_quick_actions_description">Add a transaction and jump to home, SMS rescan, AI import, or accounts</string>
 </resources>

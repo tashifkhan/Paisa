@@ -19,10 +19,10 @@ val generateWebVersion by tasks.registering {
     inputs.property("version", version)
     outputs.dir(out)
     doLast {
-        val file = out.get().file("codes/tashif/paisa/WebVersion.kt").asFile
+        val file = out.get().file("sh/taf/billi/WebVersion.kt").asFile
         file.parentFile.mkdirs()
         file.writeText(
-            "package codes.tashif.paisa\n\n" +
+            "package sh.taf.billi\n\n" +
                 "/** Generated from versionName in app/build.gradle.kts. */\n" +
                 "internal const val WEB_VERSION_NAME = \"${version.get()}\"\n"
         )
@@ -41,10 +41,10 @@ kotlin {
 
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
-        outputModuleName.set("paisa-web")
+        outputModuleName.set("billi-web")
         browser {
             commonWebpackConfig {
-                outputFileName = "paisa-web.js"
+                outputFileName = "billi-web.js"
             }
             // commonTest runs in headless Chrome, so the backup container is
             // tested against the browser's own WebCrypto.
@@ -87,6 +87,7 @@ kotlin {
             implementation(libs.jb.lifecycle.runtime.compose)
             // Backdrop blur for the frosted floating navbar.
             implementation(libs.haze)
+            implementation(libs.haze.blur)
         }
         androidMain.dependencies {
             implementation(project(":parser-core"))
@@ -129,6 +130,8 @@ kotlin {
             implementation(libs.play.services.auth)
             // On-device Gemini Nano through AICore. Guarded to Android 8+ at runtime.
             implementation(libs.mlkit.genai.prompt)
+            // Gemini and other assistants call Billi's actions through AppFunctions (Android 16+).
+            implementation(libs.androidx.appfunctions)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
@@ -143,7 +146,9 @@ kotlin {
             // Real org.json for JVM unit tests (Android stubs throw at runtime)
             implementation("org.json:json:20240303")
             // Real SQLite + android.util for the database tests
-            implementation("org.robolectric:robolectric:4.16")
+            implementation("org.robolectric:robolectric:4.18.1")
+            // Runs the generated AppFunction service the way an assistant would.
+            implementation(libs.androidx.appfunctions.testing)
         }
         wasmJsMain.dependencies {
             implementation(libs.kotlinx.browser)
@@ -157,13 +162,14 @@ kotlin {
 }
 
 android {
-    namespace = "codes.tashif.paisa"
-    compileSdk = 36
+    namespace = "sh.taf.billi"
+    compileSdk = 37
+    compileSdkMinor = 2
 
     defaultConfig {
-        applicationId = "codes.tashif.paisa"
+        applicationId = "sh.taf.billi"
         minSdk = 24
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 19
         versionName = "1.8.0"
 
@@ -172,7 +178,7 @@ android {
 
     buildTypes {
         // -PpaisaSideBySide builds a debug copy that installs beside the real app
-        // (codes.tashif.paisa.audit, "Paisa Audit") with its own data, for testing on
+        // (sh.taf.billi.audit, "Paisa Audit") with its own data, for testing on
         // a phone that already has Paisa with real transactions.
         debug {
             if (providers.gradleProperty("paisaSideBySide").isPresent) {
@@ -191,6 +197,8 @@ android {
     if (providers.gradleProperty("paisaSideBySide").isPresent) {
         sourceSets["debug"].res.srcDir("src/androidSideBySide/res")
     }
+    // Debug-only deep links, such as billi://debug/seed-demo.
+    sourceSets["debug"].manifest.srcFile("src/androidDebug/AndroidManifest.xml")
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -206,10 +214,18 @@ android {
     }
 }
 
+// Robolectric needs Java 21 to simulate Android 16, where the AppFunctions
+// tests run. Only the unit tests use it; the app still builds on Java 17.
+val javaToolchains = extensions.getByType<JavaToolchainService>()
+tasks.withType<Test>().configureEach {
+    javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) })
+}
+
 dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
     add("kspAndroid", libs.room3.compiler)
+    add("kspAndroid", libs.androidx.appfunctions.compiler)
     add("kspWasmJs", libs.room3.compiler)
 }
 
@@ -218,6 +234,6 @@ room3 {
 }
 
 compose.resources {
-    packageOfResClass = "codes.tashif.paisa.resources"
+    packageOfResClass = "sh.taf.billi.resources"
     publicResClass = false
 }

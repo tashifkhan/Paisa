@@ -1,0 +1,30 @@
+package sh.taf.billi.data.repository
+
+import sh.taf.billi.data.AppDatabase
+import sh.taf.billi.data.UnrecognizedSms
+import kotlinx.coroutines.flow.Flow
+
+/** Bank-looking SMS from senders no parser knows, kept for the user to review. */
+class SmsInboxRepository(db: AppDatabase) {
+
+    private val unrecognizedSmsDao = db.unrecognizedSmsDao()
+
+    val pendingUnrecognizedSms: Flow<List<UnrecognizedSms>> = unrecognizedSmsDao.getPending()
+    val pendingUnrecognizedCount: Flow<Int> = unrecognizedSmsDao.getPendingCount()
+
+    suspend fun insertUnrecognizedSms(sms: UnrecognizedSms): Long =
+        unrecognizedSmsDao.insert(sms)
+
+    /** Rows waiting for the on-device model, oldest first. */
+    suspend fun pendingForAi(limit: Int = Int.MAX_VALUE): List<UnrecognizedSms> = unrecognizedSmsDao.getPendingAi(limit)
+
+    suspend fun countPendingAi(): Int = unrecognizedSmsDao.countPendingAi()
+
+    suspend fun markAiAttempted(id: Int) = unrecognizedSmsDao.markAiAttempted(id)
+
+    suspend fun markUnrecognizedReviewed(id: Int) = unrecognizedSmsDao.markReviewed(id)
+
+    suspend fun markAllUnrecognizedReviewed(): Int = unrecognizedSmsDao.markAllReviewed()
+
+    suspend fun deleteUnrecognized(id: Int) = unrecognizedSmsDao.delete(id)
+}
