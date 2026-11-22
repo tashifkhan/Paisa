@@ -20,7 +20,7 @@ const ready = (async () => {
   } catch (e) {
     // Private windows and very old browsers have no OPFS. The data then
     // lasts only as long as the tab.
-    console.warn('Paisa: OPFS is unavailable, using an in-memory database', e);
+    console.warn('Billi: OPFS is unavailable, using an in-memory database', e);
   }
   return { sqlite3, pool };
 })();

@@ -5,7 +5,7 @@ const path = require('path');
 const repoRoot = path.resolve(__dirname, '../../../..');
 config.resolve = config.resolve || {};
 config.resolve.alias = Object.assign({}, config.resolve.alias, {
-  'paisa-sqlite-worker': path.join(repoRoot, 'app/src/wasmJsMain/sqlite-worker'),
+  'billi-sqlite-worker': path.join(repoRoot, 'app/src/wasmJsMain/sqlite-worker'),
 });
 // The worker imports @sqlite.org/sqlite-wasm. Find it in the Kotlin/Wasm
 // node_modules, since the worker folder has none of its own.

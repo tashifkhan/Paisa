@@ -55,7 +55,7 @@ subprojects {
         val kotlinExt = extensions.findByType<org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension>()
         kotlinExt?.sourceSets?.findByName("jvmTest")?.dependencies {
             implementation(libs.junit)
-            runtimeOnly("org.junit.vintage:junit-vintage-engine:5.10.0")
+            runtimeOnly("org.junit.vintage:junit-vintage-engine:5.14.4")
         }
     }
 }
