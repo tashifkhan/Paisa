@@ -1,5 +1,7 @@
 package sh.taf.billi.ui.statement
 
+import sh.taf.billi.ui.platform.thisDevice
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -126,7 +128,7 @@ internal fun StatementIdleContent(
                 )
                 Spacer(Modifier.width(MaterialTheme.spacing.smaller))
                 Text(
-                    "Files go straight from this phone to the AI provider you picked, and nowhere else.",
+                    "Files go straight from $thisDevice to the AI provider you picked, and nowhere else.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

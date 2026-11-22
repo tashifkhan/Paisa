@@ -1,5 +1,7 @@
 package sh.taf.billi.ui.transaction
 
+import sh.taf.billi.ui.sms.smsImportSupported
+
 import sh.taf.billi.platform.parseDate
 import sh.taf.billi.platform.formatDate
 import sh.taf.billi.platform.BilliCalendar
@@ -231,7 +233,7 @@ internal fun DetailToggles(
             icon = Icons.Rounded.Bookmark,
             title = "Always use for “$merchantForMapping”",
             subtitle = if (fromSmsOrImport) {
-                "Future SMS, notifications and imports with this merchant get this category"
+                if (smsImportSupported) "Future SMS, notifications and imports with this merchant get this category" else "Future imports with this merchant get this category"
             } else {
                 "Future transactions with this title get this category"
             },

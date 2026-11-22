@@ -44,7 +44,7 @@ internal fun BackupSyncSection(
         SettingsItem(
             title = "Sync between devices",
             subtitle = when {
-                !connected -> "Connect Google Drive or Nextcloud first"
+                !connected -> "Connect ${if (googleDriveSupported) "Google Drive or Nextcloud" else "Nextcloud"} first"
                 sync.enabled && sync.error != null -> sync.error
                 sync.enabled && sync.lastSyncAt > 0 -> "On · last synced ${formatDate(sync.lastSyncAt)}"
                 sync.enabled -> "On"

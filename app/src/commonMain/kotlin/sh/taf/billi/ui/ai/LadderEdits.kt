@@ -34,6 +34,10 @@ suspend fun AiRepository.addRungWithOptions(service: AiService?, rung: Rung) {
 }
 
 /** Where a model can be added: the Default ladder (null) or a service. */
-fun ladderTargets(): List<AiService?> = listOf<AiService?>(null) + AiService.entries
+fun ladderTargets(): List<AiService?> = listOf<AiService?>(null) + availableAiServices()
+
+/** Services this build can run. "SMS and alerts" needs SMS or notification access, which the web lacks. */
+fun availableAiServices(): List<AiService> =
+    AiService.entries.filter { it != AiService.MESSAGE_PARSE || !sh.taf.billi.ui.platform.isWebPlatform }
 
 fun ladderTitle(service: AiService?): String = service?.label ?: "Default ladder"

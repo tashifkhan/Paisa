@@ -9,6 +9,9 @@ import org.w3c.files.File
 
 actual fun urlHost(url: String): String? = jsUrlHost(url)
 
+actual val googleDriveSupported: Boolean
+    get() = !jsGoogleClientId().isNullOrBlank()
+
 @Composable
 actual fun rememberBackupLaunchers(viewModel: BackupViewModel): BackupLaunchers = remember(viewModel) {
     // Load Google sign-in ahead of the click, so its popup isn't blocked.

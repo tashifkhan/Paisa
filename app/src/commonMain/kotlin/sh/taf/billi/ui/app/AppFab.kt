@@ -1,5 +1,7 @@
 package sh.taf.billi.ui.app
 
+import sh.taf.billi.ui.sms.smsImportSupported
+
 import sh.taf.billi.sms.SmsScanService
 import org.koin.compose.koinInject
 import androidx.compose.animation.AnimatedVisibility
@@ -56,7 +58,7 @@ fun AppFab(
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)
         ) {
-            if (currentTab == AppTab.HOME) {
+            if (currentTab == AppTab.HOME && smsImportSupported) {
                 SmallFloatingActionButton(
                     onClick = {
                         if (!scanRunning) {

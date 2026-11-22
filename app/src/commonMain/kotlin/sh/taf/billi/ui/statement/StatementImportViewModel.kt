@@ -1,5 +1,7 @@
 package sh.taf.billi.ui.statement
 
+import sh.taf.billi.ui.platform.isWebPlatform
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import sh.taf.billi.ai.AiRepository
@@ -97,8 +99,12 @@ class StatementImportViewModel(
                 !ladderRunner.canRun(AiService.STATEMENT_PHOTOS)
             ) {
                 _statementUiState.value = StatementUiState.Error(
-                    "Add a model in AI settings first. Cloud models need a key; local AI needs " +
-                        "Gemini Nano downloaded on this phone."
+                    if (isWebPlatform) {
+                        "Add a model in AI settings first, with a key for its provider."
+                    } else {
+                        "Add a model in AI settings first. Cloud models need a key; local AI needs " +
+                            "Gemini Nano downloaded on this phone."
+                    }
                 )
                 return@launch
             }

@@ -1,5 +1,7 @@
 package sh.taf.billi.ui.accounts
 
+import sh.taf.billi.ui.sms.smsImportSupported
+
 import sh.taf.billi.ui.components.BilliMood
 import androidx.compose.foundation.layout.Column
 import org.koin.compose.viewmodel.koinViewModel
@@ -64,7 +66,11 @@ fun AccountsScreen(viewModel: AccountsViewModel = koinViewModel()) {
             EmptyState(
                 title = "No accounts",
                 mood = BilliMood.Curious,
-                subtitle = "Accounts appear here after your first SMS scan or import"
+                subtitle = if (smsImportSupported) {
+                    "Accounts appear here after your first SMS scan or import"
+                } else {
+                    "Accounts appear here after an import or a restored backup"
+                }
             )
             return@Column
         }

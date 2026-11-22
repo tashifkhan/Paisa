@@ -25,6 +25,8 @@ import sh.taf.billi.ui.components.SettingsSectionLabel
 import sh.taf.billi.ui.components.groupPositionOf
 import sh.taf.billi.sms.SmsScanProgress
 import sh.taf.billi.ui.theme.BilliPalette
+import sh.taf.billi.ui.backup.googleDriveSupported
+import sh.taf.billi.ui.sms.smsImportSupported
 
 // The groups on the More screen. Each emits its label and group into the
 // caller's Column.
@@ -67,25 +69,29 @@ fun MoreImportSection(
     onOpenNotificationImport: () -> Unit,
     onOpenStatementImport: () -> Unit
 ) {
-    // Statement import only works through an AI model.
+    // Statement import only works through an AI model. The web reads no SMS or notifications.
+    val showSms = smsImportSupported
     val showNotifications = notifications.supported
-    val count = 1 + (if (showNotifications) 1 else 0) + (if (aiEnabled) 1 else 0)
+    val count = (if (showSms) 1 else 0) + (if (showNotifications) 1 else 0) + (if (aiEnabled) 1 else 0)
+    if (count == 0) return
     SettingsSectionLabel("Import")
     SettingsGroup {
-        SettingsItem(
-            title = "SMS import",
-            subtitle = when {
-                scan.isRunning -> "Scanning… ${scan.processed}/${scan.total}"
-                unrecognizedCount > 0 ->
-                    "$unrecognizedCount unrecognized · tap to manage"
-                else -> "Import bank transactions from SMS"
-            },
-            icon = Icons.Rounded.Sms,
-            position = groupPositionOf(0, count),
-            iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
-            iconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            onClick = onOpenSmsSetup
-        )
+        if (showSms) {
+            SettingsItem(
+                title = "SMS import",
+                subtitle = when {
+                    scan.isRunning -> "Scanning… ${scan.processed}/${scan.total}"
+                    unrecognizedCount > 0 ->
+                        "$unrecognizedCount unrecognized · tap to manage"
+                    else -> "Import bank transactions from SMS"
+                },
+                icon = Icons.Rounded.Sms,
+                position = groupPositionOf(0, count),
+                iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                iconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                onClick = onOpenSmsSetup
+            )
+        }
         if (showNotifications) {
             SettingsItem(
                 title = "Payment notifications",
@@ -95,7 +101,7 @@ fun MoreImportSection(
                     else -> notifications.apps.count { it.enabled }.let { n -> "On · $n app${if (n == 1) "" else "s"}" }
                 },
                 icon = Icons.Rounded.NotificationsActive,
-                position = groupPositionOf(1, count),
+                position = groupPositionOf(if (showSms) 1 else 0, count),
                 iconContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
                 iconContentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                 onClick = onOpenNotificationImport
@@ -130,7 +136,7 @@ fun MoreDataSection(
     SettingsGroup {
         SettingsItem(
             title = "Backup",
-            subtitle = "Google Drive, Nextcloud, or a file",
+            subtitle = if (googleDriveSupported) "Google Drive, Nextcloud, or a file" else "Nextcloud or a file",
             icon = Icons.Rounded.CloudUpload,
             position = groupPositionOf(0, 2),
             iconContainerColor = MaterialTheme.colorScheme.primaryContainer,

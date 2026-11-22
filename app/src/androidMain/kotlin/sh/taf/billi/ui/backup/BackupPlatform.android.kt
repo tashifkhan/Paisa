@@ -76,3 +76,5 @@ actual fun rememberBackupLaunchers(viewModel: BackupViewModel): BackupLaunchers 
         openUrl = { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
     )
 }
+
+actual val googleDriveSupported: Boolean = true

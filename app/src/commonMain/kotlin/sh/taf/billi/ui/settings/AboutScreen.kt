@@ -1,5 +1,7 @@
 package sh.taf.billi.ui.settings
 
+import sh.taf.billi.ui.backup.googleDriveSupported
+
 import androidx.compose.foundation.layout.Box
 import sh.taf.billi.ui.components.BilliMood
 import sh.taf.billi.ui.components.BilliMascot
@@ -87,7 +89,7 @@ fun AboutScreen(
                 if (smsImportSupported) {
                     add(Triple(Icons.Rounded.Sms, "Bank SMS", "Read and parsed on the phone. The messages never leave it."))
                 }
-                add(Triple(Icons.Rounded.CloudSync, "Backup and sync", "Only to the Google Drive, Nextcloud or file you pick. AES-256-GCM encrypted when you set a password."))
+                add(Triple(Icons.Rounded.CloudSync, "Backup and sync", "Only to the ${if (googleDriveSupported) "Google Drive, Nextcloud" else "Nextcloud server"} or file you pick. AES-256-GCM encrypted when you set a password."))
                 add(Triple(Icons.Rounded.AutoAwesome, "AI", "Off until you add a key. Only what you send, like a note, receipt or statement, goes to the provider you chose."))
             }
             SettingsGroup {
@@ -107,7 +109,11 @@ fun AboutScreen(
             SettingsGroup {
                 SettingsItem(
                     title = "Run setup again",
-                    subtitle = "Currency, theme and SMS access, then shortcuts to get going",
+                    subtitle = if (smsImportSupported) {
+                        "Currency, theme and SMS access, then shortcuts to get going"
+                    } else {
+                        "Currency and theme, then shortcuts to get going"
+                    },
                     icon = Icons.Rounded.Replay,
                     position = groupPositionOf(0, 2),
                     iconContainerColor = rowTone(0).container,

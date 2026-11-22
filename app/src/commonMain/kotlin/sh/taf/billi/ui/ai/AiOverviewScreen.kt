@@ -43,6 +43,8 @@ import sh.taf.billi.ai.ladder.LadderState
 import sh.taf.billi.ai.local.LocalAiCompatibility
 import sh.taf.billi.ai.local.LocalAiState
 import sh.taf.billi.ai.local.LocalAiStatus
+import sh.taf.billi.ui.platform.isWebPlatform
+import sh.taf.billi.ui.platform.thisDevice
 import sh.taf.billi.ui.components.DetailHeader
 import sh.taf.billi.ui.components.SettingsGroup
 import sh.taf.billi.ui.components.SettingsItem
@@ -111,35 +113,38 @@ fun AiOverviewScreen(
             // Turned off, the page is just the switch. Keys and models stay saved.
             if (!aiEnabled) return@Column
             // On a phone without Gemini Nano the row stays, greyed out; tapping it explains why.
-            Spacer(Modifier.height(MaterialTheme.spacing.small))
-            SettingsGroup {
-                SettingsItem(
-                    title = "Use local AI",
-                    subtitle = localRowSubtitle(localStatus, useLocal),
-                    icon = Icons.Rounded.Smartphone,
-                    position = groupPositionOf(0, 1),
-                    iconContainerColor = if (localStatus.ready) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainerHigh
-                    },
-                    iconContentColor = if (localStatus.ready) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    onClick = onOpenLocalAi,
-                    trailing = {
-                        Switch(
-                            checked = useLocal,
-                            enabled = localStatus.ready,
-                            onCheckedChange = {
-                                haptics.toggle(on = it)
-                                viewModel.setUseLocalAi(it)
-                            }
-                        )
-                    }
-                )
+            // The web has no on-device model at all, so it doesn't show the row.
+            if (!isWebPlatform) {
+                Spacer(Modifier.height(MaterialTheme.spacing.small))
+                SettingsGroup {
+                    SettingsItem(
+                        title = "Use local AI",
+                        subtitle = localRowSubtitle(localStatus, useLocal),
+                        icon = Icons.Rounded.Smartphone,
+                        position = groupPositionOf(0, 1),
+                        iconContainerColor = if (localStatus.ready) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerHigh
+                        },
+                        iconContentColor = if (localStatus.ready) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        onClick = onOpenLocalAi,
+                        trailing = {
+                            Switch(
+                                checked = useLocal,
+                                enabled = localStatus.ready,
+                                onCheckedChange = {
+                                    haptics.toggle(on = it)
+                                    viewModel.setUseLocalAi(it)
+                                }
+                            )
+                        }
+                    )
+                }
             }
             Spacer(Modifier.height(MaterialTheme.spacing.medium))
             NoteCard(
@@ -147,7 +152,7 @@ fun AiOverviewScreen(
                     "Use your own cloud key, or Gemini Nano on this phone. Only what you send to AI " +
                         "leaves the phone, and only to the providers you pick."
                 } else {
-                    "Use your own cloud key. Only what you send to AI leaves the phone, and only to " +
+                    "Use your own cloud key. Only what you send to AI leaves $thisDevice, and only to " +
                         "the providers you pick."
                 },
                 icon = Icons.Rounded.AutoAwesome,
@@ -219,7 +224,8 @@ private fun ServicesSection(
 ) {
     SettingsSectionLabel("Services")
     SettingsGroup {
-        ladders.services.forEachIndexed { index, ladder ->
+        val services = ladders.services.filter { it.service in availableAiServices() }
+        services.forEachIndexed { index, ladder ->
             SettingsItem(
                 title = ladder.service.label,
                 subtitle = if (ladder.usesDefault) {
@@ -233,7 +239,7 @@ private fun ServicesSection(
                     AiService.QUICK_ADD -> Icons.Rounded.AutoAwesome
                     AiService.MESSAGE_PARSE -> Icons.Rounded.Sms
                 },
-                position = groupPositionOf(index, ladders.services.size),
+                position = groupPositionOf(index, services.size),
                 iconContainerColor = rowTone(index).container,
                 iconContentColor = rowTone(index).content,
                 onClick = { onOpenLadder(ladder.service) }

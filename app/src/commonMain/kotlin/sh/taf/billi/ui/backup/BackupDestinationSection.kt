@@ -14,7 +14,7 @@ import sh.taf.billi.ui.components.SettingsItem
 import sh.taf.billi.ui.components.SettingsSectionLabel
 import sh.taf.billi.ui.components.groupPositionOf
 
-/** "Back up to": Google Drive, Nextcloud, and Disconnect once one is set up. */
+/** "Back up to": Google Drive where sign-in works, Nextcloud, and Disconnect once one is set up. */
 @Composable
 internal fun BackupDestinationSection(
     config: BackupConfig,
@@ -27,8 +27,10 @@ internal fun BackupDestinationSection(
     val connected = config.provider != BackupProvider.NONE
     SettingsSectionLabel("Back up to")
     SettingsGroup {
-        val rows = if (connected) 3 else 2
-        SettingsItem(
+        val showDrive = googleDriveSupported || config.provider == BackupProvider.GOOGLE_DRIVE
+        val first = if (showDrive) 0 else -1
+        val rows = (if (showDrive) 1 else 0) + 1 + (if (connected) 1 else 0)
+        if (showDrive) SettingsItem(
             title = "Google Drive",
             subtitle = when {
                 config.provider == BackupProvider.GOOGLE_DRIVE ->
@@ -36,7 +38,7 @@ internal fun BackupDestinationSection(
                 else -> "Hidden app folder in your Google account"
             },
             icon = Icons.Rounded.Cloud,
-            position = groupPositionOf(0, rows),
+            position = groupPositionOf(first, rows),
             onClick = if (isBusy) null else onConnectGoogle,
             trailing = {
                 RadioButton(
@@ -54,7 +56,7 @@ internal fun BackupDestinationSection(
                 else -> "Your own server, saved in a Billi folder"
             },
             icon = Icons.Rounded.Storage,
-            position = groupPositionOf(1, rows),
+            position = groupPositionOf(first + 1, rows),
             iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
             iconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
             onClick = if (isBusy) null else onOpenNextcloud,
@@ -70,7 +72,7 @@ internal fun BackupDestinationSection(
                 title = "Disconnect",
                 subtitle = "Stop backing up. Uploaded backups stay put.",
                 icon = Icons.AutoMirrored.Rounded.Logout,
-                position = groupPositionOf(2, rows),
+                position = groupPositionOf(first + 2, rows),
                 iconContainerColor = MaterialTheme.colorScheme.errorContainer,
                 iconContentColor = MaterialTheme.colorScheme.onErrorContainer,
                 onClick = if (isBusy) null else onDisconnect

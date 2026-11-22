@@ -33,7 +33,9 @@ fun PrivacySecuritySection(
     val biometricAvailable = biometrics.available
     val assistant = koinInject<AssistantAccess>()
     val assistantEnabled by assistant.enabled.collectAsState()
-    val rows = if (assistant.supported) 3 else 2
+    // App lock needs biometrics, which the web build doesn't have.
+    val showAppLock = biometrics.supported
+    val rows = 1 + (if (showAppLock) 1 else 0) + (if (assistant.supported) 1 else 0)
 
     fun changeHideByDefault(hide: Boolean) {
         if (hide) {
@@ -86,7 +88,7 @@ fun PrivacySecuritySection(
                 )
             }
         )
-        SettingsItem(
+        if (showAppLock) SettingsItem(
             title = "App lock",
             subtitle = if (biometricAvailable) {
                 if (biometricEnabled) {
@@ -151,7 +153,7 @@ fun PrivacySecuritySection(
                     "Off. Assistants can't add or read anything in Billi"
                 },
                 icon = Icons.Rounded.AutoAwesome,
-                position = groupPositionOf(2, rows),
+                position = groupPositionOf(rows - 1, rows),
                 iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
                 iconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 onClick = {

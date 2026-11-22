@@ -1,5 +1,8 @@
 package sh.taf.billi.ui.backup
 
+import sh.taf.billi.ui.platform.onThisDevice
+import sh.taf.billi.ui.platform.thisDevice
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -86,7 +89,7 @@ internal fun SyncPasswordDialog(onDismiss: () -> Unit, onConfirm: (String) -> Un
             Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)) {
                 Text(
                     "Use the same password on every device. It encrypts your data before " +
-                        "it leaves this phone. Billi can't reset it.",
+                        "it leaves $thisDevice. Billi can't reset it.",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 OutlinedTextField(
@@ -133,7 +136,7 @@ internal fun EnterPasswordDialog(label: String, onDismiss: () -> Unit, onConfirm
             Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)) {
                 Text(
                     "The backup from $label is encrypted. Restoring replaces everything " +
-                        "in Billi on this phone.",
+                        "in Billi $onThisDevice.",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 OutlinedTextField(
