@@ -9,8 +9,9 @@ import org.w3c.files.File
 
 actual fun urlHost(url: String): String? = jsUrlHost(url)
 
-actual val googleDriveSupported: Boolean
-    get() = !jsGoogleClientId().isNullOrBlank()
+// Drive shows on the web even before index.html has a client ID. Picking it
+// then explains that the site still needs one.
+actual val googleDriveSupported: Boolean = true
 
 @Composable
 actual fun rememberBackupLaunchers(viewModel: BackupViewModel): BackupLaunchers = remember(viewModel) {
