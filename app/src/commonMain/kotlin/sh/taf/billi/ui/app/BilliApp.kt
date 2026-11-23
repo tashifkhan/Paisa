@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -56,6 +57,7 @@ fun BilliApp(viewModel: AppViewModel = koinViewModel()) {
             }
 
             val needsOnboarding = !current.onboardingCompleted
+            LaunchedEffect(needsOnboarding) { rememberSetupDone(!needsOnboarding) }
             val appLockOn = current.biometricEnabled
             var restoringFromOnboarding by remember { mutableStateOf(false) }
             when {

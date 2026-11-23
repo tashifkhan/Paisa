@@ -6,7 +6,7 @@ Every Billi release, newest first. Releases up to 1.8.0 shipped as Paisa. Each v
 
 ### Web
 
-- [billi.taf.sh](https://billi.taf.sh) is now a landing page with screenshots, the walkthrough video and the download links. The app moved to [billi.taf.sh/app](https://billi.taf.sh/app). Data you already have in the browser stays, since it's the same site.
+- [billi.taf.sh](https://billi.taf.sh) is now a landing page with screenshots, the walkthrough video and the download links. The app moved to [billi.taf.sh/app](https://billi.taf.sh/app). Data you already have in the browser stays, since it's the same site. Once you've set Billi up there, or restored a backup, billi.taf.sh opens the app directly. `billi.taf.sh/?landing` still shows the landing page.
 - The address bar follows the app: `/app/analytics`, `/app/settings/backup`, `/app/transactions/42`. Reload or share a link and it opens on that screen. Pages that don't exist show a proper "not found" page.
 - Google Drive shows in Backup again.
 - The drawer's add button runs the drawer's full width, and Backup, AI, Categories, Merchant rules, Appearance and About sit under the tabs when the window is tall enough.

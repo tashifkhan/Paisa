@@ -15,8 +15,28 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="styles.css">
   <script>
-    // Old links to billi.taf.sh/?demo opened the app with sample data.
-    if (new URLSearchParams(location.search).has('demo')) location.replace('/app/' + location.search);
+    // People who already use Billi here go straight to the app.
+    (function () {
+      var query = new URLSearchParams(location.search);
+      // Old links to billi.taf.sh/?demo opened the app with sample data.
+      if (query.has('demo')) { location.replace('/app/' + location.search); return; }
+      // ?landing shows this page even to people who use the app.
+      if (query.has('landing')) return;
+      // The app writes "1" once setup is done or a backup is restored, and
+      // "0" when it was opened but never set up.
+      var used = null;
+      try { used = localStorage.getItem('billi.web.used'); } catch (e) {}
+      if (used === '1') { location.replace('/app/'); return; }
+      if (used === '0') return;
+      // Before 2.0.2 the app lived at / and wrote no flag. Its database is in
+      // the browser's private storage, in a folder named .paisa.
+      if (navigator.storage && navigator.storage.getDirectory) {
+        navigator.storage.getDirectory()
+          .then(function (root) { return root.getDirectoryHandle('.paisa'); })
+          .then(function () { location.replace('/app/'); })
+          .catch(function () {});
+      }
+    })();
   </script>
 </head>
 <body>

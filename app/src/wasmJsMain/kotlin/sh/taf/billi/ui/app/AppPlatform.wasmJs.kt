@@ -20,3 +20,9 @@ actual fun windowWidthDp(): Int {
 
 @Composable
 actual fun appIconPainter(): Painter = painterResource(Res.drawable.ic_launcher_legacy)
+
+/** billi.taf.sh/'s landing page sends people to /app/ when this is "1". */
+actual fun rememberSetupDone(done: Boolean) = jsSetSetupDone(if (done) "1" else "0")
+
+private fun jsSetSetupDone(value: String): Unit =
+    js("{ try { localStorage.setItem('billi.web.used', value); } catch (e) {} }")
