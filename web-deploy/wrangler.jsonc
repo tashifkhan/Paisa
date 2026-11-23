@@ -1,13 +1,16 @@
-// Serves the web build at https://billi.taf.sh as static Workers assets.
-// Build first: ./gradlew :app:wasmJsBrowserDistribution
+// Serves https://billi.taf.sh: the landing page at / and the web app at /app/.
+// Build first: web-deploy/build.sh
 // Then deploy from the repo root: npx wrangler deploy -c web-deploy/wrangler.jsonc
 {
   "$schema": "../node_modules/wrangler/config-schema.json",
   "name": "billi-web",
+  "main": "worker.js",
   "compatibility_date": "2026-11-01",
   "assets": {
-    "directory": "../app/build/dist/wasmJs/productionExecutable",
-    "not_found_handling": "single-page-application"
+    "directory": "./public",
+    "binding": "ASSETS",
+    // Unmatched paths go to worker.js, which routes /app/* to the app.
+    "not_found_handling": "none"
   },
   "routes": [{ "pattern": "billi.taf.sh", "custom_domain": true }],
   "workers_dev": false,

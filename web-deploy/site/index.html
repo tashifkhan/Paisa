@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Billi, a budget built from your bank texts</title>
+  <meta name="description" content="Billi reads bank SMS on your Android phone and turns them into transactions, budgets and charts. No account, nothing uploaded. Also runs in the browser.">
+  <meta name="theme-color" content="#fff8f3">
+  <meta property="og:title" content="Billi">
+  <meta property="og:description" content="A budget built from your bank texts, on your phone.">
+  <meta property="og:image" content="https://billi.taf.sh/screens/home-desktop.webp">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    // Old links to billi.taf.sh/?demo opened the app with sample data.
+    if (new URLSearchParams(location.search).has('demo')) location.replace('/app/' + location.search);
+  </script>
+</head>
+<body>
+  <header class="nav">
+    <div class="container nav-row">
+      <a class="brand" href="/">
+        <img src="logo.svg" alt="" width="36" height="36">
+        <span>Billi</span>
+      </a>
+      <nav class="nav-links" aria-label="Main">
+        <a class="link" href="https://github.com/tashifkhan/Billi">Source code</a>
+        <a class="button button-small" href="/app/">Open the app</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div class="hero-text">
+          <h1>Your bank texts, sorted into a budget.</h1>
+          <p class="lead">Billi reads bank SMS on your phone, and keeps them there.</p>
+          <div class="actions">
+            <a class="button" href="https://github.com/tashifkhan/Billi/releases/latest">Get it for Android</a>
+            <a class="button button-quiet" href="/app/">Open in your browser</a>
+          </div>
+        </div>
+        <figure class="hero-shot" data-slot="hero" data-kind="product" data-alt="Billi's home screen on a laptop: transactions on the left, balance and credit card overview on the right">
+          <picture>
+            <source media="(max-width: 60rem)" srcset="screens/home-phone.webp" width="780" height="1688">
+            <img src="screens/home-desktop.webp" width="2000" height="1250" fetchpriority="high"
+               alt="Billi in a browser: a list of this week's transactions, a total balance of ₹277,307, income and expense for the month, and credit card use at 20%.">
+          </picture>
+        </figure>
+      </div>
+    </section>
+
+    <section class="film" aria-labelledby="film-head">
+      <div class="container">
+        <div class="film-head">
+          <h2 id="film-head">Billi in three minutes</h2>
+          <p class="lead">A walk through the app, from the first screen to backups.</p>
+        </div>
+        <figure class="film-frame">
+          <video controls playsinline preload="none" width="1920" height="1200"
+                 poster="https://taf.sh/media/billi/poster.jpg"
+                 aria-label="A 3 minute 21 second walkthrough of Billi">
+            <source src="https://taf.sh/media/billi/demo.mp4" type="video/mp4">
+            <a class="link" href="https://taf.sh/media/billi/demo.mp4">Watch the walkthrough (MP4, 23 MB)</a>
+          </video>
+          <figcaption>3:21, with sound. It streams as it plays.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="parse" aria-labelledby="parse-head">
+      <div class="container parse-grid">
+        <div class="parse-head">
+          <h2 id="parse-head">One text in, one row out</h2>
+          <p class="lead">Parsers for around 140 Indian banks, from the PennyWise project.</p>
+        </div>
+        <figure class="parse-demo">
+          <div class="sms">
+            <p class="sms-from">HDFC Bank</p>
+            <p class="sms-body">Rs.2,557.00 debited from A/c XX1234 on 23-11-26 to NAMDHARIS via UPI. Avl bal Rs.48,210.00</p>
+          </div>
+          <svg class="parse-arrow" viewBox="0 0 24 24" width="32" height="32" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div class="row-card">
+            <span class="row-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24"><path d="M3 4h2l2.4 10.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.4L21 8H6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="20" r="1.4" fill="currentColor"/><circle cx="17" cy="20" r="1.4" fill="currentColor"/></svg>
+            </span>
+            <span class="row-text">
+              <strong>Namdhari's</strong>
+              <small>Groceries, HDFC Savings, from SMS</small>
+            </span>
+            <span class="row-amount num">−₹2,557.00</span>
+          </div>
+          <figcaption>A sample HDFC alert, and the transaction Billi saves from it.</figcaption>
+        </figure>
+        <ul class="parse-facts">
+          <li><strong>No double counting.</strong> A rescan skips texts it already read.</li>
+          <li><strong>Categories that learn.</strong> Fix a merchant once.</li>
+          <li><strong>One payment, one row.</strong> UPI alert and bank SMS merge.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="showcase" aria-labelledby="show-head">
+      <div class="container">
+        <div class="show-head">
+          <h2 id="show-head">See where the month went</h2>
+          <p class="lead">Charts by date range, monthly caps per category, and debts in one place.</p>
+        </div>
+        <figure class="shot-wide" data-slot="analytics" data-kind="product" data-alt="Billi's analytics screen on a laptop">
+          <picture>
+            <source media="(max-width: 60rem)" srcset="screens/analytics-phone.webp" width="780" height="1688">
+            <img src="screens/analytics-desktop.webp" width="2400" height="1500" loading="lazy"
+               alt="Billi's analytics for November: income, expense and savings cards, a running total against October, a spending heatmap, and a donut of spending by category.">
+          </picture>
+        </figure>
+        <div class="phones">
+          <figure class="shot-phone">
+            <div class="phone-slot" data-slot="phone-budgets" data-kind="product" data-alt="Billi's budgets screen on a phone">
+            <img src="screens/budgets-phone.webp" width="780" height="1688" loading="lazy"
+                 alt="Budgets on a phone: monthly spending at ₹70,867 of ₹60,000, with food, groceries, shopping and transport bars.">
+            </div>
+            <figcaption>Budgets warn you before the month runs out.</figcaption>
+          </figure>
+          <figure class="shot-phone">
+            <div class="phone-slot" data-slot="phone-home" data-kind="product" data-alt="Billi's home screen on a phone">
+            <img src="screens/home-phone.webp" width="780" height="1688" loading="lazy"
+                 alt="Home on a phone: total balance, income and expense, credit cards and debts above today's transactions.">
+            </div>
+            <figcaption>The same app on a phone, with a bottom bar.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="privacy" aria-labelledby="privacy-head">
+      <div class="container privacy-grid">
+        <h2 id="privacy-head">What leaves your phone</h2>
+        <dl class="rows">
+          <div class="row">
+            <dt>Bank SMS and alerts</dt>
+            <dd>Nothing. Billi reads them on the device and they stay there.</dd>
+          </div>
+          <div class="row">
+            <dt>Your transactions</dt>
+            <dd>A database on the phone. There is no Billi account or server.</dd>
+          </div>
+          <div class="row">
+            <dt>Backups</dt>
+            <dd>Only to Google Drive, Nextcloud or a file you pick. Add a password and the file is AES‑256‑GCM encrypted.</dd>
+          </div>
+          <div class="row">
+            <dt>AI</dt>
+            <dd>Only with a key you add. Or Gemini Nano, which runs on supported phones.</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="get" id="get" aria-labelledby="get-head">
+      <div class="container">
+        <h2 id="get-head">Android, or any browser</h2>
+        <div class="get-grid">
+          <div class="get-card">
+            <h3>Android</h3>
+            <p>Everything, including SMS import, payment notifications, widgets and app lock.</p>
+            <a class="button" href="https://github.com/tashifkhan/Billi/releases/latest">Download the APK</a>
+            <div class="fdroid">
+              <p>Or add this F‑Droid repo for updates:</p>
+              <div class="copy-row">
+                <code id="fdroid-url">https://tashif.codes/fdroid/repo?fingerprint=568557c435bdf555725de95de596a90d6fa964d4bf0b71874f254cd0be7e94c9</code>
+                <button class="copy" type="button" data-copy="fdroid-url" hidden>Copy</button>
+              </div>
+            </div>
+          </div>
+          <div class="get-card">
+            <h3>Browser</h3>
+            <p>The same app, kept in your browser. Drive or Nextcloud sync it with your phone.</p>
+            <a class="button" href="/app/">Open Billi</a>
+                        <p class="small">Coming from Paisa? Tap "I have a backup" on the first screen to restore a .paisa file.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-grid">
+      <a class="brand brand-large" href="/">
+        <img src="logo.svg" alt="" width="56" height="56">
+        <span>Billi</span>
+      </a>
+      <ul class="footer-links">
+        <li><a class="link" href="https://github.com/tashifkhan/Billi">Source on GitHub</a></li>
+        <li><a class="link" href="https://github.com/tashifkhan/Billi/blob/master/CHANGELOG.md">Changelog</a></li>
+        <li><a class="link" href="https://github.com/tashifkhan/Billi/releases">All releases</a></li>
+        <li><a class="link" href="https://github.com/tashifkhan/Billi/blob/master/LICENSE">AGPL‑3.0 licence</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <script>
+    for (const button of document.querySelectorAll('[data-copy]')) {
+      if (!navigator.clipboard) continue;
+      button.hidden = false;
+      button.addEventListener('click', async () => {
+        const text = document.getElementById(button.dataset.copy).textContent;
+        try {
+          await navigator.clipboard.writeText(text);
+          button.textContent = 'Copied';
+        } catch {
+          button.textContent = 'Select and copy';
+        }
+        setTimeout(() => { button.textContent = 'Copy'; }, 2000);
+      });
+    }
+  </script>
+  <script>window.hallmarkSlots = (m) => { for (const [k, v] of Object.entries(m)) { const s = document.querySelector(`[data-slot="${k}"]`); if (!s) continue; const im = new Image(); im.src = typeof v === 'string' ? v : v.src; im.alt = (typeof v === 'object' && v.alt) || s.dataset.alt || ''; s.querySelectorAll(':scope > img').forEach((o) => o.remove()); s.prepend(im); } };
+document.querySelectorAll('[data-slot] img').forEach((i) => { if (i.complete && !i.naturalWidth) i.remove(); else i.addEventListener('error', () => i.remove(), { once: true }); });</script>
+</body>
+</html>
