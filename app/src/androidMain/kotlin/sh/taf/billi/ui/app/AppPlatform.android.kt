@@ -46,3 +46,5 @@ actual fun windowWidthDp(): Int = LocalConfiguration.current.screenWidthDp
 
 @Composable
 actual fun appIconPainter(): Painter = painterResource(R.drawable.ic_launcher_legacy)
+
+actual fun rememberSetupDone(done: Boolean) = Unit

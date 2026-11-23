@@ -108,12 +108,14 @@ the database is sqlite in a web worker, stored in the browser's origin private f
 
 ### hosting it
 
-the build is a folder of static files, so any static host works. the live copy at [billi.taf.sh](https://billi.taf.sh) is a cloudflare worker that serves those files:
+the build is a folder of static files, so any static host works. the live copy is a cloudflare worker: [billi.taf.sh](https://billi.taf.sh) is a landing page (from `web-deploy/site`) and the app sits under [billi.taf.sh/app](https://billi.taf.sh/app):
 
 ```bash
-./gradlew :app:wasmJsBrowserDistribution
+web-deploy/build.sh                               # landing page + app into web-deploy/public
 npx wrangler deploy -c web-deploy/wrangler.jsonc
 ```
+
+the app keeps its place in the address bar: `/app/analytics`, `/app/settings/backup`, `/app/transactions/42`. a reload or a shared link opens that screen. `web-deploy/worker.js` answers every `/app/...` page with the app's `index.html`, and `index.html` picks `/app/` or `/` as its base from the url, so the dev server keeps working at the root. on another host, serve `index.html` for unknown paths under the app's folder (vercel and netlify call it a rewrite or a spa fallback).
 
 for vercel it's `npx vercel deploy app/build/dist/wasmJs/productionExecutable --prod`. vercel's build machines have no jdk, so build on your machine or in ci and deploy the folder, rather than letting vercel run gradle. netlify and github pages work the same way. serve it over https, since the browser only gives origin private storage to secure pages.
 

@@ -40,3 +40,10 @@ expect fun windowWidthDp(): Int
 /** The Billi launcher icon, for About. */
 @Composable
 expect fun appIconPainter(): Painter
+
+/**
+ * Notes whether setup is done (finished, or a backup restored). The web
+ * landing page reads it to send returning people straight to the app.
+ * Android has no landing page, so there it does nothing.
+ */
+expect fun rememberSetupDone(done: Boolean)

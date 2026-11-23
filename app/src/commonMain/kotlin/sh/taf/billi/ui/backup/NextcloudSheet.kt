@@ -76,9 +76,15 @@ internal fun NextcloudSheet(
                     server = it
                     serverErrorText = null
                 },
-                label = { Text("Server address") },
+                label = { Text("Nextcloud server address") },
                 isError = serverErrorText != null,
-                supportingText = serverErrorText?.let { { Text(it) } },
+                supportingText = {
+                    Text(
+                        serverErrorText
+                            ?: "The address you open Nextcloud at in a browser, like cloud.example.com. " +
+                            "It's in your Nextcloud's address bar, or ask whoever runs it."
+                    )
+                },
                 placeholder = { Text("cloud.example.com") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
@@ -89,11 +95,13 @@ internal fun NextcloudSheet(
                 OutlinedTextField(
                     value = proxy,
                     onValueChange = { proxy = it },
-                    label = { Text("CORS proxy") },
+                    label = { Text("CORS proxy address") },
                     supportingText = {
                         Text(
-                            "Browsers can't reach Nextcloud directly. Deploy nextcloud-proxy " +
-                                "from the Billi repo and paste its address."
+                            "Nextcloud blocks requests from other websites, so the web version " +
+                                "talks to it through a small proxy you run. Deploy nextcloud-proxy " +
+                                "from the Billi repo to Cloudflare and paste its address here. " +
+                                "Leave it empty if your server already sends CORS headers."
                         )
                     },
                     placeholder = { Text("https://billi-proxy.you.workers.dev") },
@@ -115,7 +123,7 @@ internal fun NextcloudSheet(
                 OutlinedTextField(
                     value = user,
                     onValueChange = { user = it },
-                    label = { Text("Username") },
+                    label = { Text("Nextcloud username") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -123,7 +131,12 @@ internal fun NextcloudSheet(
                     value = appPassword,
                     onValueChange = { appPassword = it },
                     label = { Text("App password") },
-                    supportingText = { Text("Nextcloud → Settings → Security → Create new app password") },
+                    supportingText = {
+                        Text(
+                            "Not your login password. In Nextcloud open Settings, then Security, " +
+                                "and create an app password for Billi."
+                        )
+                    },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),

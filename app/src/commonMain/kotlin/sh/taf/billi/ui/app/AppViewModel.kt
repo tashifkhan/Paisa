@@ -68,6 +68,8 @@ class AppViewModel(
 
     fun closeTransaction() = navigator.closeTransaction()
 
+    fun openTransaction(id: Int) = navigator.openTransaction(id)
+
     fun requestWidgetDestination(destination: String?) =
         navigator.requestWidgetDestination(destination)
 
