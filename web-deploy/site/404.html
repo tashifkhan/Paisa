@@ -4,7 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Page not found, Billi</title>
+  <meta name="robots" content="noindex">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="/styles.css">
 </head>
@@ -17,10 +20,14 @@
       </a>
     </div>
   </header>
-  <main class="hero">
-    <div class="container hero-text">
-      <h1>There's no page here.</h1>
-      <p class="lead">The link may be old. The app now lives at billi.taf.sh/app.</p>
+  <main class="lost">
+    <div class="container lost-inner">
+      <div class="lost-art" aria-hidden="true">
+        <img class="lost-cat" src="/billi-curious.svg" alt="" width="240" height="240">
+        <p class="lost-code num">404</p>
+      </div>
+      <h1>Billi looked everywhere. No page here.</h1>
+      <p class="lead">The link may be old. The app moved to billi.taf.sh/app.</p>
       <div class="actions">
         <a class="button" href="/app/">Open the app</a>
         <a class="button button-quiet" href="/">Go to the home page</a>

@@ -260,6 +260,23 @@ a:focus-visible, button:focus-visible {
 .brand-large { font-size: var(--text-3xl); gap: var(--space-sm); }
 .footer-links { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-lg); }
 
+/* 404: Billi peeking over the code */
+.lost { display: grid; align-items: center; min-height: calc(100dvh - 76px); padding-block: var(--space-lg) var(--space-2xl); }
+.lost-inner { display: grid; justify-items: center; text-align: center; gap: var(--space-md); }
+.lost-inner .lead { max-width: 30ch; }
+.lost-inner .actions { justify-content: center; }
+.lost-inner h1 { font-size: var(--text-display-s); max-width: 22ch; }
+.lost-art { display: grid; justify-items: center; }
+.lost-cat { width: clamp(8rem, 14vw, 11rem); height: auto; margin-bottom: calc(-1 * var(--space-xl)); position: relative; z-index: var(--z-base); }
+.lost-code {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(6rem, 14vw, 10rem);
+  line-height: 0.9;
+  letter-spacing: -0.06em;
+  color: var(--color-accent);
+}
+
 /* Narrow windows */
 @media (max-width: 60rem) {
   :root { --gutter: 20px; }
