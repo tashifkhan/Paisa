@@ -5,7 +5,17 @@ import sh.taf.billi.ui.sms.smsImportSupported
 import sh.taf.billi.ui.components.BilliMood
 import sh.taf.billi.ui.components.BilliMascot
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Category
+import androidx.compose.material.icons.rounded.CloudUpload
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Rule
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -25,7 +35,6 @@ import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
@@ -136,9 +145,17 @@ fun AppNavDrawer(
     /** The add and rescan buttons, or null to leave them to the FAB. */
     actions: NavActions?,
     onShowShortcuts: () -> Unit,
-    onSelect: (AppTab) -> Unit
+    onSelect: (AppTab) -> Unit,
+    /** The setting open in the content pane, so its row shows as selected. */
+    openScreen: FullScreen? = null,
+    /** Opens a setting from the drawer's settings list. */
+    onOpenScreen: (FullScreen) -> Unit = {}
 ) {
     val haptics = rememberHaptics()
+    // The settings list fills the space under the tabs only when the window
+    // is tall enough to keep Shortcuts at the bottom without scrolling.
+    val density = LocalDensity.current
+    val tall = with(density) { LocalWindowInfo.current.containerSize.height.toDp() } >= 760.dp
     PermanentDrawerSheet(
         modifier = Modifier.width(248.dp),
         drawerContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -164,19 +181,33 @@ fun AppNavDrawer(
             if (actions != null) Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(start = 4.dp, bottom = 20.dp)
+                modifier = Modifier.padding(bottom = 16.dp)
             ) {
-                NavTooltip("${addLabelFor(currentTab)}  N") {
-                    ExtendedFloatingActionButton(
-                        onClick = {
-                            haptics.click()
-                            actions.onAdd(addSheetFor(currentTab))
-                        },
-                        icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
-                        text = { Text(addLabelFor(currentTab)) },
-                        elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation(),
-                        modifier = Modifier.semantics { contentDescription = addLabelFor(currentTab) }
-                    )
+                // As wide as the rows below, with its + over their icons. An
+                // extended FAB would centre its content at this width.
+                Box(Modifier.weight(1f)) {
+                    NavTooltip("${addLabelFor(currentTab)}  N") {
+                        FloatingActionButton(
+                            onClick = {
+                                haptics.click()
+                                actions.onAdd(addSheetFor(currentTab))
+                            },
+                            elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .semantics { contentDescription = addLabelFor(currentTab) }
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                            ) {
+                                Icon(Icons.Rounded.Add, contentDescription = null)
+                                Text(addLabelFor(currentTab), style = MaterialTheme.typography.labelLarge)
+                            }
+                        }
+                    }
                 }
                 if (currentTab == AppTab.HOME && smsImportSupported) RescanButton(actions)
             }
@@ -198,6 +229,26 @@ fun AppNavDrawer(
                     }
                 )
             }
+            if (tall) {
+                HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+                Text(
+                    "Settings",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+                )
+                drawerSettings.forEach { (screen, icon) ->
+                    NavigationDrawerItem(
+                        selected = openScreen == screen,
+                        onClick = {
+                            if (openScreen != screen) haptics.tick()
+                            onOpenScreen(screen)
+                        },
+                        icon = { Icon(icon, contentDescription = null) },
+                        label = { Text(screen.title) }
+                    )
+                }
+            }
             Spacer(Modifier.weight(1f))
             NavigationDrawerItem(
                 selected = false,
@@ -210,6 +261,16 @@ fun AppNavDrawer(
         }
     }
 }
+
+/** The settings the drawer lists under the tabs. The rest stay in More. */
+private val drawerSettings = listOf(
+    FullScreen.BACKUP to Icons.Rounded.CloudUpload,
+    FullScreen.AI to Icons.Rounded.AutoAwesome,
+    FullScreen.CATEGORIES to Icons.Rounded.Category,
+    FullScreen.MERCHANT_MAPPINGS to Icons.Rounded.Rule,
+    FullScreen.APPEARANCE to Icons.Rounded.Palette,
+    FullScreen.ABOUT to Icons.Rounded.Info
+)
 
 /** Rescans SMS when the app can read it, otherwise opens SMS setup. Same as the phone's small FAB. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)

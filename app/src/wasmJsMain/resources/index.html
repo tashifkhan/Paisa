@@ -3,6 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    // The app answers every path under its base (/app/ on billi.taf.sh, / on
+    // the dev server), so /app/settings/backup works on reload. Point every
+    // relative URL below, and the scripts' chunks, at that base.
+    document.write('<base href="' + (location.pathname.indexOf('/app') === 0 ? '/app/' : '/') + '">');
+  </script>
   <meta name="theme-color" content="#E88C2E">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <!-- Google Drive backup and sync on the web: a "Web application" OAuth client ID

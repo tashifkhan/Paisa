@@ -39,6 +39,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalFocusManager
@@ -174,6 +175,21 @@ fun AppShell(
     val hazeState = remember { HazeState() }
     val frostedBar = floatingBar && settings?.floatingNavFrosted == true
     val topScreen = state.topScreen
+    // A rail or drawer has room for every tab when the window is tall enough,
+    // so Debts and the rest don't hide behind More. The bottom bar keeps the
+    // tabs picked in settings.
+    val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
+    val shellTabs = if (large || (useRail && windowHeight >= 520.dp)) AppTab.entries else navTabs
+
+    // The web keeps the address bar on the open tab, setting or transaction.
+    RouteSync(
+        route = AppRoute(tab = currentTab, screen = topScreen, transactionId = selectedTxId),
+        onNavigate = { route ->
+            viewModel.selectTab(route.tab)
+            route.screen?.let { if (wide) state.show(it) else state.open(it) }
+            route.transactionId?.let(viewModel::openTransaction)
+        }
+    )
 
     LaunchedEffect(currentTab, topScreen) {
         setWindowTitle(
@@ -235,7 +251,7 @@ fun AppShell(
     }
 
     // A screen opened from More (its tab is hidden from the bar) goes back to More.
-    PlatformBackHandler(enabled = currentTab !in navTabs && !large) {
+    PlatformBackHandler(enabled = currentTab !in shellTabs) {
         viewModel.selectTab(AppTab.MORE)
     }
 
@@ -249,7 +265,7 @@ fun AppShell(
 
     // Keyboard shortcuts for windows with a hardware keyboard nearby. The
     // shell holds focus whenever nothing else does, so keys reach it.
-    val shortcutTabs = if (large) AppTab.entries else navTabs
+    val shortcutTabs = shellTabs
     val keys = rememberShellKeyboardFocus(useRail)
         .onKeyEvent { event ->
             handleShortcut(
@@ -308,10 +324,16 @@ fun AppShell(
                     currentTab = currentTab,
                     actions = navActions.takeIf { navButtons },
                     onShowShortcuts = { showShortcuts = true },
-                    onSelect = selectTab
+                    onSelect = selectTab,
+                    openScreen = topScreen,
+                    onOpenScreen = { screen ->
+                        // Settings open beside the More list, as when picked there.
+                        if (currentTab != AppTab.MORE) selectTab(AppTab.MORE)
+                        state.show(screen)
+                    }
                 )
                 useRail -> AppNavRail(
-                    navTabs = navTabs,
+                    navTabs = shellTabs,
                     currentTab = currentTab,
                     showLabels = settings?.navBarLabels != false,
                     actions = navActions.takeIf { navButtons },
@@ -394,21 +416,21 @@ fun AppShell(
                             topScreen = topScreen,
                             showMoreList = currentTab == AppTab.MORE,
                             state = state,
-                            navTabs = if (large) AppTab.entries else navTabs,
+                            navTabs = shellTabs,
                             viewModel = viewModel
                         )
                     } else {
                         // Two equal panes on expanded, so on a book-style
                         // foldable the split lands on the hinge.
                         Box(modifier = Modifier.weight(1f)) {
-                            if (!wide && currentTab in navTabs) {
+                            if (!wide && currentTab in shellTabs) {
                                 SwipeableTabs(
                                     navTabs = navTabs,
                                     currentTab = currentTab,
                                     onSwipeTo = selectTab
                                 ) { page ->
                                     CenteredContent {
-                                        TabContent(page, navTabs, state, viewModel)
+                                        TabContent(page, shellTabs, state, viewModel)
                                     }
                                 }
                             } else {
@@ -418,10 +440,10 @@ fun AppShell(
                                     label = "tab_content"
                                 ) { page ->
                                     if (wide) {
-                                        TabContent(page, navTabs, state, viewModel)
+                                        TabContent(page, shellTabs, state, viewModel)
                                     } else {
                                         CenteredContent {
-                                            TabContent(page, navTabs, state, viewModel)
+                                            TabContent(page, shellTabs, state, viewModel)
                                         }
                                     }
                                 }
