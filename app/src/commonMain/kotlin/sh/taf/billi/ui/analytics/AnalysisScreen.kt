@@ -70,6 +70,23 @@ fun AnalysisScreen(viewModel: AnalyticsViewModel = koinViewModel()) {
             period = period,
             allTime = groupAllTime,
             onAllTimeChange = viewModel::setGroupAllTime,
+            periodPicker = { allTime, onAllTime ->
+                PeriodPicker(
+                    kind = periodKind,
+                    label = period.label,
+                    canGoForward = if (periodKind == AnalyticsPeriod.CUSTOM) {
+                        custom.second < nowMillis()
+                    } else {
+                        offset > 0
+                    },
+                    custom = custom,
+                    onKind = viewModel::setAnalyticsPeriod,
+                    onShift = viewModel::shiftAnalytics,
+                    onCustom = viewModel::setAnalyticsCustomRange,
+                    allTime = allTime,
+                    onAllTime = onAllTime
+                )
+            },
             currency = currency,
             balancesHidden = balancesHidden,
             onBack = { viewModel.openAnalyticsGroup(null) },

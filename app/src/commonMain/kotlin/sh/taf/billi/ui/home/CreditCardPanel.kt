@@ -249,10 +249,7 @@ private fun CardBreakdown(cards: List<Account>, currency: String, hidden: Boolea
         ) {
             cards.forEach { card ->
                 BreakdownRow(
-                    label = listOfNotNull(
-                        card.bankName ?: card.name,
-                        card.accountLast4?.let { "••$it" }
-                    ).joinToString(" "),
+                    label = accountNameWithDigits(card.bankName ?: card.name, card.accountLast4),
                     currency = currency,
                     // A negative balance is money owed; show it as a positive debt.
                     amount = (-card.currentBalance).coerceAtLeast(0.0),

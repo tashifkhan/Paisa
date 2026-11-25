@@ -155,48 +155,20 @@ internal fun BalanceCard(
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = MaterialTheme.spacing.small),
+                            .padding(top = MaterialTheme.spacing.medium),
                         shape = breakdownShape,
-                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.12f)
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.1f)
                     ) {
-                        Column(
+                        AccountBreakdown(
+                            currency = currency,
+                            accounts = bankAccounts,
+                            creditCards = if (showCreditCards) creditCards else emptyList(),
+                            hidden = balancesHidden,
                             modifier = Modifier.padding(
                                 horizontal = MaterialTheme.spacing.small,
-                                vertical = MaterialTheme.spacing.smaller
+                                vertical = MaterialTheme.spacing.small
                             )
-                        ) {
-                            bankAccounts.forEach { account ->
-                                BreakdownRow(
-                                    label = listOfNotNull(
-                                        account.name,
-                                        account.accountLast4?.takeIf { it != "WALLET" }
-                                            ?.let { "••$it" }
-                                    ).joinToString(" "),
-                                    currency = currency,
-                                    amount = account.currentBalance,
-                                    hidden = balancesHidden
-                                )
-                            }
-                            if (showCreditCards && creditCards.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(MaterialTheme.spacing.extraSmall))
-                                Text(
-                                    text = "Credit cards (not in total)",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
-                                )
-                                creditCards.forEach { card ->
-                                    BreakdownRow(
-                                        label = listOfNotNull(
-                                            card.name,
-                                            card.accountLast4?.let { "••$it" }
-                                        ).joinToString(" "),
-                                        currency = currency,
-                                        amount = card.currentBalance,
-                                        hidden = balancesHidden
-                                    )
-                                }
-                            }
-                        }
+                        )
                     }
                 }
             }
