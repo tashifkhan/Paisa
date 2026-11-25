@@ -2,6 +2,23 @@
 
 Every Billi release, newest first. Releases up to 1.8.0 shipped as Paisa. Each version's APK is on the [releases page](https://github.com/tashifkhan/Billi/releases) and in the F-Droid repo at `https://tashif.codes/fdroid/repo`.
 
+## 2.0.3
+
+### Transactions
+
+- Save separate merchant rename and category rules above Save, including on manually entered transactions. A rename updates past transactions and future SMS, notifications and statement imports. A category rule files past and future matches under the chosen category.
+- Billi catches duplicate bank texts that share a long transaction reference.
+
+### Home, debts and analytics
+
+- Home shows a fuller account breakdown with balances and credit card usage. Bank accounts and cards have separate sections. Billi shows the last four digits once when they already appear in the account name.
+- Debts shows net and separate totals, and groups people by who owes whom. Settled balances have their own group.
+- Account and category breakdowns in Analytics can switch between Month, Year, Custom and All.
+
+### Appearance
+
+- System, Light and Dark use the same connected buttons as the Analytics period picker.
+
 ## 2.0.2
 
 ### Web

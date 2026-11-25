@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
@@ -206,40 +206,49 @@ internal fun parseToCalendar(iso: String): BilliCalendar {
     return cal
 }
 
-/** "Always use" merchant rule, shown when there is a merchant. */
+/**
+ * Two rules from one edit, at the bottom of the page. Rename turns the old
+ * title into the new one ("SwiggyLTD" → "Swiggy"); category always files
+ * that title under the picked category. Rename only shows once the title
+ * actually changed.
+ */
 @Composable
-internal fun DetailToggles(
-    merchantForMapping: String,
-    fromSmsOrImport: Boolean,
-    rememberMerchant: Boolean,
-    onRememberMerchantChange: (Boolean) -> Unit,
-    renameFrom: String? = null,
-    rememberRename: Boolean = false,
-    onRememberRenameChange: (Boolean) -> Unit = {}
+internal fun MerchantRuleToggles(
+    merchant: String,
+    renameFrom: String?,
+    categoryName: String?,
+    renameChecked: Boolean,
+    onRenameChange: (Boolean) -> Unit,
+    categoryChecked: Boolean,
+    onCategoryChange: (Boolean) -> Unit
 ) {
-    if (renameFrom != null && merchantForMapping.isNotEmpty()) {
-        Spacer(Modifier.height(MaterialTheme.spacing.small))
-        SheetToggleCard(
-            icon = Icons.Rounded.DriveFileRenameOutline,
-            title = "Always rename “$renameFrom” to “$merchantForMapping”",
-            subtitle = "Past and future imports",
-            checked = rememberRename,
-            onCheckedChange = onRememberRenameChange
+    if (merchant.isEmpty() || (renameFrom == null && categoryName == null)) return
+    val future = if (smsImportSupported) "SMS, notifications and imports" else "imports"
+    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+        Text(
+            text = "Rules",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = MaterialTheme.spacing.small, top = MaterialTheme.spacing.small)
         )
+        if (renameFrom != null) {
+            SheetToggleCard(
+                icon = Icons.Rounded.DriveFileRenameOutline,
+                title = "Rename “$renameFrom” to “$merchant”",
+                subtitle = "Every past transaction, and new ones from $future",
+                checked = renameChecked,
+                onCheckedChange = onRenameChange
+            )
+        }
+        if (categoryName != null) {
+            SheetToggleCard(
+                icon = Icons.Rounded.Bookmark,
+                title = "Always put “$merchant” in $categoryName",
+                subtitle = "Past and future transactions with this title",
+                checked = categoryChecked,
+                onCheckedChange = onCategoryChange
+            )
+        }
     }
-    if (merchantForMapping.isNotEmpty()) {
-        Spacer(Modifier.height(MaterialTheme.spacing.small))
-        SheetToggleCard(
-            icon = Icons.Rounded.Bookmark,
-            title = "Always use for “$merchantForMapping”",
-            subtitle = if (fromSmsOrImport) {
-                if (smsImportSupported) "Future SMS, notifications and imports with this merchant get this category" else "Future imports with this merchant get this category"
-            } else {
-                "Future transactions with this title get this category"
-            },
-            checked = rememberMerchant,
-            onCheckedChange = onRememberMerchantChange
-        )
-    }
-
 }

@@ -58,13 +58,20 @@ object CrossChannelDedup {
     /** A UPI app notification can lead or trail the bank SMS by several minutes. */
     const val PAYMENT_APP_WINDOW_MS = 15 * 60_000L
 
-    /** A shared UPI reference proves the match across a longer carrier delay. */
+    /** A shared transaction reference can match across a longer carrier delay. */
     const val REFERENCE_WINDOW_MS = 24 * 60 * 60_000L
 
     /** The widest window any rule uses, for the caller's candidate query. */
     const val MAX_WINDOW_MS = REFERENCE_WINDOW_MS
 
     private val upiReference = Regex("""\d{12}""")
+
+    /**
+     * A reference long enough to name one charge: a 12-digit UPI RRN, or a
+     * bank's own transaction number (SBI's run to 15 digits). Short codes like
+     * "123456" repeat too often to prove anything.
+     */
+    private val strongReference = Regex("""[A-Za-z0-9]*\d{8,}[A-Za-z0-9]*""")
 
     fun verdict(incoming: Charge, existing: Charge): Verdict {
         if (incoming.channel == Channel.OTHER || existing.channel == Channel.OTHER) return Verdict.DISTINCT
@@ -73,12 +80,17 @@ object CrossChannelDedup {
         if (!accountsMatch(incoming.accountLast4, existing.accountLast4)) return Verdict.DISTINCT
 
         val gap = abs(incoming.timeMillis - existing.timeMillis)
-        val inRef = incoming.reference?.takeIf { upiReference.matches(it) }
-        val oldRef = existing.reference?.takeIf { upiReference.matches(it) }
+        val inRef = incoming.reference?.trim()?.takeIf { strongReference.matches(it) }
+        val oldRef = existing.reference?.trim()?.takeIf { strongReference.matches(it) }
         if (inRef != null && oldRef != null) {
-            // Two references settle it either way.
-            if (inRef != oldRef || gap > REFERENCE_WINDOW_MS) return Verdict.DISTINCT
-            return sameCharge(incoming, existing)
+            // The same reference is the same charge, even from one channel: a bank
+            // often sends one debit from two senders in different words.
+            if (inRef.equals(oldRef, ignoreCase = true)) {
+                return if (gap > REFERENCE_WINDOW_MS) Verdict.DISTINCT else sameCharge(incoming, existing)
+            }
+            // Two UPI references that differ are two payments. Other pairs may be
+            // one charge numbered by two systems, so the rules below decide.
+            if (upiReference.matches(inRef) && upiReference.matches(oldRef)) return Verdict.DISTINCT
         }
 
         if (incoming.channel == existing.channel) return Verdict.DISTINCT

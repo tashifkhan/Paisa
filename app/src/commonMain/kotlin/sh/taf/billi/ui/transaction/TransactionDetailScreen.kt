@@ -96,7 +96,6 @@ fun TransactionDetailScreen(
     val isManual = current.source == "manual" || current.source == "assistant"
     // A notification keeps its text in smsBody too, so it shows and behaves like an SMS.
     val isSms = current.source == "sms" || current.source == "notification"
-    val isStatement = current.source == "statement"
     // A UPI or bank app may not name the account, so its rows can move to another one.
     val accountEditable = isManual || current.source == "notification"
 
@@ -106,8 +105,9 @@ fun TransactionDetailScreen(
     var selectedAccountId by remember(current.id, current.accountId) {
         mutableIntStateOf(current.accountId)
     }
-    var rememberMerchant by remember(current.id) { mutableStateOf(false) }
-    var rememberRename by remember(current.id) { mutableStateOf(false) }
+    // Rules saved with the edit: the corrected name, and the category for that name.
+    var saveRename by remember(current.id) { mutableStateOf(false) }
+    var saveCategoryRule by remember(current.id) { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var editing by remember(current.id) { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -182,12 +182,14 @@ fun TransactionDetailScreen(
         (isManual && editedDateKey != storedDateKey) ||
         (accountEditable && selectedAccountId != current.accountId)
     val categoryChanged = selectedCategoryId != current.categoryId
-    val merchantForMapping = title.trim().ifBlank { current.merchantName?.trim().orEmpty() }
-    // An imported name the user corrected ("SWIGGY LTD" → "Swiggy") can become a rule.
+    val merchantForMapping = title.trim()
+    val selectedCategoryName = categories.firstOrNull { it.id == selectedCategoryId }?.name
+    // A name the user corrected ("SwiggyLTD" → "Swiggy") can become a rule.
     val renameFrom = current.merchantName?.trim()
-        ?.takeIf { (isSms || isStatement) && it.isNotEmpty() && title.trim().isNotEmpty() && it != title.trim() }
-    val canSave = detailsChanged || categoryChanged ||
-        (rememberMerchant && merchantForMapping.isNotEmpty())
+        ?.takeIf { it.isNotEmpty() && merchantForMapping.isNotEmpty() && it != merchantForMapping }
+    val rememberRename = saveRename && renameFrom != null
+    val rememberCategory = saveCategoryRule && merchantForMapping.isNotEmpty() && selectedCategoryName != null
+    val canSave = detailsChanged || categoryChanged || rememberRename || rememberCategory
 
     fun resetEdits() {
         title = current.merchantName.orEmpty()
@@ -195,8 +197,8 @@ fun TransactionDetailScreen(
         amountText = initialAmountText
         selectedCategoryId = current.categoryId
         selectedAccountId = current.accountId
-        rememberMerchant = false
-        rememberRename = false
+        saveRename = false
+        saveCategoryRule = false
         year = initialCal.get(BilliCalendar.YEAR)
         month = initialCal.get(BilliCalendar.MONTH)
         day = initialCal.get(BilliCalendar.DAY_OF_MONTH)
@@ -344,19 +346,19 @@ fun TransactionDetailScreen(
                         }
                     )
 
+                    CategoryPicker(
+                        categories = filteredCategories,
+                        selectedId = selectedCategoryId,
+                        onSelect = { selectedCategoryId = it },
+                        type = current.type
+                    )
+
                     MarkdownField(
                         value = note,
                         onValueChange = { note = it },
                         label = "Description",
                         placeholder = "Add a description",
                         alwaysOpen = true
-                    )
-
-                    CategoryPicker(
-                        categories = filteredCategories,
-                        selectedId = selectedCategoryId,
-                        onSelect = { selectedCategoryId = it },
-                        type = current.type
                     )
 
                     if (isManual) {
@@ -378,14 +380,14 @@ fun TransactionDetailScreen(
                         )
                     }
 
-                    DetailToggles(
-                        merchantForMapping = merchantForMapping,
-                        fromSmsOrImport = isSms || isStatement,
-                        rememberMerchant = rememberMerchant,
-                        onRememberMerchantChange = { rememberMerchant = it },
+                    MerchantRuleToggles(
+                        merchant = merchantForMapping,
                         renameFrom = renameFrom,
-                        rememberRename = rememberRename,
-                        onRememberRenameChange = { rememberRename = it }
+                        categoryName = selectedCategoryName,
+                        renameChecked = saveRename,
+                        onRenameChange = { saveRename = it },
+                        categoryChecked = saveCategoryRule,
+                        onCategoryChange = { saveCategoryRule = it }
                     )
                 }
 
@@ -421,11 +423,11 @@ fun TransactionDetailScreen(
                                     title = title,
                                     note = note,
                                     categoryId = selectedCategoryId,
-                                    rememberMerchant = rememberMerchant && merchantForMapping.isNotEmpty(),
+                                    rememberMerchant = rememberCategory,
                                     amount = if (isManual) parsedAmount else null,
                                     transactionDate = if (isManual) originalIso else null,
                                     accountId = if (accountEditable) selectedAccountId else null,
-                                    rememberRename = rememberRename && renameFrom != null
+                                    rememberRename = rememberRename
                                 )
                                 // Back to the transaction, which now shows what was saved.
                                 editing = false

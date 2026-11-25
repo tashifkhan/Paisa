@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -57,6 +56,8 @@ internal fun AnalyticsGroupScreen(
     period: Period,
     allTime: Boolean,
     onAllTimeChange: (Boolean) -> Unit,
+    /** The period controls, shared with the Analysis page. */
+    periodPicker: @Composable (allTime: Boolean, onAllTime: (Boolean) -> Unit) -> Unit,
     currency: String,
     balancesHidden: Boolean,
     onBack: () -> Unit,
@@ -137,9 +138,8 @@ internal fun AnalyticsGroupScreen(
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)
         ) {
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller)) {
-                    FilterChip(selected = !allTime, onClick = { onAllTimeChange(false) }, label = { Text(period.label) })
-                    FilterChip(selected = allTime, onClick = { onAllTimeChange(true) }, label = { Text("All time") })
+                Column(Modifier.padding(bottom = MaterialTheme.spacing.smaller)) {
+                    periodPicker(allTime, onAllTimeChange)
                 }
             }
             item {
@@ -195,7 +195,7 @@ internal fun AnalyticsGroupScreen(
                     Spacer(Modifier.height(MaterialTheme.spacing.large))
                     EmptyState(
                         title = "Nothing in ${period.label}",
-                        subtitle = "Switch to All time to see older transactions"
+                        subtitle = "Pick All to see older transactions"
                     )
                 }
             }

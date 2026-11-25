@@ -1,5 +1,7 @@
 package sh.taf.billi.ui.transaction
 
+import sh.taf.billi.ui.home.accountNameWithDigits
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -61,12 +63,7 @@ internal fun transactionDetailRows(
                     add(DetailRowSpec(Icons.Rounded.AccountBalance, if (tx.source == "notification") "App" else "Bank", it))
                 }
         }
-        val accountLabel = listOfNotNull(
-            tx.accountName.takeIf { it.isNotBlank() },
-            tx.accountNumber
-                ?.takeIf { !isManual && it.isNotBlank() }
-                ?.let { "••$it" }
-        ).joinToString(" ")
+        val accountLabel = accountNameWithDigits(tx.accountName, tx.accountNumber?.takeIf { !isManual })
         if (accountLabel.isNotBlank()) {
             add(DetailRowSpec(Icons.Rounded.AccountBalanceWallet, "Account", accountLabel))
         }

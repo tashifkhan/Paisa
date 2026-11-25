@@ -25,7 +25,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.CallSplit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row as LayoutRow
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+import sh.taf.billi.ui.format.formatMoney
+import kotlin.math.abs
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.lazy.LazyColumn
@@ -104,7 +110,10 @@ fun DebtsScreen(viewModel: DebtsViewModel = koinViewModel()) {
     Row(Modifier.fillMaxSize()) {
     Column(modifier = if (wide && people.isNotEmpty()) Modifier.width(ListPaneWidth).fillMaxHeight() else Modifier.fillMaxSize()) {
         BilliTopBar(title = "Debts") {
-            TextButton(onClick = { splittingBill = true }) {
+            FilledTonalButton(
+                onClick = { splittingBill = true },
+                modifier = Modifier.padding(end = MaterialTheme.spacing.small)
+            ) {
                 Icon(Icons.AutoMirrored.Rounded.CallSplit, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(MaterialTheme.spacing.smaller))
                 Text("Split a bill")
@@ -120,6 +129,12 @@ fun DebtsScreen(viewModel: DebtsViewModel = koinViewModel()) {
             return@Column
         }
         val (owedToMe, iOwe) = debtTotals(people)
+        // Who owes you, who you owe, then everyone settled up: each its own segmented group.
+        val sections = listOf(
+            DebtSection("Owe you", people.filter { it.balance >= SETTLED }, owedToMe),
+            DebtSection("You owe", people.filter { it.balance <= -SETTLED }, iOwe),
+            DebtSection("Settled", people.filter { abs(it.balance) < SETTLED }, null)
+        ).filter { it.people.isNotEmpty() }
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
@@ -129,20 +144,35 @@ fun DebtsScreen(viewModel: DebtsViewModel = koinViewModel()) {
             ),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            item {
-                DebtTotalsCard(currency = currency, owedToMe = owedToMe, iOwe = iOwe)
-                Spacer(Modifier.height(MaterialTheme.spacing.medium))
-            }
-            itemsIndexed(people, key = { _, p -> p.person.id }) { index, p ->
-                Box(Modifier.animateItem(placementSpec = listPlacementSpring())) {
-                DebtPersonRow(
-                    entry = p,
+            item(key = "totals") {
+                DebtTotalsCard(
                     currency = currency,
-                    index = index,
-                    count = people.size,
-                    selected = wide && p.person.id == openId,
-                    onClick = { viewModel.openDebtPerson(p.person.id) }
+                    owedToMe = owedToMe,
+                    iOwe = iOwe,
+                    owingCount = sections.firstOrNull { it.title == "Owe you" }?.people?.size ?: 0,
+                    owedCount = sections.firstOrNull { it.title == "You owe" }?.people?.size ?: 0
                 )
+            }
+            sections.forEach { section ->
+                item(key = "header:${section.title}") {
+                    DebtSectionHeader(
+                        title = section.title,
+                        count = section.people.size,
+                        total = section.total?.let { formatMoney(currency, it) },
+                        modifier = Modifier.animateItem(placementSpec = listPlacementSpring())
+                    )
+                }
+                itemsIndexed(section.people, key = { _, p -> p.person.id }) { index, p ->
+                    Box(Modifier.animateItem(placementSpec = listPlacementSpring())) {
+                        DebtPersonRow(
+                            entry = p,
+                            currency = currency,
+                            index = index,
+                            count = section.people.size,
+                            selected = wide && p.person.id == openId,
+                            onClick = { viewModel.openDebtPerson(p.person.id) }
+                        )
+                    }
                 }
             }
         }
@@ -157,5 +187,43 @@ fun DebtsScreen(viewModel: DebtsViewModel = koinViewModel()) {
             }
         }
     }
+    }
+}
+
+private data class DebtSection(val title: String, val people: List<DebtPersonBalance>, val total: Double?)
+
+/** A group's title in the primary color, its count, and its total on the right. */
+@Composable
+private fun DebtSectionHeader(title: String, count: Int, total: String?, modifier: Modifier = Modifier) {
+    LayoutRow(
+        modifier = modifier
+            .padding(
+                start = MaterialTheme.spacing.small,
+                end = MaterialTheme.spacing.small,
+                top = MaterialTheme.spacing.large,
+                bottom = MaterialTheme.spacing.small
+            ),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = "  $count",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        if (total != null) {
+            Text(
+                text = total,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }

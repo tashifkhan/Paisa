@@ -50,7 +50,7 @@ fun MerchantMappingsScreen(
         if (mappings.isEmpty() && renames.isEmpty()) {
             EmptyState(
                 title = "No merchant rules yet",
-                subtitle = "Turn on “Always rename” or “Always use” while editing a transaction."
+                subtitle = "When editing a transaction, turn on a rename or category rule above Save."
             )
             return@Column
         }

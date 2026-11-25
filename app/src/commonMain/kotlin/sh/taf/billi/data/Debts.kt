@@ -68,7 +68,11 @@ data class DebtEntry(
 /** A person and what they owe you right now (negative: what you owe them). */
 data class DebtPersonBalance(
     @Embedded val person: DebtPerson,
-    val balance: Double
+    val balance: Double,
+    /** How many entries make up [balance]. */
+    val entryCount: Int = 0,
+    /** The newest entry's date (ISO-8601), or null with none. */
+    val lastEntryDate: String? = null
 )
 
 /** A debt entry with the name of the person it belongs to, for a transaction's split. */
@@ -91,7 +95,8 @@ private const val LIVE_ENTRY = """
 interface DebtDao {
     @Query(
         """
-        SELECT p.*, COALESCE(SUM(e.amount), 0) AS balance
+        SELECT p.*, COALESCE(SUM(e.amount), 0) AS balance,
+            COUNT(e.id) AS entryCount, MAX(e.entryDate) AS lastEntryDate
         FROM debt_people p LEFT JOIN debt_entries e ON e.personId = p.id AND $LIVE_ENTRY
         GROUP BY p.id
         ORDER BY ABS(COALESCE(SUM(e.amount), 0)) DESC, p.name COLLATE NOCASE

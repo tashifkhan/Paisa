@@ -61,20 +61,43 @@ internal fun PeriodPicker(
     custom: Pair<Long, Long>,
     onKind: (AnalyticsPeriod) -> Unit,
     onShift: (Int) -> Unit,
-    onCustom: (Long, Long) -> Unit
+    onCustom: (Long, Long) -> Unit,
+    /** With [onAllTime], an "All" choice joins the row; true while it's picked. */
+    allTime: Boolean = false,
+    onAllTime: ((Boolean) -> Unit)? = null
 ) {
     val haptics = rememberHaptics()
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        ConnectedToggleGroup(
-            options = listOf(
-                ToggleOption(AnalyticsPeriod.MONTH, "Month", Icons.Rounded.CalendarViewMonth),
-                ToggleOption(AnalyticsPeriod.YEAR, "Year", Icons.Rounded.CalendarToday),
-                ToggleOption(AnalyticsPeriod.CUSTOM, "Custom", Icons.Rounded.DateRange)
-            ),
-            isChecked = { it == kind },
-            onClick = onKind
+        // Null stands for All, which only drill-down pages offer. Four buttons
+        // with icons don't fit a phone's width, so that row goes text only.
+        val icons = onAllTime == null
+        val options = listOfNotNull(
+            ToggleOption<AnalyticsPeriod?>(AnalyticsPeriod.MONTH, "Month", Icons.Rounded.CalendarViewMonth.takeIf { icons }),
+            ToggleOption<AnalyticsPeriod?>(AnalyticsPeriod.YEAR, "Year", Icons.Rounded.CalendarToday.takeIf { icons }),
+            ToggleOption<AnalyticsPeriod?>(AnalyticsPeriod.CUSTOM, "Custom", Icons.Rounded.DateRange.takeIf { icons }),
+            onAllTime?.let { ToggleOption<AnalyticsPeriod?>(null, "All") }
         )
-        if (kind == AnalyticsPeriod.CUSTOM) {
+        ConnectedToggleGroup(
+            options = options,
+            isChecked = { if (it == null) allTime else !allTime && it == kind },
+            onClick = { picked ->
+                if (picked == null) {
+                    onAllTime?.invoke(true)
+                } else {
+                    onAllTime?.invoke(false)
+                    onKind(picked)
+                }
+            }
+        )
+        if (allTime) {
+            Text(
+                text = "Everything ever recorded",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                textAlign = TextAlign.Center
+            )
+        } else if (kind == AnalyticsPeriod.CUSTOM) {
             CustomRangeControls(custom = custom, onChange = onCustom)
         } else {
             // Step back and forward a month or a year at a time.

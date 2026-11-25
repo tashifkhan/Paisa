@@ -316,6 +316,29 @@ class NotificationCoreTest {
     }
 
     @Test
+    fun twoSmsWithOneBankReferenceAreOneCharge() {
+        // A single SBI debit can arrive in two texts with the same 15-digit reference.
+        val a = charge(Channel.SMS, amount = 875.0, bank = "State Bank of India", last4 = "1234", ref = "123456789012345")
+        val b = charge(Channel.SMS, at = 20_000L, amount = 875.0, bank = "State Bank of India", last4 = "1234", ref = "123456789012345")
+        assertEquals(CrossChannelDedup.Verdict.DUPLICATE, CrossChannelDedup.verdict(b, a))
+    }
+
+    @Test
+    fun shortReferencesProveNothing() {
+        val a = charge(Channel.SMS, ref = "123456")
+        val b = charge(Channel.SMS, at = 30_000L, ref = "123456")
+        assertEquals(CrossChannelDedup.Verdict.DISTINCT, CrossChannelDedup.verdict(b, a))
+    }
+
+    @Test
+    fun differentKindsOfReferenceFallBackToTheOtherRules() {
+        // A UPI app's RRN and the bank app's own number for one charge.
+        val sms = charge(Channel.SMS, ref = "412345678901")
+        val app = charge(Channel.BANK_APP, at = 60_000L, ref = "TXN99887766554")
+        assertEquals(CrossChannelDedup.Verdict.DUPLICATE, CrossChannelDedup.verdict(app, sms))
+    }
+
+    @Test
     fun differentUpiReferencesNeverMatch() {
         val a = charge(Channel.PAYMENT_APP, ref = "412345678901")
         val b = charge(Channel.SMS, at = 1_000L, ref = "412345678902")
